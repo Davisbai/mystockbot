@@ -593,8 +593,13 @@ def run_full_scan_gui(scanner):
 
     send_line_message("\n".join(line_message_lines))
     console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
-    console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
 
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print("\n[系統] 偵測到自動化環境，掃描完成後自動退出。")
+        return # 直接返回，不要執行下方的 input()
+    
+    # 原本的邏輯：只有在一般電腦執行時才需要按 Enter
+    console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
 
 # ==========================================
 # 2️⃣ 單股查詢模組 (獨立呼叫回測系統)

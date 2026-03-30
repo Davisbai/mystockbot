@@ -2,8 +2,8 @@ name: Stock Strategy Daily Scan
 
 on:
   schedule:
-    # 台灣時間 00:10 等於 UTC 前一天的 16:10 (00:10 - 8小時 = 16:10)
-    - cron: '10 16 * * *'  # 每天凌晨 00:10 執行
+    # 台灣時間 19:00 等於 UTC 時間 11:00 (19:00 - 8 = 11:00)
+    - cron: '0 11 * * *'  # 每天 19:00 執行
   workflow_dispatch:        # 允許手動執行
 
 jobs:
@@ -23,13 +23,13 @@ jobs:
     - name: 3. 安裝必要套件
       run: |
         python -m pip install --upgrade pip
-        # 確保讀取你的 requirements.txt
-        pip install -r requirements.txt
+        # 確保讀取專案根目錄的 requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install pandas numpy scikit-learn yfinance rich FinMind requests; fi
 
     - name: 4. 執行盤後策略掃描 (自動輸入 1)
       env:
         TZ: Asia/Taipei
       run: |
-        echo "--- 正在啟動 00:10 自動掃描 (自動選取模式 1) ---"
+        echo "--- 正在啟動 19:00 自動掃描 (自動選取模式 1) ---"
         echo 1 | python STOCK_GOD.py
         echo "--- 掃描執行完畢 ---"
