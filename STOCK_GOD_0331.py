@@ -22,6 +22,9 @@ from rich import print as rprint
 # 引入 rich 套件以支援終端機 UI
 from rich.table import Table
 from rich.progress import track
+import os, time
+os.environ['TZ'] = 'Asia/Taipei'
+time.tzset() # 僅限 Linux/Codespaces 環境有效
 
 console = Console()
 
@@ -106,18 +109,26 @@ class YahooMarketScanner:
     def get_foreign_buying(self, code):
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Referer': f'https://fubon-ebrokerdj.fbs.com.tw/z/zc/zcl/zcl.djhtm?a={code}'
             }
             url = f"https://fubon-ebrokerdj.fbs.com.tw/z/zc/zcl/zcl.djhtm?a={code}"
             
             res = self.session.get(url, headers=headers, timeout=10)
+            
+            if res.status_code != 200:
+                print(f"[{code} 錯誤] HTTP 狀態碼: {res.status_code}")
+                return 0, "被阻擋"
+
             res.encoding = 'cp950'
             dfs = pd.read_html(StringIO(res.text))
             
             for df in dfs:
                 if df.shape[1] < 2: continue
-                combined_text = "".join(df.astype(str).values.flatten())
+                # 👇 這裡做了強制型別轉換的修改
+                combined_text = "".join([str(x) for x in df.values.flatten()])
+                
                 if '外資' in combined_text and '買賣超' in combined_text:
                     for i in range(len(df)):
                         cell_date = str(df.iloc[i, 0])
@@ -126,7 +137,9 @@ class YahooMarketScanner:
                             clean_val = re.sub(r'[^-0-9]', '', raw_val)
                             if clean_val: return int(clean_val), cell_date
             return 0, "無數據"
-        except: return 0, "錯誤"
+        except Exception as e:
+            print(f"[{code} 系統例外] 解析發生錯誤: {e}")
+            return 0, "錯誤"
 
     def fetch_top_gainers(self):
         url = "https://tw.stock.yahoo.com/rank/change-up?exchange=TAI"
@@ -255,30 +268,18 @@ class TaiwanStockTradingSystem:
         df['Market_OK'] = df['Market_OK'].fillna(False)
 
         # ==========================================
-        # 🚀 [起漲點偵測指標]
+        # 🎯 精準分析：偵測「無視大盤」的獨立行情 (Alpha)
         # ==========================================
-        df['Price_Breakout'] = df['Close'] >= df['Close'].rolling(window=10).max()
-        df['Volume_Surge'] = df['Volume'] > (df['Volume'].rolling(window=5).mean() * 1.5)
-        
-        # 均線糾結偵測
-        ma5 = df['Close'].rolling(5).mean()
-        ma10 = df['Close'].rolling(10).mean()
-        ma_max = pd.concat([ma5, ma10, df['MA20']], axis=1).max(axis=1)
-        ma_min = pd.concat([ma5, ma10, df['MA20']], axis=1).min(axis=1)
-        df['MA_Squeeze'] = (ma_max - ma_min) / ma_min < 0.03
-        
-        # 低檔金叉
-        macd_gold_cross = (df['MACD'] > df['Signal']) & (df['MACD'].shift(1) <= df['Signal'].shift(1))
-        df['Early_Start'] = macd_gold_cross & (df['MACD'] < 0)
-
-        # ==========================================
-        # 🎯 [核心邏輯補回]：計算 Independent_Alpha
-        # ==========================================
+        # 1. 計算相對強度 (RS Line) 與 5 日斜率
         df['RS_Line'] = df['Close'] / df['Close_Mkt']
-        df['RS_Slope'] = df['RS_Line'].pct_change(5) 
-        stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
+        df['RS_Slope'] = df['RS_Line'].pct_change(5) # 5日RS斜率
         
-        # 補回這一段，解決 KeyError
+        # 2. 計算成交量比率 (量能需大於5日均量)
+        df['Vol_Ratio'] = df['Volume'] / df['Volume'].rolling(5).mean()
+        
+        # 3. 判定「獨立強勢股」標籤：
+        # 條件：大盤破月線(不佳) + 個股站穩月線 + 個股MA20上揚 + 相對強度上升(RS_Slope > 0)
+        stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
         df['Independent_Alpha'] = (
             (~df['Market_OK']) & 
             (df['Close'] > df['MA20']) & 
@@ -286,34 +287,34 @@ class TaiwanStockTradingSystem:
             (df['RS_Slope'] > 0)
         )
 
-        # ==========================================
-        # ⚖️ [評分邏輯強化]
-        # ==========================================
+        # 基礎評分 (Raw_Score)
         df['Raw_Score'] = 0
-        df.loc[df['Close'] > df['MA20'], 'Raw_Score'] += 25
-        df.loc[df['MACD'] > df['Signal'], 'Raw_Score'] += 25
-        df.loc[df['K'] > df['D'], 'Raw_Score'] += 10
+        df.loc[df['Close'] > df['MA20'], 'Raw_Score'] += 30
+        df.loc[df['MACD'] > df['Signal'], 'Raw_Score'] += 30
+        df.loc[df['K'] > df['D'], 'Raw_Score'] += 20
         df.loc[df['Inst_Consecutive'], 'Raw_Score'] += 20
         
-        # 起漲點加分
-        df.loc[df['Price_Breakout'] & df['Volume_Surge'], 'Raw_Score'] += 15
-        df.loc[df['Price_Breakout'] & df['Volume_Surge'] & df['MA_Squeeze'].shift(1), 'Raw_Score'] += 10
-        df.loc[df['Early_Start'], 'Raw_Score'] += 5
-
-        # 權重調整 (原本程式碼的逻辑)
+        # ------------------------------------------
+        # ⚖️ 權重調整：精準提示
+        # ------------------------------------------
         df['Score'] = df['Raw_Score']
-        df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] # 現在不會報錯了
+        
+        # 情境 A: 大盤差，但個股展現「獨立行情」 -> 不打折，維持高分
+        df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score']
+        
+        # 情境 B: 大盤差，且個股無獨立特質 -> 打 6 折 (原本的保護邏輯)
         df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
         
-        # ==========================================
-        # 買賣訊號與部位計算 (保持不變)
-        # ==========================================
+        # ------------------------------------------
+        
+        # 買賣訊號
         df['Buy_Signal'] = (df['Score'] >= 60)
         macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
         df['Sell_Signal'] = macd_death_cross | break_ma20
         df.loc[df['Buy_Signal'], 'Sell_Signal'] = False
 
+        # 部位計算
         df['Position'] = np.nan
         df.loc[df['Buy_Signal'], 'Position'] = 1
         df.loc[df['Sell_Signal'], 'Position'] = 0
@@ -483,9 +484,6 @@ def run_full_scan_gui(scanner):
         # 提取最後一筆成交紀錄
         last_trade_msg = logs[stock][-1] if stock in logs and logs[stock] else "無近期紀錄"
         
-        # 🟢 [新增] 預設顯示訊息為最後紀錄
-        display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
-
         # 判定獨立行情
         is_rebel = (not market_ok and raw_score >= 75)
         
@@ -508,14 +506,8 @@ def run_full_scan_gui(scanner):
             # 預設為今日資料
             final_entry_date = alert["日期"]
             final_entry_price = alert["收盤價"]
-
-            # 檢查是否需要更新 Watchlist (包含修復成本為 0 的舊資料)
-            is_new = stock not in watchlist
-            is_incomplete = not is_new and (watchlist[stock].get("加入價格", 0) <= 0)
-
-            # 🔧 [修正]：只有「已在清單中」的標的才需要回溯歷史買點
-            # 新標的今天才觸發，直接用今日日期與收盤價，不做回溯
-            if not is_new and stock in logs and logs[stock]:
+            
+            if stock in logs and logs[stock]:
                 # 從後往前找，尋找本波段最初的買點
                 temp_date, temp_price = None, None
                 for log_entry in reversed(logs[stock]):
@@ -534,6 +526,10 @@ def run_full_scan_gui(scanner):
                     final_entry_date = temp_date
                     final_entry_price = temp_price
 
+            # 檢查是否需要更新 Watchlist (包含修復成本為 0 的舊資料)
+            is_new = stock not in watchlist
+            is_incomplete = not is_new and (watchlist[stock].get("加入價格", 0) <= 0)
+            
             if is_new or is_incomplete:
                 watchlist[stock] = {
                     "名稱": stock_name,
@@ -541,19 +537,12 @@ def run_full_scan_gui(scanner):
                     "加入價格": final_entry_price
                 }
                 watchlist_updated = True
-                # 🟢 [新增] 當觸發新買進時，改變終端機與 LINE 的顯示訊息
-                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}"
-            else:
-                # 🟢 [新增] 若已經在清單內，顯示持股中與原本的入場日
-                display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date})"
         else:
             status = f"⚪ 【觀望】 (綜合評分: {score}分 - 動能不足)"
             raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
             
-        # ...前略...
         print(f"{tag} {stock:<7} {stock_name:<4} | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分")
-        # 🟢 [修改] 改為印出動態生成的訊息
-        print(display_log_msg)
+        print(f"🕒 最後紀錄: {last_trade_msg}")
         print(f"👉 系統判定: {status}")
         print(f"💡 建議提示: {raw_advice}\n")
         
@@ -561,13 +550,11 @@ def run_full_scan_gui(scanner):
         line_prefix = "🔥" if "獨立" in status else tag
         line_message_lines.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')})")
         line_message_lines.append(f"收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
-        # 🟢 [修改] LINE 也改為輸出動態生成的訊息
-        line_message_lines.append(display_log_msg)
+        line_message_lines.append(f"🕒 最後紀錄: {last_trade_msg}")
         line_message_lines.append(f"👉 {status}")
         if not market_ok:
             line_message_lines.append(f"💡 獨立建議: {raw_advice}")
         line_message_lines.append("")
-        
 
     if watchlist_updated:
         save_watchlist(watchlist)
@@ -606,13 +593,13 @@ def run_full_scan_gui(scanner):
 
     send_line_message("\n".join(line_message_lines))
     console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
+
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         print("\n[系統] 偵測到自動化環境，掃描完成後自動退出。")
         return # 直接返回，不要執行下方的 input()
     
     # 原本的邏輯：只有在一般電腦執行時才需要按 Enter
     console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
-
 
 # ==========================================
 # 2️⃣ 單股查詢模組 (獨立呼叫回測系統)
