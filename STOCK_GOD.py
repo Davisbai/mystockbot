@@ -23,6 +23,10 @@ from rich import print as rprint
 from rich.table import Table
 from rich.progress import track
 
+import os, time
+os.environ['TZ'] = 'Asia/Taipei'
+time.tzset() # 僅限 Linux/Codespaces 環境有效
+
 console = Console()
 
 try:
@@ -117,7 +121,7 @@ class YahooMarketScanner:
             
             for df in dfs:
                 if df.shape[1] < 2: continue
-                combined_text = "".join(df.astype(str).values.flatten())
+                combined_text = "".join([str(x) for x in df.values.flatten()])
                 if '外資' in combined_text and '買賣超' in combined_text:
                     for i in range(len(df)):
                         cell_date = str(df.iloc[i, 0])
@@ -126,7 +130,9 @@ class YahooMarketScanner:
                             clean_val = re.sub(r'[^-0-9]', '', raw_val)
                             if clean_val: return int(clean_val), cell_date
             return 0, "無數據"
-        except: return 0, "錯誤"
+        except Exception as e:
+            print(f"  [DEBUG] {code} 外資抓取錯誤: {e}")
+            return 0, "錯誤"
 
     def fetch_top_gainers(self):
         url = "https://tw.stock.yahoo.com/rank/change-up?exchange=TAI"
