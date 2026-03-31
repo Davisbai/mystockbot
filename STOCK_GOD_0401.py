@@ -130,7 +130,9 @@ class YahooMarketScanner:
                             clean_val = re.sub(r'[^-0-9]', '', raw_val)
                             if clean_val: return int(clean_val), cell_date
             return 0, "無數據"
-        except: return 0, "錯誤"
+        except Exception as e:
+            print(f"  [DEBUG] {code} 外資抓取錯誤: {e}")
+            return 0, "錯誤"
 
     def fetch_top_gainers(self):
         url = "https://tw.stock.yahoo.com/rank/change-up?exchange=TAI"
@@ -259,7 +261,7 @@ class TaiwanStockTradingSystem:
         df['Market_OK'] = df['Market_OK'].fillna(False)
 
         # ==========================================
-        # 🚀 [原本的起漲點偵測指標]
+        # 🚀 [起漲點偵測指標]
         # ==========================================
         df['Price_Breakout'] = df['Close'] >= df['Close'].rolling(window=10).max()
         df['Volume_Surge'] = df['Volume'] > (df['Volume'].rolling(window=5).mean() * 1.5)
@@ -276,49 +278,13 @@ class TaiwanStockTradingSystem:
         df['Early_Start'] = macd_gold_cross & (df['MACD'] < 0)
 
         # ==========================================
-        # 🌊 [新增專業版：深潭與湧泉 - 量價與波動率結構偵測]
-        # ==========================================
-        # 1. 敏銳動能：客製化 MACD (10, 20, 8) 捕捉早期水流轉向
-        exp1 = df['Close'].ewm(span=10, adjust=False).mean()
-        exp2 = df['Close'].ewm(span=20, adjust=False).mean()
-        df['MACD_Custom'] = exp1 - exp2
-        df['Signal_Custom'] = df['MACD_Custom'].ewm(span=8, adjust=False).mean()
-
-        # 2. 靜如止水：布林通道極限壓縮 (BBW Squeeze)
-        df['BB_Mid'] = df['Close'].rolling(window=20).mean()
-        df['BB_Std'] = df['Close'].rolling(window=20).std()
-        df['BB_Upper'] = df['BB_Mid'] + 2 * df['BB_Std']
-        df['BB_Lower'] = df['BB_Mid'] - 2 * df['BB_Std']
-        df['BBW'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid'] 
-        df['BBW_Min_120'] = df['BBW'].rolling(window=120).min()
-        df['Is_Squeezing'] = df['BBW'] <= (df['BBW_Min_120'] * 1.3) 
-
-        # 3. 底部暗流：威科夫主力吸籌 (Smart Money Accumulation)
-        df['Up_Volume'] = np.where(df['Close'] > df['Close'].shift(1), df['Volume'], 0)
-        df['Down_Volume'] = np.where(df['Close'] < df['Close'].shift(1), df['Volume'], 0)
-        df['Acc_Vol_Ratio'] = df['Up_Volume'].rolling(60).sum() / (df['Down_Volume'].rolling(60).sum() + 1e-5)
-        df['Smart_Money_Accumulating'] = df['Acc_Vol_Ratio'] > 1.25 
-
-        # 4. 破冰湧泉：高質量突破判定
-        df['Volume_Breakout_Pro'] = df['Volume'] > df['Volume'].rolling(20).mean() * 2.5
-        df['Price_Breakout_BB'] = (df['Close'] > df['BB_Upper']) & (df['Close'] > df['Open'])
-        df['MACD_Gold_Cross_Pro'] = (df['MACD_Custom'] > df['Signal_Custom']) & (df['MACD_Custom'].shift(1) <= df['Signal_Custom'].shift(1))
-        df['MACD_Near_Zero'] = df['MACD_Custom'].abs() < (df['Close'] * 0.015) 
-
-        # 5. 終極訊號整合
-        df['Pro_Bottom_Breakout'] = df['Is_Squeezing'].shift(1) & \
-                                    df['Smart_Money_Accumulating'] & \
-                                    df['Volume_Breakout_Pro'] & \
-                                    df['Price_Breakout_BB'] & \
-                                    (df['MACD_Gold_Cross_Pro'] | df['MACD_Near_Zero'])
-
-        # ==========================================
         # 🎯 [核心邏輯補回]：計算 Independent_Alpha
         # ==========================================
         df['RS_Line'] = df['Close'] / df['Close_Mkt']
         df['RS_Slope'] = df['RS_Line'].pct_change(5) 
         stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
         
+        # 補回這一段，解決 KeyError
         df['Independent_Alpha'] = (
             (~df['Market_OK']) & 
             (df['Close'] > df['MA20']) & 
@@ -335,17 +301,14 @@ class TaiwanStockTradingSystem:
         df.loc[df['K'] > df['D'], 'Raw_Score'] += 10
         df.loc[df['Inst_Consecutive'], 'Raw_Score'] += 20
         
-        # 一般起漲點加分
+        # 起漲點加分
         df.loc[df['Price_Breakout'] & df['Volume_Surge'], 'Raw_Score'] += 15
         df.loc[df['Price_Breakout'] & df['Volume_Surge'] & df['MA_Squeeze'].shift(1), 'Raw_Score'] += 10
         df.loc[df['Early_Start'], 'Raw_Score'] += 5
-        
-        # [新增] 專業級深潭湧泉起漲加分 (具備決定性權重)
-        df.loc[df['Pro_Bottom_Breakout'], 'Raw_Score'] += 35
 
-        # 權重調整
+        # 權重調整 (原本程式碼的逻辑)
         df['Score'] = df['Raw_Score']
-        df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] 
+        df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] # 現在不會報錯了
         df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
         
         # ==========================================
@@ -401,8 +364,7 @@ class TaiwanStockTradingSystem:
                 "個股原始評分": int(last_day['Raw_Score']),
                 "是否觸發賣出": bool(last_day['Sell_Signal']),
                 "獨立行情": bool(last_day['Independent_Alpha']),
-                "RS斜率": round(float(last_day['RS_Slope']), 4),
-                "專業起漲": bool(last_day.get('Pro_Bottom_Breakout', False)) # 🌊 [新增這一行] 將專業起漲訊號往外傳
+                "RS斜率": round(float(last_day['RS_Slope']), 4)
             }
             
         return results_summary, daily_alerts, trade_logs
@@ -533,9 +495,6 @@ def run_full_scan_gui(scanner):
         # 判定獨立行情
         is_rebel = (not market_ok and raw_score >= 75)
         
-        # 🌊 [新增] 提取專業起漲訊號
-        pro_bottom_breakout = alert.get('專業起漲', False)
-        
         if alert["是否觸發賣出"]:
             status = "🔴 【強制賣出/停損訊號】 (指標轉弱或爆量收黑)"
             raw_advice = "🔴 【建議賣出】 (個股技術面已轉弱或破線)"
@@ -543,21 +502,14 @@ def run_full_scan_gui(scanner):
             if stock in watchlist:
                 del watchlist[stock]
                 watchlist_updated = True
-                
-        # 🌊 [修改] 將 pro_bottom_breakout 加入買進的觸發條件中
-        elif score >= 65 or is_rebel or pro_bottom_breakout:
-            # 優先判斷是否為最高級別的深潭湧泉起漲點
-            if pro_bottom_breakout:
-                status = "🌊 【VCP 波動收斂突破】 (籌碼高度集中，布林極限壓縮後爆量)"
-                raw_advice = "🔥 【強力買進】 MACD (10,20,8) 零軸啟動，主力吸籌完畢，建議建立核心部位"
-            elif is_rebel:
+        elif score >= 65 or is_rebel:
+            if is_rebel:
                 status = f"⚡ 【無視大盤：獨立強勢】 (個股評分: {raw_score}分)"
                 raw_advice = f"🔥 【建議進場/續抱】 (個股展現獨立特質，無視大盤逆風)"
             else:
                 status = f"🟢 【強力買進】 (綜合評分: {score}分 - 量價與籌碼共振)"
                 raw_advice = f"🟢 【可進場試單】 (獨立評分 {raw_score} 分)"
             
-             
             # --- [核心修改]：精準回溯邏輯 ---
             # 預設為今日資料
             final_entry_date = alert["日期"]
