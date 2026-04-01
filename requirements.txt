@@ -5,3 +5,4 @@ yfinance
 rich
 FinMind
 requests
+TWSTOCK
