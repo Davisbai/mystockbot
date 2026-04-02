@@ -31,6 +31,7 @@ menu = st.sidebar.radio(
         "3. 📈 策略回測", 
         "5. 📊 檢查大盤現況"
     )
+    index=1  # 👈 新增這行：設定預設選擇第二個項目 (選項 2)
 )
 st.sidebar.markdown("---")
 st.sidebar.caption(f"系統時間: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
