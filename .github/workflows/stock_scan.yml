@@ -3,7 +3,8 @@ name: Stock Strategy Daily Scan
 on:
   schedule:
     # 台灣時間 19:00 等於 UTC 時間 11:00 (19:00 - 8 = 11:00)
-    - cron: '0 11 * * *'  # 每天 19:00 執行
+    # 1-5 代表只在星期一到星期五執行 (排除週末)
+    - cron: '0 11 * * 1-5'  
   workflow_dispatch:        # 允許手動執行
 
 jobs:

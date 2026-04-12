@@ -1103,7 +1103,24 @@ def run_analysis(ticker):
             api.connect()
             api.place_order(ticker, "BUY", current_price, 1000)
 
+import datetime
+from FinMind.data import DataLoader
 
+def is_taiwan_stock_open():
+    """檢查今天是否為台股開盤日"""
+    dl = DataLoader()
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    # 抓取大盤資料來確認是否有交易
+    df = dl.taiwan_stock_daily(
+        data_id="0050",
+        start_date=today,
+        end_date=today
+    )
+    return not df.empty
+
+
+
+    # ... 原有的選單與執行邏輯 ...
 # ==========================================
 # 🏠 主程式入口
 # ==========================================
@@ -1111,7 +1128,12 @@ def main():
     rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now().date()}")
     
     scanner = YahooMarketScanner()
-    
+        # 如果是在自動化環境，先檢查是否開盤
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        if not is_taiwan_stock_open():
+            print(f"[{datetime.datetime.now()}] 今日非交易日，取消執行。")
+            return
+
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         
