@@ -1,3 +1,4 @@
+import sys
 import yfinance as yf
 import warnings
 import pandas as pd
@@ -1107,16 +1108,26 @@ import datetime
 from FinMind.data import DataLoader
 
 def is_taiwan_stock_open():
-    """檢查今天是否為台股開盤日"""
-    dl = DataLoader()
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    # 抓取大盤資料來確認是否有交易
-    df = dl.taiwan_stock_daily(
-        data_id="0050",
-        start_date=today,
-        end_date=today
-    )
-    return not df.empty
+    """檢查今天是否為台股開盤日 (高精度日期比對法)"""
+    # 1. 強制取得台灣時間的「今天」日期，避免 GitHub Actions 時區干擾
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    today_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d')
+    
+    try:
+        # 2. 抓取大盤(^TWII)近 5 天的資料
+        df = yf.download("^TWII", period="5d", progress=False)
+        if df.empty:
+            return False
+            
+        # 3. 取得大盤「最後一筆交易」的日期
+        last_trade_date = df.index[-1].strftime('%Y-%m-%d')
+        
+        # 4. 嚴格比對：最後交易日 = 今天，才代表今天有開市
+        return last_trade_date == today_str
+        
+    except Exception as e:
+        print(f"大盤資料獲取失敗，預設為未開市: {e}")
+        return False
 
 
 
@@ -1129,10 +1140,15 @@ def main():
     
     scanner = YahooMarketScanner()
         # 如果是在自動化環境，先檢查是否開盤
+
+# 如果是在自動化環境，先檢查是否開盤
     if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print("偵測到 GitHub Actions 自動化環境，正在驗證今日是否開市...")
         if not is_taiwan_stock_open():
-            print(f"[{datetime.datetime.now()}] 今日非交易日，取消執行。")
-            return
+            print("⛔ 今日非交易日 (週末或國定休市)，停止執行策略掃描與推播。")
+            sys.exit(0)  # 這裡改用 sys.exit(0) 直接強制終結整支程式
+        else:
+            print("✅ 確認今日有開市，繼續執行...")
 
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
