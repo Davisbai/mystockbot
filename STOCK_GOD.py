@@ -1110,9 +1110,32 @@ from FinMind.data import DataLoader
 
     # 建議修改方向
 def is_taiwan_stock_open():
-    """強制回傳 True，不再偵測交易日，確保自動化腳本必定執行"""
-    print("⚠️ 已停用交易日偵測，強制繼續執行掃描...")
-    return True
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now = datetime.datetime.now(tw_tz)
+    
+    # A. 先判斷是否為週末
+    if now.weekday() >= 5: # 5 是週六, 6 是週日
+        return False
+        
+    # B. 檢查是否在 09:00 - 14:00 執行，此時 yf 可能還沒更新今日日期
+    # 如果你的 GitHub Action 是在晚上 19:00 跑，則原有的比對法通常有效
+    # 但若要更保險，可以改用以下邏輯：
+    try:
+        df = yf.download("^TWII", period="5d", progress=False)
+        if df.empty: return False
+        
+        # 只要「最後一個交易日」跟「今天」差距在 3 天內，且今天不是週末
+        # 基本上就可以視為交易日循環中
+        last_trade_date = df.index[-1].date()
+        delta = (now.date() - last_trade_date).days
+        
+        # 如果差距超過 3 天 (且排除週末)，通常代表遇到了長假
+        if delta > 3:
+            return False
+            
+        return True
+    except:
+        return now.weekday() < 5 # 發生錯誤時，預設週一至週五皆開市
 
 
     # ... 原有的選單與執行邏輯 ...
