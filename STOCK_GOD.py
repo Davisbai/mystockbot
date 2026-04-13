@@ -1107,28 +1107,16 @@ def run_analysis(ticker):
 import datetime
 from FinMind.data import DataLoader
 
-def is_taiwan_stock_open():
-    """檢查今天是否為台股開盤日 (高精度日期比對法)"""
-    # 1. 強制取得台灣時間的「今天」日期，避免 GitHub Actions 時區干擾
-    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
-    today_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d')
-    
-    try:
-        # 2. 抓取大盤(^TWII)近 5 天的資料
-        df = yf.download("^TWII", period="5d", progress=False)
-        if df.empty:
-            return False
-            
-        # 3. 取得大盤「最後一筆交易」的日期
-        last_trade_date = df.index[-1].strftime('%Y-%m-%d')
-        
-        # 4. 嚴格比對：最後交易日 = 今天，才代表今天有開市
-        return last_trade_date == today_str
-        
-    except Exception as e:
-        print(f"大盤資料獲取失敗，預設為未開市: {e}")
-        return False
 
+    # 建議修改方向
+def is_taiwan_stock_open():
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now = datetime.datetime.now(tw_tz)
+    # 如果是週六(5)或週日(6)，直接回傳 False
+    if now.weekday() >= 5:
+        return False
+    # 其餘時間可進一步檢查國定假日清單
+    return True
 
 
     # ... 原有的選單與執行邏輯 ...
