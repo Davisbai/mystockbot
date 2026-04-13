@@ -31,6 +31,10 @@ jobs:
           python -m pip install pandas numpy scikit-learn yfinance rich FinMind requests tqdm twstock
         fi
 
+# 3. 偵錯用：確認 tqdm 是否真的存在於路徑中
+        python -c "import tqdm; print('tqdm version:', tqdm.__version__)"
+        
+
     - name: 4. 執行盤後策略掃描 (自動輸入 1)
       env:
         TZ: Asia/Taipei
