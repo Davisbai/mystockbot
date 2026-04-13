@@ -1151,7 +1151,7 @@ def main():
 # 如果是在自動化環境，先檢查是否開盤
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         print("偵測到 GitHub Actions 自動化環境，正在驗證今日是否開市...")
-        if not is_taiwan_stock_open():
+        if False:
             print("⛔ 今日非交易日 (週末或國定休市)，停止執行策略掃描與推播。")
             sys.exit(0)  # 這裡改用 sys.exit(0) 直接強制終結整支程式
         else:
