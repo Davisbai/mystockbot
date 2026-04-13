@@ -23,14 +23,19 @@ jobs:
 
     - name: 3. 安裝必要套件
       run: |
+        # 使用 -m pip 確保安裝路徑一致
         python -m pip install --upgrade pip
-        # 確保讀取專案根目錄的 requirements.txt
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install pandas numpy scikit-learn yfinance rich FinMind requests; fi
+        if [ -f requirements.txt ]; then 
+          python -m pip install -r requirements.txt
+        else 
+          python -m pip install pandas numpy scikit-learn yfinance rich FinMind requests tqdm twstock
+        fi
 
     - name: 4. 執行盤後策略掃描 (自動輸入 1)
       env:
         TZ: Asia/Taipei
       run: |
-        echo "--- 正在啟動 19:00 自動掃描 (自動選取模式 1) ---"
-        echo 1 | python STOCK_GOD.py
+        echo "--- 正在啟動 19:00 自動掃描 ---"
+        # 同樣使用 python -m 執行，確保環境一致
+        echo 1 | python -u STOCK_GOD.py 
         echo "--- 掃描執行完畢 ---"

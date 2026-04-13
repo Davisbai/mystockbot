@@ -6,8 +6,4 @@ rich
 FinMind
 requests
 TWSTOCK
-<<<<<<< HEAD
 tqdm
-=======
-tqdm
->>>>>>> 661b0fd6910a17cb326a300e940398ff2034bfd9
