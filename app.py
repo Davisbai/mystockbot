@@ -7,7 +7,7 @@ import re
 
 # ⚠️ 確保 STOCK_GOD.py 在同目錄下
 try:
-    from STOCK_GOD import (
+    from STOCK_GOD_0415 import (
         TaiwanStockTradingSystem, 
         AdvancedQuantEngine, 
         YahooMarketScanner, 
