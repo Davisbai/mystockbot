@@ -17,6 +17,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
+yf.set_tz_cache_location("/tmp/py-yfinance")
+
 # 引入 rich 套件以支援終端機 UI
 from rich.console import Console
 from rich.panel import Panel
@@ -466,9 +468,8 @@ import re
 def run_test(scanner):# 顯示策略回測結果 (簡版)
     console.print("\n[bold green]🚀 啟動回測分析...[/bold green]")
 
-    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
-    now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
-    print(f"--- 系統啟動時間 (台北): {now_str} ---")
+    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間: {now_str} ---")
 
     # 1. 讀取目前的長期監控清單
     watchlist = load_watchlist()
@@ -514,9 +515,8 @@ def run_test(scanner):# 顯示策略回測結果 (簡版)
 def run_full_scan_gui(scanner):
     console.print("\n[bold green]🚀 啟動全自動策略掃描 (核心同步強化版)...[/bold green]")
 
-    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
-    now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
-    print(f"--- 系統啟動時間 (台北): {now_str} ---")
+    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間: {now_str} ---")
 
     watchlist = load_watchlist()
     watchlist_updated = False
@@ -1170,8 +1170,7 @@ def is_taiwan_stock_open():
 # 🏠 主程式入口
 # ==========================================
 def main():
-    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
-    rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M')}")
+    rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now().date()}")
     
     scanner = YahooMarketScanner()
         # 如果是在自動化環境，先檢查是否開盤
