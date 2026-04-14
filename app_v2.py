@@ -6,7 +6,7 @@ import twstock
 import re
 import os
 
-# ⚠️ 確保 STOCK_GOD_SYSTEM.py 在同目錄下
+# ⚠️ 確保 STOCK_GOD.py 在同目錄下
 try:
     from STOCK_GOD_SYSTEM import (
         TaiwanStockTradingSystem, 
