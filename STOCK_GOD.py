@@ -264,7 +264,11 @@ class TaiwanStockTradingSystem:
         return df
 
     def process_stock(self, ticker):
-        df = yf.download(ticker, start=self.start_date, progress=False, auto_adjust=True)
+        # 確保使用台北時間作為下載邊界
+        tz = datetime.timezone(datetime.timedelta(hours=8))
+        tomorrow = (datetime.datetime.now(tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -421,8 +425,9 @@ import re
 def run_test(scanner):# 顯示策略回測結果 (簡版)
     console.print("\n[bold green]🚀 啟動回測分析...[/bold green]")
 
-    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"--- 系統啟動時間: {now_str} ---")
+    tz = datetime.timezone(datetime.timedelta(hours=8))
+    now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間 (台北): {now_str} ---")
 
     # 1. 讀取目前的長期監控清單
     watchlist = load_watchlist()
@@ -468,8 +473,9 @@ def run_test(scanner):# 顯示策略回測結果 (簡版)
 def run_full_scan_gui(scanner):
     console.print("\n[bold green]🚀 啟動全自動策略掃描 (核心同步強化版)...[/bold green]")
 
-    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"--- 系統啟動時間: {now_str} ---")
+    tz = datetime.timezone(datetime.timedelta(hours=8))
+    now_str = datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間 (台北): {now_str} ---")
 
     # 1. 讀取目前的長期監控清單
     watchlist = load_watchlist()
@@ -1104,7 +1110,8 @@ def run_analysis(ticker):
 # 🏠 主程式入口
 # ==========================================
 def main():
-    rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now().date()}")
+    tz = datetime.timezone(datetime.timedelta(hours=8))
+    rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tz).strftime('%Y-%m-%d')}")
     
     scanner = YahooMarketScanner()
     

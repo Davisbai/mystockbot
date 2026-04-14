@@ -8,7 +8,7 @@ import os
 
 # ⚠️ 確保 STOCK_GOD.py 在同目錄下
 try:
-    from STOCK_GOD_SYSTEM import (
+    from STOCK_GOD import (
         TaiwanStockTradingSystem, 
         AdvancedQuantEngine, 
         YahooMarketScanner, 
@@ -47,7 +47,8 @@ menu = st.sidebar.radio(
     index=1
 )
 st.sidebar.markdown("---")
-st.sidebar.caption(f"📅 系統時間: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+tz = datetime.timezone(datetime.timedelta(hours=8))
+st.sidebar.caption(f"📅 系統時間: {datetime.datetime.now(tz).strftime('%Y-%m-%d %H:%M')}")
 
 # ==========================================
 # 1️⃣ 執行完整策略掃描
