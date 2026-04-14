@@ -4,10 +4,11 @@ import datetime
 import yfinance as yf
 import twstock
 import re
+import os
 
-# ⚠️ 確保 STOCK_GOD.py 在同目錄下
+# ⚠️ 確保 STOCK_GOD_SYSTEM.py 在同目錄下
 try:
-    from STOCK_GOD import (
+    from STOCK_GOD_SYSTEM import (
         TaiwanStockTradingSystem, 
         AdvancedQuantEngine, 
         YahooMarketScanner, 
@@ -15,7 +16,7 @@ try:
         STOCK_MAP
     )
 except ImportError:
-    st.error("❌ 找不到 STOCK_GOD 模組，請檢查檔案名稱是否為 STOCK_GOD.py")
+    st.error("❌ 找不到 STOCK_GOD 模組，請將 STOCK_GOD_SYSTEM.py 放在正確目錄")
 
 # ==========================================
 # 🎨 網頁基本設定與 CSS 樣式
@@ -77,8 +78,10 @@ if menu == "1. 🚀 執行完整策略掃描":
                 
                 if alert.get('是否觸發賣出'): status = "🔴 強制賣出"
                 elif alert.get('高檔背離') or alert.get('乖離過大'): status = "🚨 高檔了結"
+                elif alert.get('沉寂發動'): status = "⚡ 沉寂噴發"
                 elif alert.get('專業起漲'): status = "🌊 VCP 突破"
                 elif alert.get('縮量埋伏'): status = "🥷 縮量埋伏"
+                elif alert.get('假跌破'): status = "🛡️ 假摔洗盤"
                 elif alert['今日評分'] >= 65: status = "🟢 強力買進"
                 
                 alert_data.append({
@@ -103,12 +106,13 @@ elif menu == "2. 🔎 單股深度診斷":
     with st.expander("💡 籌碼與技術型態小百科：如何看懂主力意圖？"):
         st.markdown("""
         **【洗盤階段特徵】**
-        * **假跌破：** 刻意殺破支撐位（如月線、前低）誘發恐慌賣壓，若 3 日內收回即為強勢洗盤。
-        * **縮量窒息：** 股價回檔但量能降至 5 日均量 60% 以下，代表主力鎖碼未出，僅洗浮額。
+        * **假跌破 (Fake Break)：** 刻意殺破支撐位（如月線、前低）誘發恐慌賣壓，若能迅速收回即為強勢洗盤。
+        * **縮量窒息 (Quiet Wash)：** 股價回檔但量能極降（不到均量60%），代表主力鎖碼未出，僅洗發浮額。
         
         **【準備發動特徵】**
-        * **布林擠壓 (Squeeze)：** 股價波動縮小，通道極窄，代表多空力量正在累積。
-        * **均線黏合：** 股價緊貼月線且低點逐漸墊高，一旦帶量突破將展開大行情。
+        * **布林極致壓縮 (Squeeze)：** 股價波動縮小到極限，代表多空即將決裂，通常是變盤前兆。
+        * **長期沉寂量增 (Quiet Breakout)：** 股價長期低迷（橫盤震幅<10%），今日突然量比急增，是起漲訊號。
+        * **均線糾結：** 短中長期均線黏合，股價帶量突破將展開大行情。
         """)
 
     user_input = st.text_input("請輸入股票代碼或名稱 (例如: 2330, 鈊象, 或 台積電)", "2330")
@@ -155,39 +159,23 @@ elif menu == "2. 🔎 單股深度診斷":
                 # --- 儀表板 ---
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("收盤價", f"{alert['收盤價']:.2f}")
-                c2.metric("月線位置", f"{alert['月線價']:.2f}", f"{(alert['收盤價']-alert['月線價']):.2f}")
+                c2.metric("月線 (MA20)", f"{alert['月線價']:.2f}", f"{(alert['收盤價']-alert['月線價']):.2f}")
                 c3.metric("技術籌碼評分", f"{alert['今日評分']}分")
                 c4.metric("大盤狀態", "✅ 安全" if alert['大盤安全'] else "❌ 警戒")
 
                 st.markdown("---")
                 st.subheader("🕵️ 主力行為與潛在噴發偵測")
                 
-                # --- 核心邏輯判定 ---
-                # 1. 洗盤判定
-                is_wash = alert.get('縮量埋伏', False)
-                is_fake_break = alert['今日評分'] >= 60 and alert['收盤價'] > alert['月線價'] and any("破" in l for l in stock_logs[-3:])
-                
-                # 2. 誘多出貨判定
-                is_trap = alert.get('高檔背離', False) or alert.get('乖離過大', False)
-
-                # 3. 橫盤噴發預警判定 (乖離率極小 + 評分不差 + 縮量/收斂)
-                dist_to_ma = abs(alert['收盤價'] - alert['月線價']) / alert['月線價']
-                is_sideways_ready = (
-                    alert['今日評分'] >= 55 and 
-                    dist_to_ma < 0.05 and 
-                    (alert.get('縮量埋伏', False) or alert.get('專業起漲', False))
-                )
-
                 col_l, col_r = st.columns(2)
                 
                 # 左側：洗盤與陷阱偵測
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
-                    if is_trap:
+                    if alert.get('高檔背離') or alert.get('乖離過大'):
                         st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖離過大。主力可能利用利多消息掩護出貨，切勿追高。")
-                    elif is_fake_break:
+                    elif alert.get('假跌破'):
                         st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n近期刻意殺破支撐後迅速收回。這代表主力洗盤成功，下方籌碼已換手，後市看好。")
-                    elif is_wash:
+                    elif alert.get('縮量埋伏'):
                         st.info("🎭 **偵測到【縮量洗盤】**\n\n股價回落且量能極度萎縮。主力正在壓低吃貨，這是標準的洗盤特徵，適合分批試單。")
                     else:
                         st.write("📊 走勢符合正常軌跡，目前無極端的洗盤或出貨特徵。")
@@ -195,8 +183,10 @@ elif menu == "2. 🔎 單股深度診斷":
                 # 右側：動能與噴發預警
                 with col_r:
                     st.markdown("### 🚀 變盤與攻擊預警")
-                    if is_sideways_ready:
-                        st.warning("⚡ **高度關注：【橫盤蓄勢即將變盤】**\n\n股價緊貼月線狹幅震盪，且成交量萎縮。這是標準的「變盤前奏」，隨時可能出現帶量長紅突破，請密切關注！")
+                    if alert.get('沉寂發動'):
+                        st.warning("⚡ **高度關注：【橫盤蓄勢即將變盤】**\n\n股價長久沉寂後今日突然爆量突破。這是標準的「沉寂變盤」起跑點，漲勢動能極強！")
+                    elif alert.get('布林壓縮'):
+                        st.warning("🗜️ **高度關注：【布林極致壓縮中】**\n\n股價波動降到極限。這是暴風雨前的寧靜，一旦帶量突破布林上軌，將啟動奔漲行情。")
                     elif alert.get('專業起漲'):
                         st.success("🌊 **攻擊發起：【VCP 波動收斂突破】**\n\n經過壓縮後，今日正式帶量突破壓力區間。主力攻擊意圖強烈，適合順勢操作。")
                     else:
