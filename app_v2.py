@@ -8,7 +8,7 @@ import os
 
 # ⚠️ 確保 STOCK_GOD.py 在同目錄下
 try:
-    from STOCK_GOD_0415 import (
+    from STOCK_GOD import (
         TaiwanStockTradingSystem, 
         AdvancedQuantEngine, 
         YahooMarketScanner, 
@@ -16,7 +16,7 @@ try:
         STOCK_MAP
     )
 except ImportError:
-    st.error("❌ 找不到 STOCK_GOD 模組，請將 STOCK_GOD_SYSTEM.py 放在正確目錄")
+    st.error("❌ 找不到 STOCK_GOD 模組，請確保 STOCK_GOD.py 在正確目錄")
 
 # ==========================================
 # 🎨 網頁基本設定與 CSS 樣式
@@ -186,7 +186,9 @@ elif menu == "2. 🔎 單股深度診斷":
                     st.markdown("### 🚀 變盤與攻擊預警")
                     if alert.get('沉寂發動'):
                         st.warning("⚡ **高度關注：【橫盤蓄勢即將變盤】**\n\n股價長久沉寂後今日突然爆量突破。這是標準的「沉寂變盤」起跑點，漲勢動能極強！")
-                    elif alert.get('布林壓縮'):
+                    elif alert.get('沉寂多時'):
+                        st.info("🧘 **標的特徵：【橫盤沉寂中】**\n\n股價已長時間處於窄幅震盪區間（震幅 < 10%）。這是在蹲下準備跳躍，建議先加入觀察，一旦帶量突破將是噴發。")
+                    elif alert.get('布林壓縮') or alert.get('布林極致壓縮'):
                         st.warning("🗜️ **高度關注：【布林極致壓縮中】**\n\n股價波動降到極限。這是暴風雨前的寧靜，一旦帶量突破布林上軌，將啟動奔漲行情。")
                     elif alert.get('專業起漲'):
                         st.success("🌊 **攻擊發起：【VCP 波動收斂突破】**\n\n經過壓縮後，今日正式帶量突破壓力區間。主力攻擊意圖強烈，適合順勢操作。")

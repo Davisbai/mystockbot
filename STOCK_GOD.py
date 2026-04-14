@@ -4,6 +4,7 @@ import warnings
 import pandas as pd
 import numpy as np
 import datetime
+import pytz
 import requests
 import re
 import time
@@ -243,7 +244,11 @@ class TaiwanStockTradingSystem:
         return df
 
     def process_stock(self, ticker):
-        df = yf.download(ticker, start=self.start_date, progress=False, auto_adjust=True)
+        # 🟢 強制使用台北時間對齊 (UTC+8)
+        tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+        tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -330,6 +335,23 @@ class TaiwanStockTradingSystem:
         upper_shadow = df['High'] - df[['Open', 'Close']].max(axis=1)
         candle_body = df[['Open', 'Close']].max(axis=1) - df[['Open', 'Close']].min(axis=1)
         hit_resistance = (df['High'] >= df['High'].rolling(60).max().shift(1)) & (upper_shadow > candle_body * 2)
+
+        # ==========================================
+        # 🛡️ [強化：主力洗盤與假跌破偵測]
+        # ==========================================
+        df['Lowest_5'] = df['Low'].rolling(window=5).min()
+        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
+        
+        # ==========================================
+        # ⚡ [強化：沉寂多時與即將噴發偵測]
+        # ==========================================
+        # 40日震幅小於 10%
+        df['Price_Max_40'] = df['High'].rolling(window=40).max()
+        df['Price_Min_40'] = df['Low'].rolling(window=40).min()
+        df['Long_Quiet'] = (df['Price_Max_40'] - df['Price_Min_40']) / df['Price_Min_40'] < 0.10
+        
+        # 沉寂後的成交量異動 (量增 1.5 倍)
+        df['Quiet_Momentum'] = df['Long_Quiet'].shift(1) & (df['Volume'] > df['Volume'].rolling(20).mean() * 1.5) & (df['Close'] > df['Open'])
 
         # ==========================================
         # 🎯 [核心邏輯補回]：計算 Independent_Alpha
@@ -424,6 +446,9 @@ class TaiwanStockTradingSystem:
                 "獨立行情": bool(last_day['Independent_Alpha']),
                 "RS斜率": round(float(last_day['RS_Slope']), 4),
                 # 🌊 將新的精髓訊號傳遞給前端 UI
+                "沉寂發動": bool(last_day.get('Quiet_Momentum', False)),
+                "沉寂多時": bool(last_day.get('Long_Quiet', False)),
+                "假跌破": bool(last_day.get('Fake_Break', False)),
                 "專業起漲": bool(last_day.get('Pro_Bottom_Breakout', False)),
                 "縮量埋伏": bool(last_day.get('Ambush_Setup', False)),
                 "高檔背離": bool(last_day.get('Top_Divergence', False)),
