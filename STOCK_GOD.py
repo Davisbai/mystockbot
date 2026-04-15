@@ -177,6 +177,7 @@ class TaiwanStockTradingSystem:
         
     def fetch_market_data(self):
         print("\n正在獲取大盤(加權指數)數據...")
+        # 關閉 auto_adjust 以獲取原始點數
         self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
         if isinstance(self.market_data.columns, pd.MultiIndex):
             self.market_data.columns = self.market_data.columns.get_level_values(0)
@@ -184,8 +185,9 @@ class TaiwanStockTradingSystem:
         # 強制時間歸零，確保與個股完美對齊
         self.market_data.index = pd.to_datetime(self.market_data.index).tz_localize(None).normalize()
         
-        self.market_data['Market_MA20'] = self.market_data['Close'].rolling(window=20).mean()
-        self.market_data['Market_OK'] = self.market_data['Close'] > self.market_data['Market_MA20']
+        # 指標計算建議使用還原後的 Adj Close
+        self.market_data['Market_MA20'] = self.market_data['Adj Close'].rolling(window=20).mean()
+        self.market_data['Market_OK'] = self.market_data['Adj Close'] > self.market_data['Market_MA20']
 
     def fetch_real_chip_data(self, df, ticker):
         code = ticker.replace('.TW', '').replace('.TWO', '')
@@ -232,11 +234,11 @@ class TaiwanStockTradingSystem:
         df['K'] = df['RSV'].ewm(com=2, adjust=False).mean()
         df['D'] = df['K'].ewm(com=2, adjust=False).mean()
         
-        # 2. MACD 指標
-        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
-        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        # 2. MACD 指標 (採用 Davis 修正參數 10, 20, 8)
+        exp1 = df['Close'].ewm(span=10, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=20, adjust=False).mean()
         df['MACD'] = exp1 - exp2
-        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        df['Signal'] = df['MACD'].ewm(span=8, adjust=False).mean()
         
         # 3. 均線與籌碼輔助
         df['MA20'] = df['Close'].rolling(window=20).mean()
@@ -248,12 +250,17 @@ class TaiwanStockTradingSystem:
         tw_tz = datetime.timezone(datetime.timedelta(hours=8))
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
+        # 關閉 auto_adjust 以支援雙軌價格邏輯
         df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
             
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
+        
+        # 關鍵：儲存市場原始價格供 UI 顯示，但將指標計算基準設為還原價
+        df['Raw_Close'] = df['Close']
+        df['Close'] = df['Adj Close']
             
         df = self.fetch_real_chip_data(df, ticker)
         df = self.calculate_indicators(df)
@@ -437,7 +444,7 @@ class TaiwanStockTradingSystem:
             last_day = df.iloc[-1]
             daily_alerts[ticker] = {
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
-                "收盤價": round(float(last_day['Close']), 2),
+                "收盤價": round(float(last_day['Raw_Close']), 2), # UI 顯示市場原始價格
                 "月線價": round(float(last_day['MA20']), 2),
                 "大盤安全": bool(last_day['Market_OK']),
                 "今日評分": int(last_day['Score']),

@@ -267,7 +267,7 @@ elif menu == "5. 📊 檢查大盤現況":
     if st.button("開始診斷", type="primary"):
         with st.spinner("獲取大盤數據中..."):
             try:
-                df = yf.download("^TWII", period="3mo", progress=False, auto_adjust=True)
+                df = yf.download("^TWII", period="3mo", progress=False, auto_adjust=False)
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = df.columns.get_level_values(0)
                 
