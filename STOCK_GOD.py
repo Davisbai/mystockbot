@@ -177,17 +177,15 @@ class TaiwanStockTradingSystem:
         
     def fetch_market_data(self):
         print("\n正在獲取大盤(加權指數)數據...")
-        # 關閉 auto_adjust 以獲取原始點數
-        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
+        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=True)
         if isinstance(self.market_data.columns, pd.MultiIndex):
             self.market_data.columns = self.market_data.columns.get_level_values(0)
             
         # 強制時間歸零，確保與個股完美對齊
         self.market_data.index = pd.to_datetime(self.market_data.index).tz_localize(None).normalize()
         
-        # 指標計算建議使用還原後的 Adj Close
-        self.market_data['Market_MA20'] = self.market_data['Adj Close'].rolling(window=20).mean()
-        self.market_data['Market_OK'] = self.market_data['Adj Close'] > self.market_data['Market_MA20']
+        self.market_data['Market_MA20'] = self.market_data['Close'].rolling(window=20).mean()
+        self.market_data['Market_OK'] = self.market_data['Close'] > self.market_data['Market_MA20']
 
     def fetch_real_chip_data(self, df, ticker):
         code = ticker.replace('.TW', '').replace('.TWO', '')
@@ -234,11 +232,11 @@ class TaiwanStockTradingSystem:
         df['K'] = df['RSV'].ewm(com=2, adjust=False).mean()
         df['D'] = df['K'].ewm(com=2, adjust=False).mean()
         
-        # 2. MACD 指標 (採用 Davis 修正參數 10, 20, 8)
-        exp1 = df['Close'].ewm(span=10, adjust=False).mean()
-        exp2 = df['Close'].ewm(span=20, adjust=False).mean()
+        # 2. MACD 指標
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
         df['MACD'] = exp1 - exp2
-        df['Signal'] = df['MACD'].ewm(span=8, adjust=False).mean()
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
         
         # 3. 均線與籌碼輔助
         df['MA20'] = df['Close'].rolling(window=20).mean()
@@ -250,30 +248,18 @@ class TaiwanStockTradingSystem:
         tw_tz = datetime.timezone(datetime.timedelta(hours=8))
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # 關閉 auto_adjust 以支援雙軌價格邏輯
-        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
             
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
-        
-        # 關鍵：儲存市場原始價格供 UI 顯示，但將指標計算基準設為還原價
-        df['Raw_Close'] = df['Close']
-        df['Close'] = df['Adj Close']
             
         df = self.fetch_real_chip_data(df, ticker)
         df = self.calculate_indicators(df)
-#df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
-#        df['Market_OK'] = df['Market_OK'].fillna(False)
-        # 取得大盤最後一個有效的狀態
-        latest_market_ok = self.market_data['Market_OK'].iloc[-1]
-
-        # 先進行合併
         df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
+        df['Market_OK'] = df['Market_OK'].fillna(False)
 
-        # 如果最後一行是 NaN (對齊失敗)，則沿用大盤最新的狀態，而不是給 False
-        df['Market_OK'] = df['Market_OK'].fillna(latest_market_ok)
         # ==========================================
         # 🚀 [一般起漲點偵測指標]
         # ==========================================
@@ -451,7 +437,7 @@ class TaiwanStockTradingSystem:
             last_day = df.iloc[-1]
             daily_alerts[ticker] = {
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
-                "收盤價": round(float(last_day['Raw_Close']), 2), # UI 顯示市場原始價格
+                "收盤價": round(float(last_day['Close']), 2),
                 "月線價": round(float(last_day['MA20']), 2),
                 "大盤安全": bool(last_day['Market_OK']),
                 "今日評分": int(last_day['Score']),
@@ -725,9 +711,6 @@ def run_single_query_mode_gui():
         2: "🟡 2 [bold yellow]轉折過渡期[/bold yellow] (動能改變中，趨勢尚未明確)"
     }
 
-    # --- 新增：大盤數據快取變數 ---
-    cached_market_data = None
-
     while True:
         console.print("\n" + "="*60)
         console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (Meta-Labeling v3.0)[/bold yellow]")
@@ -779,19 +762,11 @@ def run_single_query_mode_gui():
 
         # --- 2. 執行分析 ---
         try:
-            with console.status(f"[bold green]正在分析 {stock_name} ...[/bold green]"):
+            with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                system.fetch_market_data() 
                 
-                # --- 優化點：檢查是否已有大盤快取 ---
-                if cached_market_data is None:
-                    console.print("[dim]首次查詢，正在獲取大盤數據...[/dim]")
-                    system.fetch_market_data()
-                    cached_market_data = system.market_data # 存入快取
-                else:
-                    # 直接複用快取數據，不再重複 yf.download
-                    system.market_data = cached_market_data
-                
-                # 獲取大盤具體數值
+                # --- 新增：獲取大盤具體數值 ---
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
@@ -814,13 +789,14 @@ def run_single_query_mode_gui():
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-            # --- 3. 顯示結果 ---
+            # --- 3. 顯示結果 (包含大盤月線資訊) ---
             alert = alerts[ticker]
             console.print(f"\n📊 [bold white on blue] {ticker} ({stock_name}) 深度診斷報告 [/bold white on blue]")
             
             diag_table = Table(show_header=False, box=None)
             diag_table.add_row("[bold]最新收盤價[/bold]", f"{alert['收盤價']} (個股月線: {alert['月線價']})")
             
+            # --- 修改：大盤狀態欄位整合點數與月線 ---
             mkt_status = "✅ 站上月線" if alert['大盤安全'] else "❌ 跌破月線"
             mkt_color = "green" if alert['大盤安全'] else "red"
             diag_table.add_row(
@@ -838,6 +814,7 @@ def run_single_query_mode_gui():
             console.print(diag_table)
             console.print("-" * 40)
 
+            # 最終決策建議
             if alert["是否觸發賣出"]:
                 console.print("👉 最終判定: [bold red]🔴 【建議賣出/停損】[/bold red]")
             elif alert['今日評分'] >= 60:
