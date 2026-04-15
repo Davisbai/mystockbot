@@ -177,7 +177,7 @@ class TaiwanStockTradingSystem:
         
     def fetch_market_data(self):
         print("\n正在獲取大盤(加權指數)數據...")
-        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=True)
+        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
         if isinstance(self.market_data.columns, pd.MultiIndex):
             self.market_data.columns = self.market_data.columns.get_level_values(0)
             
@@ -248,7 +248,7 @@ class TaiwanStockTradingSystem:
         tw_tz = datetime.timezone(datetime.timedelta(hours=8))
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
-        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -852,7 +852,7 @@ def run_market_health_check_gui():
     # 下載最近 40 天數據確保均線計算準確
     market_ticker = "^TWII"
     try:
-        df = yf.download(market_ticker, period="3mo", progress=False, auto_adjust=True)
+        df = yf.download(market_ticker, period="3mo", progress=False, auto_adjust=False)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         
