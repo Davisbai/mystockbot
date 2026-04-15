@@ -178,7 +178,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 # --- [❗唯一修改處：顯示抓取日期] ---
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
-                display_price = float(alert['原始收盤價'])
+                display_price = alert.get('收盤價', 0)
                 # --- 儀表板 ---
                 c1, c2, c3, c4 = st.columns(4)
                 #c1.metric("收盤價", f"{alert['收盤價']:.2f}")
