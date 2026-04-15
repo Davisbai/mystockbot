@@ -711,6 +711,9 @@ def run_single_query_mode_gui():
         2: "🟡 2 [bold yellow]轉折過渡期[/bold yellow] (動能改變中，趨勢尚未明確)"
     }
 
+    # --- 新增：大盤數據快取變數 ---
+    cached_market_data = None
+
     while True:
         console.print("\n" + "="*60)
         console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (Meta-Labeling v3.0)[/bold yellow]")
@@ -762,11 +765,19 @@ def run_single_query_mode_gui():
 
         # --- 2. 執行分析 ---
         try:
-            with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
+            with console.status(f"[bold green]正在分析 {stock_name} ...[/bold green]"):
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
-                system.fetch_market_data() 
                 
-                # --- 新增：獲取大盤具體數值 ---
+                # --- 優化點：檢查是否已有大盤快取 ---
+                if cached_market_data is None:
+                    console.print("[dim]首次查詢，正在獲取大盤數據...[/dim]")
+                    system.fetch_market_data()
+                    cached_market_data = system.market_data # 存入快取
+                else:
+                    # 直接複用快取數據，不再重複 yf.download
+                    system.market_data = cached_market_data
+                
+                # 獲取大盤具體數值
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
@@ -789,14 +800,13 @@ def run_single_query_mode_gui():
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-            # --- 3. 顯示結果 (包含大盤月線資訊) ---
+            # --- 3. 顯示結果 ---
             alert = alerts[ticker]
             console.print(f"\n📊 [bold white on blue] {ticker} ({stock_name}) 深度診斷報告 [/bold white on blue]")
             
             diag_table = Table(show_header=False, box=None)
             diag_table.add_row("[bold]最新收盤價[/bold]", f"{alert['收盤價']} (個股月線: {alert['月線價']})")
             
-            # --- 修改：大盤狀態欄位整合點數與月線 ---
             mkt_status = "✅ 站上月線" if alert['大盤安全'] else "❌ 跌破月線"
             mkt_color = "green" if alert['大盤安全'] else "red"
             diag_table.add_row(
@@ -814,7 +824,6 @@ def run_single_query_mode_gui():
             console.print(diag_table)
             console.print("-" * 40)
 
-            # 最終決策建議
             if alert["是否觸發賣出"]:
                 console.print("👉 最終判定: [bold red]🔴 【建議賣出/停損】[/bold red]")
             elif alert['今日評分'] >= 60:
