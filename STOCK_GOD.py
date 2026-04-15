@@ -264,9 +264,16 @@ class TaiwanStockTradingSystem:
             
         df = self.fetch_real_chip_data(df, ticker)
         df = self.calculate_indicators(df)
-        df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
-        df['Market_OK'] = df['Market_OK'].fillna(False)
+#df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
+#        df['Market_OK'] = df['Market_OK'].fillna(False)
+        # 取得大盤最後一個有效的狀態
+        latest_market_ok = self.market_data['Market_OK'].iloc[-1]
 
+        # 先進行合併
+        df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
+
+        # 如果最後一行是 NaN (對齊失敗)，則沿用大盤最新的狀態，而不是給 False
+        df['Market_OK'] = df['Market_OK'].fillna(latest_market_ok)
         # ==========================================
         # 🚀 [一般起漲點偵測指標]
         # ==========================================
