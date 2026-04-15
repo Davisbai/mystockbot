@@ -178,11 +178,10 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 # --- [❗唯一修改處：顯示抓取日期] ---
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
-                display_price = alert.get('收盤價', 0)
+
                 # --- 儀表板 ---
                 c1, c2, c3, c4 = st.columns(4)
-                #c1.metric("收盤價", f"{alert['收盤價']:.2f}")
-                c1.metric("收盤價", f"{display_price:.2f}")
+                c1.metric("收盤價", f"{alert['收盤價']:.2f}")
                 c2.metric("月線 (MA20)", f"{alert['月線價']:.2f}", f"{(alert['收盤價']-alert['月線價']):.2f}")
                 c3.metric("技術籌碼評分", f"{alert['今日評分']}分")
                 c4.metric("大盤狀態", "✅ 安全" if alert['大盤安全'] else "❌ 警戒")
