@@ -251,7 +251,7 @@ class TaiwanStockTradingSystem:
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
         # 關閉 auto_adjust 以支援雙軌價格邏輯
-        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
