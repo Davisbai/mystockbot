@@ -160,7 +160,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
         st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
 
-        # --- 執行分析 (核心修改點：跳過重複的大盤數據抓取) ---
+        # --- 執行分析 ---
         with st.spinner("正在進行大數據掃描、籌碼解析與動能計算..."):
             system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2024-01-01")
             
@@ -176,6 +176,9 @@ elif menu == "2. 🔎 單股深度診斷":
                 alert = alerts[ticker]
                 stock_logs = logs.get(ticker, [])
                 
+                # --- [❗唯一修改處：顯示抓取日期] ---
+                st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
+
                 # --- 儀表板 ---
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("收盤價", f"{alert['收盤價']:.2f}")
@@ -204,7 +207,7 @@ elif menu == "2. 🔎 單股深度診斷":
                     if alert.get('沉寂發動'):
                         st.warning("⚡ **高度關注：【橫盤蓄勢即將變盤】**\n\n股價長久沉寂後今日突然爆量突破。這是標準的「沉寂變盤」起跑點，漲勢動能極強！")
                     elif alert.get('沉寂多時'):
-                        st.info("🧘 **標的特徵：【橫盤沉寂中】**\n\n股價已長時間處於窄幅震盪區間（震幅 < 10%）。這是在蹲下準備跳躍，建議先加入觀察，一旦帶量突破將是噴發。")
+                        st.info("🧘 **標的特徵：【橫盤沉寂中】**\n\n股價已長時間處於窄幅震盪區則（震幅 < 10%）。這是在蹲下準備跳躍，建議先加入觀察，一旦帶量突破將是噴發。")
                     elif alert.get('布林壓縮') or alert.get('布林極致壓縮'):
                         st.warning("🗜️ **高度關注：【布林極致壓縮中】**\n\n股價波動降到極限。這是暴風雨前的寧靜，一旦帶量突破布林上軌，將啟動奔漲行情。")
                     elif alert.get('專業起漲'):
