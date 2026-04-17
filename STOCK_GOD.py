@@ -705,9 +705,16 @@ def run_full_scan_gui(scanner):
             roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
             emoji = "🔥" if roi >= 0 else "📉"
 
-            print(f"📂 {stock:<7} {stock_name:<4} | 入場日: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
-            line_message_lines.append(f"{stock_name} 成本:{join_price} 現價:{current_price}\n{emoji} ROI: {roi}%\n")
-
+            # 1. 終端機顯示：統一稱為「買入日期」
+            print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
+            
+            # 2. LINE 訊息：加入買入日期與更清晰的排版
+            line_message_lines.append(f"{stock_name} ({stock.replace('.TW', '')})")
+            line_message_lines.append(f"📅 買入日期: {join_date}")
+            line_message_lines.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
+            line_message_lines.append(f"{emoji} 報酬率: {roi}%")
+            line_message_lines.append("") # 換行分隔
+            
     if watchlist_updated:
         save_watchlist(watchlist)
 
@@ -886,7 +893,7 @@ def run_single_query_mode_gui():
                     console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術面 OK 但 AI 勝率過低)")
             else:
                 console.print(f"👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white]")
-                
+
             if logs.get(ticker):
                 console.print("\n📋 [dim]最近交易紀錄:[/dim]")
                 for log in logs[ticker][-2:]:
