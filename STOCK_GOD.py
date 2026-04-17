@@ -604,11 +604,10 @@ def run_full_scan_gui(scanner):
             final_entry_date = alert["日期"]
             final_entry_price = alert["收盤價"]
 
-            is_new = stock not in watchlist
-            is_incomplete = not is_new and (watchlist[stock].get("加入價格", 0) <= 0)
-
-            if not is_new and stock in logs and logs[stock]:
+            # --- [修復點]：解除限制！強制從回測紀錄中取得「真正的」策略進場點 ---
+            if stock in logs and logs[stock]:
                 temp_date, temp_price = None, None
+                # 反向尋找最近一次的交易紀錄
                 for log_entry in reversed(logs[stock]):
                     if "🟢 買進" in log_entry:
                         parts = log_entry.split('|')
@@ -616,23 +615,34 @@ def run_full_scan_gui(scanner):
                         p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
                         if p_match:
                             temp_price = float(p_match.group(1))
+                        break  # 找到最近一次買進就停止搜尋，避免抓到更舊的歷史
                     elif "🔴 賣出" in log_entry:
-                        break
+                        break  # 如果最近一次是賣出，代表空手，直接用今天的訊號
                 
+                # 如果有找到歷史進場點，強制覆寫今天的日期與價格
                 if temp_date and temp_price:
                     final_entry_date = temp_date
                     final_entry_price = temp_price
 
-            if is_new or is_incomplete:
+            is_new = stock not in watchlist
+            is_incomplete = not is_new and (watchlist[stock].get("加入價格", 0) <= 0)
+            is_date_mismatch = not is_new and (watchlist[stock].get("加入日期") != final_entry_date)
+
+            # 更新本機 watchlist JSON 的條件：新增、補齊價格、或發現歷史日期不符時
+            if is_new or is_incomplete or is_date_mismatch:
                 watchlist[stock] = {
                     "名稱": stock_name,
                     "加入日期": final_entry_date,
                     "加入價格": final_entry_price
                 }
                 watchlist_updated = True
+
+            # --- [修復點]：比對真實進場日與今天日期，決定顯示「今日進場」還是「持股續抱」 ---
+            if final_entry_date == alert["日期"]:
                 display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}"
             else:
-                display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date})"
+                display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
+            # -------------------------------------------------------------------------
         else:
             status = f"⚪ 【觀望】 (綜合評分: {score}分 - 動能不足)"
             raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
@@ -668,8 +678,29 @@ def run_full_scan_gui(scanner):
             join_date = data.get("加入日期", "未知")
             stock_name = data.get("名稱", "")
             
+            # --- [修復點]：強制與 logs (Menu 2 的系統診斷紀錄) 同步最新買進成本與日期 ---
+            if stock in logs and logs[stock]:
+                for log_entry in reversed(logs[stock]):
+                    if "🟢 買進" in log_entry:
+                        parts = log_entry.split('|')
+                        temp_date = parts[0].strip()
+                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                        if p_match:
+                            temp_price = float(p_match.group(1))
+                            # 覆寫變數以供終端機與 LINE 顯示
+                            join_date = temp_date
+                            join_price = temp_price
+                            # 同步更新回 watchlist 記憶體中，稍後統一存檔
+                            data["加入日期"] = join_date
+                            data["加入價格"] = join_price
+                            watchlist_updated = True
+                        break # 找到最近一次買進就停止
+                    elif "🔴 賣出" in log_entry:
+                        break # 若最近一次是賣出，代表邏輯上應為空手，不處理
+            # -------------------------------------------------------------------------
+            
             current_price = alerts.get(stock, {}).get('收盤價', 0)
-            if current_price == 0: current_price = join_price 
+            if current_price == 0: current_price = join_price
 
             roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
             emoji = "🔥" if roi >= 0 else "📉"
