@@ -830,7 +830,7 @@ def run_single_query_mode_gui():
             # --- 3. 顯示結果 (包含大盤月線資訊) ---
             alert = alerts[ticker]
             console.print(f"\n📊 [bold white on blue] {ticker} ({stock_name}) 深度診斷報告 [/bold white on blue]")
-            
+          
             diag_table = Table(show_header=False, box=None)
             diag_table.add_row("[bold]最新收盤價[/bold]", f"{alert['收盤價']} (個股月線: {alert['月線價']})")
             
