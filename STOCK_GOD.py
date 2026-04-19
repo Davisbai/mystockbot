@@ -94,7 +94,7 @@ class YahooMarketScanner:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0'})
-        self.scan_limit = 20
+        self.scan_limit = 15
 
     def get_chinese_name(self, code):
         check_code = f"{code}.TW"
@@ -526,6 +526,7 @@ def run_full_scan_gui(scanner):
     watchlist = load_watchlist()
     watchlist_updated = False
 
+    # 1. 執行掃描 (scanner.scan 內部已設定 scan_limit=30)
     hot_stocks = scanner.scan()
     DYNAMIC_MAP = {f"{item['code']}.TW": item['name'] for item in hot_stocks}
     STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
@@ -533,14 +534,17 @@ def run_full_scan_gui(scanner):
     
     COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **WATCHLIST_MAP}
 
+    # 2. 執行回測分析
     system = TaiwanStockTradingSystem(
         tickers=list(COMBINED_MAP.keys()),
         start_date="2025-09-01"
     )
     summary, alerts, logs = system.run_analysis()
 
-    line_message_lines = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
+    # 🌟 第一段 LINE 訊息陣列 (只放今日交易提示)
+    line_message_1 = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
 
+    # 3. 自動清理邏輯
     for stock in list(watchlist.keys()):
         stock_trade_history = logs.get(stock, [])
         if stock_trade_history:
@@ -551,21 +555,29 @@ def run_full_scan_gui(scanner):
                 watchlist_updated = True
 
     print("\n" + "="*60)
+    print("📈 【策略回測結果摘要】")
+    print("="*60)
+    for stock, data in summary.items():
+        if stock in DYNAMIC_MAP or stock in STATIC_YF_MAP:
+            print(f"🔹 {stock} {COMBINED_MAP.get(stock, ''):<4} | 勝率: {data['勝率 (%)']:>5}% | 總報酬: {data['策略累積報酬 (%)']:>6}%")
+
+    print("\n" + "="*60)
     print("🔔 【今日交易提示】")
     print("="*60)
-    line_message_lines.append("🔔 【今日交易提示】")
+    line_message_1.append("🔔 【今日交易提示】")
     
+    # 4. 核心輸出與判斷迴圈
     for stock, alert in alerts.items():
         stock_name = COMBINED_MAP.get(stock, "")
         is_in_watchlist = stock in watchlist
         
-        # 🌟 新增：過濾熱門股 (若為掃描到的熱門股，且不在監控清單內，漲幅又小於 3% 則直接略過)
+        # 🌟 漲幅過濾：若非庫存且漲幅 < 3%，則不顯示 (保持清爽)
         if stock in DYNAMIC_MAP and not is_in_watchlist and alert.get('今日漲幅', 0) < 3.0:
             continue
 
         tag = "[熱門]" if stock in DYNAMIC_MAP else "[固定]"
         
-        # 🌟 新增：取得剛站上月線的特效標籤
+        # 🌟 指標標籤
         crossed_ma20_tag = " 🌟[bold yellow]【剛站上月線】[/bold yellow]" if alert.get('剛過月線') else ""
         crossed_ma20_line_msg = " 🌟【剛站上月線】" if alert.get('剛過月線') else ""
         
@@ -577,236 +589,153 @@ def run_full_scan_gui(scanner):
         display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
 
         is_rebel = (not market_ok and raw_score >= 75)
-        
-        # 提取新訊號
         pro_bottom_breakout = alert.get('專業起漲', False)
         ambush_setup = alert.get('縮量埋伏', False)
         is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
         
+        # 預設 final_entry_date 避免錯誤
+        final_entry_date = ""
+        final_entry_price = 0.0
+
         if alert["是否觸發賣出"]:
             if is_top_divergent:
-                status = "🚨 【高檔警報：獲利了結】 (爆量滯漲或乖離過大，主力可能在出貨)"
-                raw_advice = "🚨 【建議賣出】 (快漲完了，短線風險極高，先入袋為安)"
+                status = "🚨 【高檔警報：獲利了結】"
+                raw_advice = "🚨 【建議賣出】 (快漲完了，短線風險極高)"
             else:
-                status = "🔴 【強制賣出/停損訊號】 (指標轉弱或破月線)"
-                raw_advice = "🔴 【建議賣出】 (個股技術面已轉弱或破線)"
+                status = "🔴 【強制賣出/停損訊號】"
+                raw_advice = "🔴 【建議賣出】 (指標轉弱或破線)"
             
             if stock in watchlist:
                 del watchlist[stock]
                 watchlist_updated = True
                 
         elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup:
-            # 優先權：埋伏洗盤 > VCP 突破 > 獨立行情 > 一般買進
             if ambush_setup:
-                status = "🥷 【縮量黃金：右側埋伏】 (跌不動且成交量極度萎縮，準備發動)"
-                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲，盈虧比極佳)"
+                status = "🥷 【縮量黃金：右側埋伏】"
+                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
             elif pro_bottom_breakout:
-                status = "🌊 【VCP 波動收斂突破】 (籌碼高度集中，布林極限壓縮後爆量)"
-                raw_advice = "🔥 【強力買進】 MACD (10,20,8) 零軸啟動，主力吸籌完畢，建議建立核心部位"
+                status = "🌊 【VCP 波動收斂突破】"
+                raw_advice = "🔥 【強力買進】 MACD 零軸啟動，建議建立核心部位"
             elif is_rebel:
-                status = f"⚡ 【無視大盤：獨立強勢】 (個股評分: {raw_score}分)"
-                raw_advice = f"🔥 【建議進場/續抱】 (個股展現獨立特質，無視大盤逆風)"
+                status = "⚡ 【無視大盤：獨立強勢】"
+                raw_advice = "🔥 【建議進場/續抱】 (個股展現獨立特質)"
             else:
-                status = f"🟢 【強力買進】 (綜合評分: {score}分 - 量價與籌碼共振)"
-                raw_advice = f"🟢 【可進場試單】 (獨立評分 {raw_score} 分)"
+                status = "🟢 【強力買進】"
+                raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
             
+            # 從回測紀錄抓取真實進場點
             final_entry_date = alert["日期"]
             final_entry_price = alert["收盤價"]
 
-            # --- [修復點]：解除限制！強制從回測紀錄中取得「真正的」策略進場點 ---
             if stock in logs and logs[stock]:
-                temp_date, temp_price = None, None
-                # 反向尋找最近一次的交易紀錄
                 for log_entry in reversed(logs[stock]):
                     if "🟢 買進" in log_entry:
                         parts = log_entry.split('|')
-                        temp_date = parts[0].strip()
+                        final_entry_date = parts[0].strip()
                         p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
                         if p_match:
-                            temp_price = float(p_match.group(1))
-                        break  # 找到最近一次買進就停止搜尋，避免抓到更舊的歷史
+                            final_entry_price = float(p_match.group(1))
+                        break
                     elif "🔴 賣出" in log_entry:
-                        break  # 如果最近一次是賣出，代表空手，直接用今天的訊號
-                
-                # 如果有找到歷史進場點，強制覆寫今天的日期與價格
-                if temp_date and temp_price:
-                    final_entry_date = temp_date
-                    final_entry_price = temp_price
+                        break
 
-            is_new = stock not in watchlist
-            is_incomplete = not is_new and (watchlist[stock].get("加入價格", 0) <= 0)
-            is_date_mismatch = not is_new and (watchlist[stock].get("加入日期") != final_entry_date)
-
-            # 更新本機 watchlist JSON 的條件：新增、補齊價格、或發現歷史日期不符時
-            if is_new or is_incomplete or is_date_mismatch:
-                watchlist[stock] = {
-                    "名稱": stock_name,
-                    "加入日期": final_entry_date,
-                    "加入價格": final_entry_price
-                }
+            # 更新本機 Watchlist
+            if stock not in watchlist or watchlist[stock].get("加入日期") != final_entry_date:
+                watchlist[stock] = {"名稱": stock_name, "加入日期": final_entry_date, "加入價格": final_entry_price}
                 watchlist_updated = True
 
-            # --- [修復點]：比對真實進場日與今天日期，決定顯示「今日進場」還是「持股續抱」 ---
+            # 顯示訊息處理
             if final_entry_date == alert["日期"]:
                 display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}"
             else:
                 display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
-            # -------------------------------------------------------------------------
         else:
-            status = f"⚪ 【觀望】 (綜合評分: {score}分 - 動能不足)"
+            status = f"⚪ 【觀望】 (評分: {score}分)"
             raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
-            
-        # 🌟 修改：在終端機輸出加上過線標籤與漲幅
-        print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}")
+        
+        # 🌟 第一天發動 Highlight
+        is_first_day = (alert.get("日期") == final_entry_date)
+        first_day_term_tag = " 🚨[bold white on red]【🔥第一天發動🔥】[/bold white on red]" if is_first_day else ""
+        first_day_line_tag = " 🚨【🔥第一天發動🔥】" if is_first_day else ""
+
+        # 輸出到終端機
+        print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}{first_day_term_tag}")
         print(display_log_msg)
         print(f"👉 系統判定: {status}")
         print(f"💡 建議提示: {raw_advice}\n")
         
-        # 🌟 修改：在 LINE 推播訊息加上過線標籤與漲幅
+        # 加入第一段 LINE 訊息
         line_prefix = "🔥" if "獨立" in status else tag
-        line_message_lines.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}")
-        line_message_lines.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
-        line_message_lines.append(display_log_msg)
-        line_message_lines.append(f"👉 {status}")
-        if not market_ok:
-            line_message_lines.append(f"💡 獨立建議: {raw_advice}")
-        line_message_lines.append("")
+        line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
+        line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
+        line_message_1.append(display_log_msg)
+        line_message_1.append(f"👉 {status}")
+        if not market_ok: line_message_1.append(f"💡 獨立建議: {raw_advice}")
+        line_message_1.append("")
         
     if watchlist_updated:
         save_watchlist(watchlist)
 
-    print("\n" + "="*60)
-    print("📌 【目前長期監控清單 - 狀態同步版】")
-    print("="*60)
-    line_message_lines.append("📌 【長期監控清單】")
-
-    if not watchlist:
-        print("目前無持股標的")
-        line_message_lines.append("目前無持股標的")
-    else:
-        for stock, data in watchlist.items():
-            join_price = data.get("加入價格", 0)
-            join_date = data.get("加入日期", "未知")
-            stock_name = data.get("名稱", "")
-            
-            # --- [修復點]：強制與 logs (Menu 2 的系統診斷紀錄) 同步最新買進成本與日期 ---
-            if stock in logs and logs[stock]:
-                for log_entry in reversed(logs[stock]):
-                    if "🟢 買進" in log_entry:
-                        parts = log_entry.split('|')
-                        temp_date = parts[0].strip()
-                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
-                        if p_match:
-                            temp_price = float(p_match.group(1))
-                            # 覆寫變數以供終端機與 LINE 顯示
-                            join_date = temp_date
-                            join_price = temp_price
-                            # 同步更新回 watchlist 記憶體中，稍後統一存檔
-                            data["加入日期"] = join_date
-                            data["加入價格"] = join_price
-                            watchlist_updated = True
-                        break # 找到最近一次買進就停止
-                    elif "🔴 賣出" in log_entry:
-                        break # 若最近一次是賣出，代表邏輯上應為空手，不處理
-            # -------------------------------------------------------------------------
-            
-            current_price = alerts.get(stock, {}).get('收盤價', 0)
-            if current_price == 0: current_price = join_price
-
-            roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
-            emoji = "🔥" if roi >= 0 else "📉"
-
-            # 1. 終端機顯示：統一稱為「買入日期」
-            print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
-            
-            # 2. LINE 訊息：加入買入日期與更清晰的排版
-            line_message_lines.append(f"{stock_name} ({stock.replace('.TW', '')})")
-            line_message_lines.append(f"📅 買入日期: {join_date}")
-            line_message_lines.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
-            line_message_lines.append(f"{emoji} 報酬率: {roi}%")
-            line_message_lines.append("") # 換行分隔
-            
-# ... (上面是 for stock, alert in alerts.items(): 的迴圈結束) ...
-        
-# ... (上面是 for stock, alert in alerts.items(): 的迴圈結束) ...
-        
-    if watchlist_updated:
-        save_watchlist(watchlist)
-
-    # 🌟 修改 1：發送「第一段」的 LINE 訊息 (今日交易提示)
-    # 判斷長度大於 2 (代表除了開頭問候與標題外，還有實際的股票內容) 才發送
-    if len(line_message_lines) > 2:
+    # 🚀 推播第一段：交易提示
+    if len(line_message_1) > 2:
         print("\n[系統] 準備發送第一段 LINE 推播 (今日交易提示)...")
-        send_line_message("\n".join(line_message_lines))
-        time.sleep(1.5)  # 🌟 加入 1.5 秒延遲，避免 LINE API 阻擋連續推播
+        send_line_message("\n".join(line_message_1))
+        time.sleep(1.5)
     else:
-        print("\n[系統] 今日無符合條件(>3%)的熱門股或提示，跳過第一段推播。")
-    
-    # 🌟 修改 2：清空訊息列表，準備收集「第二段」的長期監控清單
-    line_message_lines = [] 
+        print("\n[系統] 今日無符合條件的熱門股提示。")
 
+    # 🌟 第二段 LINE 訊息陣列 (只放監控清單)
+    line_message_2 = []
     print("\n" + "="*60)
     print("📌 【目前長期監控清單 - 狀態同步版】")
     print("="*60)
-    line_message_lines.append("📌 【長期監控清單】")
+    line_message_2.append("📌 【長期監控清單】")
 
     if not watchlist:
         print("目前無持股標的")
-        line_message_lines.append("目前無持股標的")
+        line_message_2.append("目前無持股標的")
     else:
         for stock, data in watchlist.items():
             join_price = data.get("加入價格", 0)
             join_date = data.get("加入日期", "未知")
             stock_name = data.get("名稱", "")
             
-            # --- [修復點]：強制與 logs 同步最新買進成本與日期 ---
+            # 同步最新成本
             if stock in logs and logs[stock]:
                 for log_entry in reversed(logs[stock]):
                     if "🟢 買進" in log_entry:
                         parts = log_entry.split('|')
-                        temp_date = parts[0].strip()
+                        join_date = parts[0].strip()
                         p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
-                        if p_match:
-                            temp_price = float(p_match.group(1))
-                            join_date = temp_date
-                            join_price = temp_price
-                            data["加入日期"] = join_date
-                            data["加入價格"] = join_price
-                            watchlist_updated = True
-                        break 
-                    elif "🔴 賣出" in log_entry:
-                        break 
-            # -------------------------------------------------------------------------
+                        if p_match: join_price = float(p_match.group(1))
+                        break
+                    elif "🔴 賣出" in log_entry: break 
             
             current_price = alerts.get(stock, {}).get('收盤價', 0)
             if current_price == 0: current_price = join_price
-
             roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
             emoji = "🔥" if roi >= 0 else "📉"
 
             print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
             
-            line_message_lines.append(f"{stock_name} ({stock.replace('.TW', '')})")
-            line_message_lines.append(f"📅 買入日期: {join_date}")
-            line_message_lines.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
-            line_message_lines.append(f"{emoji} 報酬率: {roi}%")
-            line_message_lines.append("") 
+            line_message_2.append(f"{stock_name} ({stock.replace('.TW', '')})")
+            line_message_2.append(f"📅 買入日期: {join_date}")
+            line_message_2.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
+            line_message_2.append(f"{emoji} 報酬率: {roi}%")
+            line_message_2.append("") 
             
     if watchlist_updated:
         save_watchlist(watchlist)
 
-    # 🌟 修改 3：發送「第二段」的 LINE 訊息 (長期監控清單)
-    if line_message_lines:
+    # 🚀 推播第二段：監控清單
+    if len(line_message_2) > 1:
         print("[系統] 準備發送第二段 LINE 推播 (長期監控清單)...")
-        send_line_message("\n".join(line_message_lines))
+        send_line_message("\n".join(line_message_2))
 
     console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
-        print("\n[系統] 偵測到自動化環境，掃描完成後自動退出。")
-        return 
-    
+    if os.environ.get('GITHUB_ACTIONS') == 'true': return 
     console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
-
+    
 # ==========================================
 # 2️⃣ 單股查詢模組 (獨立呼叫回測系統)
 # ==========================================
