@@ -94,7 +94,7 @@ class YahooMarketScanner:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0'})
-        self.scan_limit = 10
+        self.scan_limit = 30
 
     def get_chinese_name(self, code):
         check_code = f"{code}.TW"
@@ -409,6 +409,9 @@ class TaiwanStockTradingSystem:
         df['Returns'] = df['Close'].pct_change()
         df['Strategy_Returns'] = df['Position'].shift(1) * df['Returns']
         
+        # 🌟 新增：判斷今日是否「剛」站上月線 (今日收盤 > 月線 且 昨日收盤 <= 昨日月線)
+        df['Just_Crossed_MA20'] = (df['Close'] > df['MA20']) & (df['Close'].shift(1) <= df['MA20'].shift(1))
+        
         return df
 
     def run_analysis(self):
@@ -439,6 +442,8 @@ class TaiwanStockTradingSystem:
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
                 "收盤價": round(float(last_day['Close']), 2),
                 "月線價": round(float(last_day['MA20']), 2),
+                "今日漲幅": round(float(last_day['Returns']) * 100, 2) if not pd.isna(last_day['Returns']) else 0, # 🌟 新增：計算今日漲幅 %
+                "剛過月線": bool(last_day.get('Just_Crossed_MA20', False)), # 🌟 新增：傳遞過月線狀態
                 "大盤安全": bool(last_day['Market_OK']),
                 "今日評分": int(last_day['Score']),
                 "個股原始評分": int(last_day['Raw_Score']),
