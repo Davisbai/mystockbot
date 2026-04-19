@@ -162,20 +162,16 @@ elif menu == "2. 🔎 單股深度診斷":
         # 找到這行：st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
         # 修改為：
 
-  # --- 建議修改後代碼 ---
-        col_title, col_btn1, col_btn2 = st.columns([2, 1, 1])
-        with col_title:
+
+        col_left, col_right = st.columns([3, 1])
+        with col_left:
             st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
-
-        with col_btn1:
-            # 連結至玩股網 (台灣最常用的技術分析網站之一)
-            wantgoo_url = f"https://www.wantgoo.com/stock/{user_input.replace('.TW', '').replace('.TWO', '')}/technical-chart"
-            st.link_button("📈 玩股網分析", wantgoo_url)
-
-        with col_btn2:
-            # 連結至 Yahoo 股市台灣版 (顯示台灣格式的技術圖表)
-            tw_yahoo_url = f"https://tw.stock.yahoo.com/quote/{user_input.replace('.TW', '').replace('.TWO', '')}"
-            st.link_button("📊 Yahoo 股市", tw_yahoo_url)
+                
+        with col_right:
+            # 這是直接帶路到技術分析線圖的關鍵連結
+            # 確保將 ticker (如 2330.TW) 放入 URL 中
+            chart_url = f"https://tw.stock.yahoo.com/quote/{ticker}/chart"
+            st.link_button("📈 技術線圖", chart_url)
 
         # --- 執行分析 ---
         with st.spinner("正在進行大數據掃描、籌碼解析與動能計算..."):
