@@ -158,7 +158,17 @@ elif menu == "2. 🔎 單股深度診斷":
         except Exception:
             ticker, stock_name = f"{user_input}.TW", user_input
 
-        st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
+        # --- 在「2️⃣ 單股深度診斷」區塊內 ---
+        # 找到這行：st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
+        # 修改為：
+
+        col_title, col_btn = st.columns([3, 1])
+        with col_title:
+            st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
+        with col_btn:
+            # 產生 Yahoo Finance 技術分析連結
+            yf_url = f"https://finance.yahoo.com/quote/{ticker}"
+            st.link_button("📊 查看技術分析", yf_url)
 
         # --- 執行分析 ---
         with st.spinner("正在進行大數據掃描、籌碼解析與動能計算..."):
