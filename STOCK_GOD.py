@@ -94,7 +94,7 @@ class YahooMarketScanner:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0'})
-        self.scan_limit = 30
+        self.scan_limit = 20
 
     def get_chinese_name(self, code):
         check_code = f"{code}.TW"
@@ -551,20 +551,24 @@ def run_full_scan_gui(scanner):
                 watchlist_updated = True
 
     print("\n" + "="*60)
-    print("📈 【策略回測結果摘要】")
-    print("="*60)
-    for stock, data in summary.items():
-        if stock in DYNAMIC_MAP or stock in STATIC_YF_MAP:
-            print(f"🔹 {stock} {COMBINED_MAP.get(stock, ''):<4} | 勝率: {data['勝率 (%)']:>5}% | 總報酬: {data['策略累積報酬 (%)']:>6}%")
-
-    print("\n" + "="*60)
     print("🔔 【今日交易提示】")
     print("="*60)
     line_message_lines.append("🔔 【今日交易提示】")
     
     for stock, alert in alerts.items():
         stock_name = COMBINED_MAP.get(stock, "")
+        is_in_watchlist = stock in watchlist
+        
+        # 🌟 新增：過濾熱門股 (若為掃描到的熱門股，且不在監控清單內，漲幅又小於 3% 則直接略過)
+        if stock in DYNAMIC_MAP and not is_in_watchlist and alert.get('今日漲幅', 0) < 3.0:
+            continue
+
         tag = "[熱門]" if stock in DYNAMIC_MAP else "[固定]"
+        
+        # 🌟 新增：取得剛站上月線的特效標籤
+        crossed_ma20_tag = " 🌟[bold yellow]【剛站上月線】[/bold yellow]" if alert.get('剛過月線') else ""
+        crossed_ma20_line_msg = " 🌟【剛站上月線】" if alert.get('剛過月線') else ""
+        
         score = alert['今日評分']
         raw_score = alert['個股原始評分']
         market_ok = alert['大盤安全']
@@ -652,14 +656,16 @@ def run_full_scan_gui(scanner):
             status = f"⚪ 【觀望】 (綜合評分: {score}分 - 動能不足)"
             raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
             
-        print(f"{tag} {stock:<7} {stock_name:<4} | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分")
+        # 🌟 修改：在終端機輸出加上過線標籤與漲幅
+        print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}")
         print(display_log_msg)
         print(f"👉 系統判定: {status}")
         print(f"💡 建議提示: {raw_advice}\n")
         
+        # 🌟 修改：在 LINE 推播訊息加上過線標籤與漲幅
         line_prefix = "🔥" if "獨立" in status else tag
-        line_message_lines.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')})")
-        line_message_lines.append(f"收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
+        line_message_lines.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}")
+        line_message_lines.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
         line_message_lines.append(display_log_msg)
         line_message_lines.append(f"👉 {status}")
         if not market_ok:
@@ -720,10 +726,80 @@ def run_full_scan_gui(scanner):
             line_message_lines.append(f"{emoji} 報酬率: {roi}%")
             line_message_lines.append("") # 換行分隔
             
+# ... (上面是 for stock, alert in alerts.items(): 的迴圈結束) ...
+        
+# ... (上面是 for stock, alert in alerts.items(): 的迴圈結束) ...
+        
     if watchlist_updated:
         save_watchlist(watchlist)
 
-    send_line_message("\n".join(line_message_lines))
+    # 🌟 修改 1：發送「第一段」的 LINE 訊息 (今日交易提示)
+    # 判斷長度大於 2 (代表除了開頭問候與標題外，還有實際的股票內容) 才發送
+    if len(line_message_lines) > 2:
+        print("\n[系統] 準備發送第一段 LINE 推播 (今日交易提示)...")
+        send_line_message("\n".join(line_message_lines))
+        time.sleep(1.5)  # 🌟 加入 1.5 秒延遲，避免 LINE API 阻擋連續推播
+    else:
+        print("\n[系統] 今日無符合條件(>3%)的熱門股或提示，跳過第一段推播。")
+    
+    # 🌟 修改 2：清空訊息列表，準備收集「第二段」的長期監控清單
+    line_message_lines = [] 
+
+    print("\n" + "="*60)
+    print("📌 【目前長期監控清單 - 狀態同步版】")
+    print("="*60)
+    line_message_lines.append("📌 【長期監控清單】")
+
+    if not watchlist:
+        print("目前無持股標的")
+        line_message_lines.append("目前無持股標的")
+    else:
+        for stock, data in watchlist.items():
+            join_price = data.get("加入價格", 0)
+            join_date = data.get("加入日期", "未知")
+            stock_name = data.get("名稱", "")
+            
+            # --- [修復點]：強制與 logs 同步最新買進成本與日期 ---
+            if stock in logs and logs[stock]:
+                for log_entry in reversed(logs[stock]):
+                    if "🟢 買進" in log_entry:
+                        parts = log_entry.split('|')
+                        temp_date = parts[0].strip()
+                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                        if p_match:
+                            temp_price = float(p_match.group(1))
+                            join_date = temp_date
+                            join_price = temp_price
+                            data["加入日期"] = join_date
+                            data["加入價格"] = join_price
+                            watchlist_updated = True
+                        break 
+                    elif "🔴 賣出" in log_entry:
+                        break 
+            # -------------------------------------------------------------------------
+            
+            current_price = alerts.get(stock, {}).get('收盤價', 0)
+            if current_price == 0: current_price = join_price
+
+            roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
+            emoji = "🔥" if roi >= 0 else "📉"
+
+            print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
+            
+            line_message_lines.append(f"{stock_name} ({stock.replace('.TW', '')})")
+            line_message_lines.append(f"📅 買入日期: {join_date}")
+            line_message_lines.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
+            line_message_lines.append(f"{emoji} 報酬率: {roi}%")
+            line_message_lines.append("") 
+            
+    if watchlist_updated:
+        save_watchlist(watchlist)
+
+    # 🌟 修改 3：發送「第二段」的 LINE 訊息 (長期監控清單)
+    if line_message_lines:
+        print("[系統] 準備發送第二段 LINE 推播 (長期監控清單)...")
+        send_line_message("\n".join(line_message_lines))
+
     console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         print("\n[系統] 偵測到自動化環境，掃描完成後自動退出。")
