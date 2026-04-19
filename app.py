@@ -163,15 +163,14 @@ elif menu == "2. 🔎 單股深度診斷":
         # 修改為：
 
 
-        col_left, col_right = st.columns([3, 1])
-        with col_left:
-            st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
-                
-        with col_right:
-            # 這是直接帶路到技術分析線圖的關鍵連結
-            # 確保將 ticker (如 2330.TW) 放入 URL 中
-            chart_url = f"https://tw.stock.yahoo.com/quote/{ticker}/chart"
-            st.link_button("📈 技術線圖", chart_url)
+    col_left, col_right = st.columns([3, 1])
+    with col_left:
+        st.success(f"✅ 已鎖定標的： **{stock_name} ({ticker})**")
+    
+    with col_right:
+        # 只定義一次 URL，並直接使用
+        analysis_url = f"https://tw.stock.yahoo.com/quote/{ticker}/technical-analysis"
+        st.link_button("📈 技術分析", analysis_url)
 
         # --- 執行分析 ---
         with st.spinner("正在進行大數據掃描、籌碼解析與動能計算..."):
