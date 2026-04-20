@@ -609,6 +609,7 @@ def run_full_scan_gui(scanner):
                 del watchlist[stock]
                 watchlist_updated = True
                 
+        # ... (原本判斷買進訊號的區塊) ...
         elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup:
             if ambush_setup:
                 status = "🥷 【縮量黃金：右側埋伏】"
@@ -622,6 +623,10 @@ def run_full_scan_gui(scanner):
             else:
                 status = "🟢 【強力買進】"
                 raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
+            
+            # 🌟 新增這段：如果今天漲幅已經超過 7%，強制修改建議提示，防止追高
+            if alert.get('今日漲幅', 0) >= 7.0:
+                 raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
             
             # 從回測紀錄抓取真實進場點
             final_entry_date = alert["日期"]
