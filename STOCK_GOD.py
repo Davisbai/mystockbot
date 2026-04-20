@@ -442,22 +442,25 @@ class TaiwanStockTradingSystem:
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
                 "收盤價": round(float(last_day['Close']), 2),
                 "月線價": round(float(last_day['MA20']), 2),
-                "今日漲幅": round(float(last_day['Returns']) * 100, 2) if not pd.isna(last_day['Returns']) else 0, # 🌟 新增：計算今日漲幅 %
-                "剛過月線": bool(last_day.get('Just_Crossed_MA20', False)), # 🌟 新增：傳遞過月線狀態
+                "今日漲幅": round(float(last_day['Returns']) * 100, 2) if not pd.isna(last_day['Returns']) else 0,
+                "剛過月線": bool(last_day.get('Just_Crossed_MA20', False)),
                 "大盤安全": bool(last_day['Market_OK']),
                 "今日評分": int(last_day['Score']),
                 "個股原始評分": int(last_day['Raw_Score']),
                 "是否觸發賣出": bool(last_day['Sell_Signal']),
                 "獨立行情": bool(last_day['Independent_Alpha']),
                 "RS斜率": round(float(last_day['RS_Slope']), 4),
-                # 🌊 將新的精髓訊號傳遞給前端 UI
                 "沉寂發動": bool(last_day.get('Quiet_Momentum', False)),
                 "沉寂多時": bool(last_day.get('Long_Quiet', False)),
                 "假跌破": bool(last_day.get('Fake_Break', False)),
                 "專業起漲": bool(last_day.get('Pro_Bottom_Breakout', False)),
                 "縮量埋伏": bool(last_day.get('Ambush_Setup', False)),
                 "高檔背離": bool(last_day.get('Top_Divergence', False)),
-                "乖離過大": bool(last_day.get('Overextended_MA5', False))
+                "乖離過大": bool(last_day.get('Overextended_MA5', False)),
+                
+                # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
+                "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
+                "MACD_訊號": float(last_day.get('Signal_Custom', 0.0))
             }
             
         return results_summary, daily_alerts, trade_logs
@@ -588,14 +591,21 @@ def run_full_scan_gui(scanner):
         last_trade_msg = logs[stock][-1] if stock in logs and logs[stock] else "無近期紀錄"
         display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
 
+        # ... (前面保留) ...
         is_rebel = (not market_ok and raw_score >= 75)
+        
+        # 提取新訊號
         pro_bottom_breakout = alert.get('專業起漲', False)
         ambush_setup = alert.get('縮量埋伏', False)
         is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+        fake_break = alert.get('假跌破', False)
         
-        # 預設 final_entry_date 避免錯誤
-        final_entry_date = ""
-        final_entry_price = 0.0
+        # 🌟 取得專用的 MACD (10, 20, 8) 數值
+        macd_val = alert.get('MACD_數值', 0.0)
+        macd_sig = alert.get('MACD_訊號', 0.0)
+        
+        # 🌟 判斷是否符合「水上」或「水下黃金交叉」
+        macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
         if alert["是否觸發賣出"]:
             if is_top_divergent:
@@ -609,9 +619,18 @@ def run_full_scan_gui(scanner):
                 del watchlist[stock]
                 watchlist_updated = True
                 
-        # ... (原本判斷買進訊號的區塊) ...
-        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup:
-            if ambush_setup:
+        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
+            
+            # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
+            if fake_break and not macd_pass:
+                status = "🟡 【列入觀察/少量試單】"
+                raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
+            elif fake_break and macd_pass:
+                status = "🟢 【強力買進】 (假跌破 + 動能確認)"
+                raw_advice = "🔥 【綠燈放行】 假跌破真拉抬，且 MACD(10,20,8) 已翻轉，可強力試單"
+                
+            # 下方為原有其他訊號邏輯
+            elif ambush_setup:
                 status = "🥷 【縮量黃金：右側埋伏】"
                 raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
             elif pro_bottom_breakout:
@@ -624,9 +643,12 @@ def run_full_scan_gui(scanner):
                 status = "🟢 【強力買進】"
                 raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
             
-            # 🌟 新增這段：如果今天漲幅已經超過 7%，強制修改建議提示，防止追高
+            # 🌟 防追高警示濾網
             if alert.get('今日漲幅', 0) >= 7.0:
                  raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
+
+            # 從回測紀錄抓取真實進場點
+            # ... (後續 final_entry_date 相關代碼保持不變) ...
             
             # 從回測紀錄抓取真實進場點
             final_entry_date = alert["日期"]
