@@ -595,7 +595,6 @@ def run_full_scan_gui(scanner):
         is_rebel = (not market_ok and raw_score >= 75)
         
         # 提取新訊號
-        # ... (前面提取 alert 參數的區塊保留) ...
         pro_bottom_breakout = alert.get('專業起漲', False)
         ambush_setup = alert.get('縮量埋伏', False)
         is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
@@ -605,13 +604,8 @@ def run_full_scan_gui(scanner):
         macd_val = alert.get('MACD_數值', 0.0)
         macd_sig = alert.get('MACD_訊號', 0.0)
         
-        # 定義最高指導原則：水上 (大於零軸) 才算多頭趨勢
-        is_water_above = (macd_val > 0)
-        macd_golden_cross = (macd_val > macd_sig)
-
-        # 預設 final_entry_date 避免錯誤
-        final_entry_date = ""
-        final_entry_price = 0.0
+        # 🌟 判斷是否符合「水上」或「水下黃金交叉」
+        macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
         if alert["是否觸發賣出"]:
             if is_top_divergent:
@@ -627,43 +621,31 @@ def run_full_scan_gui(scanner):
                 
         elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
             
-            # 1. 先判定「假設沒有 MACD 濾網」時的原始型態訊號
-            if ambush_setup:
-                base_status = "🥷 【縮量黃金：右側埋伏】"
-                base_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
-            elif pro_bottom_breakout:
-                base_status = "🌊 【VCP 波動收斂突破】"
-                base_advice = "🔥 【強力買進】 籌碼極限壓縮突破，建議建立核心部位"
-            elif fake_break:
-                base_status = "🟢 【強力買進】 (假跌破真拉抬)"
-                base_advice = "🔥 【強力試單】 洗盤結束，準備發動"
-            elif is_rebel:
-                base_status = "⚡ 【無視大盤：獨立強勢】"
-                base_advice = "🔥 【建議進場/續抱】 (個股展現獨立特質)"
-            else:
-                base_status = "🟢 【強力買進】"
-                base_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
-
-            # 2. 🛑 執行最高位階審查：MACD (10, 20, 8) 霸王條款 🛑
-            if not is_water_above:
-                # 只要在水下，無條件觸發降級機制！
-                if macd_golden_cross:
-                    status = "🟡 【列入觀察/少量試單】 (水下金叉)"
-                    raw_advice = f"🟡 【降級判定】 型態成立，但 MACD(10,20,8) 仍在水下，動能未確認，僅限少量試單。"
-                else:
-                    status = "⚪ 【嚴格觀望】 (水下且未金叉)"
-                    raw_advice = f"⚪ 【強制退件】 MACD(10,20,8) 顯著水下，長線空方慣性仍在，拒絕接刀！"
-            else:
-                # 水上！正式放行原始綠燈訊號
-                status = base_status
-                raw_advice = base_advice
+            # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
+            if fake_break and not macd_pass:
+                status = "🟡 【列入觀察/少量試單】"
+                raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
+            elif fake_break and macd_pass:
+                status = "🟢 【強力買進】 (假跌破 + 動能確認)"
+                raw_advice = "🔥 【綠燈放行】 假跌破真拉抬，且 MACD(10,20,8) 已翻轉，可強力試單"
                 
-            # 3. 疊加防追高濾網
-            if alert.get('今日漲幅', 0) >= 7.0 and ("買" in status or "試單" in status):
+            # 下方為原有其他訊號邏輯
+            elif ambush_setup:
+                status = "🥷 【縮量黃金：右側埋伏】"
+                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
+            elif pro_bottom_breakout:
+                status = "🌊 【VCP 波動收斂突破】"
+                raw_advice = "🔥 【強力買進】 MACD 零軸啟動，建議建立核心部位"
+            elif is_rebel:
+                status = "⚡ 【無視大盤：獨立強勢】"
+                raw_advice = "🔥 【建議進場/續抱】 (個股展現獨立特質)"
+            else:
+                status = "🟢 【強力買進】"
+                raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
+            
+            # 🌟 防追高警示濾網
+            if alert.get('今日漲幅', 0) >= 7.0:
                  raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
-
-            # 從回測紀錄抓取真實進場點
-            # ... (下面抓取 logs 迴圈與 watchlist 的程式碼保持不變) ...
 
             # 從回測紀錄抓取真實進場點
             # ... (後續 final_entry_date 相關代碼保持不變) ...
