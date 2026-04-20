@@ -252,45 +252,29 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 5. 核心判定與濾網邏輯 (完全同步) ---
+                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 完全同步) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
+                is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
 
                 if alert.get("是否觸發賣出"):
-                    if is_top_divergent:
-                        st.error("🚨 **【高檔警報：獲利了結】** (爆量滯漲或乖離過大，主力可能在出貨)")
+                    st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
+                elif score >= 60:
+                    if not ai_success or meta_prob >= 0.6:
+                        # 原本要強力買進，但如果今天已經漲超 7%，強制攔截
+                        if is_chasing_high:
+                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
+                        else:
+                            st.success("👉 最終判定: 🟢 **【強力買進】**")
+                            add_to_watchlist_flag = True
                     else:
-                        st.error("🔴 **【強制賣出/停損訊號】** (指標轉弱或破月線)")
-                
-                elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
-                    
-                    # 判定原始型態
-                    if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
-                    elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
-                    elif fake_break: base_status = "🟢 【假跌破真拉抬】"
-                    elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
-                    else: base_status = "🟢 【強力買進】"
-
-                    # 🛑 MACD 霸王條款審查 (完美貼合筆記邏輯)
-                    if is_water_above or macd_golden_cross:
-                        st.success(f"🔥 **{base_status}** (型態與 MACD 雙重確認放行)")
-                        add_to_watchlist_flag = True
-                    else:
-                        st.warning(f"🟡 **【降級：列入觀察 / 少量試單】** 型態為 {base_status}，但 MACD(10,20,8) 處於水下且未金叉，動能不足以支撐突破。")
-
-                    # 疊加防追高濾網
-                    if today_return >= 7.0 and add_to_watchlist_flag:
-                        st.warning("⚠️ **【切勿追高】** (今日已大漲表態，請耐心等待量縮回檔再佈局)")
-                        add_to_watchlist_flag = False
-
+                        # AI 擋下來的情況
+                        if is_chasing_high:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (今日漲幅大且 AI 勝率過低，慎防假突破)")
+                        else:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面 OK 但 AI 勝率過低)")
                 else:
-                    st.info("⚪ **【建議觀望】** (綜合評分與動能不足)")
-
-                # --- 6. AI 勝率二次濾網 ---
-                if add_to_watchlist_flag and ai_success:
-                    if meta_prob < 0.6:
-                        st.warning(f"🤖 **【AI 降級觀望】** 技術面達標，但 AI 次階模型預測勝率僅 {meta_prob*100:.1f}%，建議保守。")
-                        add_to_watchlist_flag = False
+                    st.info("👉 最終判定: ⚪ **【建議觀望】**")
 
                 # --- 7. 自動收錄至長期監控清單 ---
                 if add_to_watchlist_flag:
