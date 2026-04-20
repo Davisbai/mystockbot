@@ -117,6 +117,9 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎與防追高邏輯)
 # ==========================================
+# ==========================================
+# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
+# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
@@ -208,11 +211,13 @@ elif menu == "2. 🔎 單股深度診斷":
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
-                is_rebel = (not market_ok and raw_score >= 75)
+                # 提取洗盤與變盤特徵
                 pro_bottom_breakout = alert.get('專業起漲', False)
                 ambush_setup = alert.get('縮量埋伏', False)
-                is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
                 fake_break = alert.get('假跌破', False)
+                long_quiet = alert.get('沉寂多時', False)
+                quiet_momentum = alert.get('沉寂發動', False)
+                is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
                 
                 macd_val = alert.get('MACD_數值', 0.0)
                 macd_sig = alert.get('MACD_訊號', 0.0)
@@ -255,28 +260,26 @@ elif menu == "2. 🔎 單股深度診斷":
                 # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 完全同步) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
-                is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
+                is_chasing_high = today_return >= 7.0
 
                 if alert.get("是否觸發賣出"):
                     st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
                 elif score >= 60:
                     if not ai_success or meta_prob >= 0.6:
-                        # 原本要強力買進，但如果今天已經漲超 7%，強制攔截
                         if is_chasing_high:
-                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
+                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return}%, 已大漲表態，請耐心等待量縮回檔)")
                         else:
                             st.success("👉 最終判定: 🟢 **【強力買進】**")
                             add_to_watchlist_flag = True
                     else:
-                        # AI 擋下來的情況
                         if is_chasing_high:
                             st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (今日漲幅大且 AI 勝率過低，慎防假突破)")
                         else:
-                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面 OK 但 AI 勝率過低)")
+                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面達標但 AI 勝率過低)")
                 else:
-                    st.info("👉 最終判定: ⚪ **【建議觀望】**")
+                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
-                # --- 7. 自動收錄至長期監控清單 ---
+                # --- 6. 自動收錄至長期監控清單 ---
                 if add_to_watchlist_flag:
                     watchlist = load_watchlist()
                     entry_date = alert["日期"]
@@ -300,18 +303,28 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 8. 主力行為細節與歷史紀錄 ---
+                # --- 7. 主力行為細節與歷史紀錄 (完美還原截圖與 UI 介面) ---
                 col_l, col_r = st.columns(2)
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
-                    if alert.get('高檔背離') or alert.get('乖離過大'):
+                    if is_top_divergent:
                         st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖離過大。切勿追高。")
                     elif fake_break:
-                        st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n殺破支撐後迅速收回，下方籌碼已換手，後市看好。")
-                    elif alert.get('縮量埋伏'):
+                        st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n近期刻意殺破支撐後迅速收回。這代表主力洗盤成功，下方籌碼已換手，後市看好。")
+                    elif ambush_setup:
                         st.info("🎭 **偵測到【縮量洗盤】**\n\n股價回落且量能極度萎縮。主力正在壓低吃貨。")
                     else:
                         st.write("📊 目前無極端的洗盤或出貨特徵。")
+
+                    st.markdown("### 🚀 變盤與攻擊預警")
+                    if quiet_momentum:
+                        st.success("🌋 **標的特徵：【沉寂後帶量噴發】**\n\n經歷長期的窄幅震盪後，今日突然爆量起漲。此為明確的變盤攻擊訊號！")
+                    elif long_quiet:
+                        st.info("🧘 **標的特徵：【橫盤沉寂中】**\n\n股價已長時間處於窄幅震盪區間 (震幅 < 10%)。這是在蹲下準備跳躍，建議先加入觀察，一旦帶量突破將是噴發。")
+                    elif pro_bottom_breakout:
+                        st.success("🌊 **標的特徵：【VCP 波動收斂突破】**\n\n籌碼極限壓縮後今日帶量突破，建議建立核心部位。")
+                    else:
+                        st.write("📊 目前無明顯的變盤特徵。")
 
                 with col_r:
                     st.markdown("### 📋 最近交易紀錄")
@@ -323,7 +336,6 @@ elif menu == "2. 🔎 單股深度診斷":
 
             except Exception as e:
                 st.error(f"執行分析時發生錯誤: {e}")
-
 # ==========================================
 # 3️⃣ 策略回測
 # ==========================================
