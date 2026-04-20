@@ -644,29 +644,20 @@ def run_full_scan_gui(scanner):
                 base_status = "🟢 【強力買進】"
                 base_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
 
-            # 2. 🛑 執行最高位階審查：MACD (10, 20, 8) 霸王條款 🛑
-            if not is_water_above:
-                # 只要在水下，無條件觸發降級機制！
-                if macd_golden_cross:
-                    status = "🟡 【列入觀察/少量試單】 (水下金叉)"
-                    raw_advice = f"🟡 【降級判定】 型態成立，但 MACD(10,20,8) 仍在水下，動能未確認，僅限少量試單。"
-                else:
-                    status = "⚪ 【嚴格觀望】 (水下且未金叉)"
-                    raw_advice = f"⚪ 【強制退件】 MACD(10,20,8) 顯著水下，長線空方慣性仍在，拒絕接刀！"
-            else:
-                # 水上！正式放行原始綠燈訊號
+           # 2. 🛑 執行最高位階審查：MACD (10, 20, 8) 霸王條款 🛑
+            if is_water_above or macd_golden_cross:
+                # 水上，或是水下但已經黃金交叉 -> 綠燈放行
                 status = base_status
                 raw_advice = base_advice
+            else:
+                # 水下且死叉 -> 黃燈降級
+                status = "🟡 【列入觀察/少量試單】 (水下且未金叉)"
+                raw_advice = f"🟡 【降級判定】 型態成立，但 MACD(10,20,8) 仍在水下且未金叉，動能未確認，僅限少量試單。"
                 
             # 3. 疊加防追高濾網
             if alert.get('今日漲幅', 0) >= 7.0 and ("買" in status or "試單" in status):
                  raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
 
-            # 從回測紀錄抓取真實進場點
-            # ... (下面抓取 logs 迴圈與 watchlist 的程式碼保持不變) ...
-
-            # 從回測紀錄抓取真實進場點
-            # ... (後續 final_entry_date 相關代碼保持不變) ...
             
             # 從回測紀錄抓取真實進場點
             final_entry_date = alert["日期"]

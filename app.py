@@ -271,15 +271,12 @@ elif menu == "2. 🔎 單股深度診斷":
                     elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
                     else: base_status = "🟢 【強力買進】"
 
-                    # 🛑 MACD 霸王條款審查
-                    if not is_water_above:
-                        if macd_golden_cross:
-                            st.warning(f"🟡 **【降級：少量試單】** 型態為 {base_status}，但 MACD 仍在水下，動能未確認。")
-                        else:
-                            st.info(f"⚪ **【強制退件：嚴格觀望】** MACD 顯著水下，長線空方慣性仍在，拒絕接刀！")
-                    else:
+                    # 🛑 MACD 霸王條款審查 (完美貼合筆記邏輯)
+                    if is_water_above or macd_golden_cross:
                         st.success(f"🔥 **{base_status}** (型態與 MACD 雙重確認放行)")
                         add_to_watchlist_flag = True
+                    else:
+                        st.warning(f"🟡 **【降級：列入觀察 / 少量試單】** 型態為 {base_status}，但 MACD(10,20,8) 處於水下且未金叉，動能不足以支撐突破。")
 
                     # 疊加防追高濾網
                     if today_return >= 7.0 and add_to_watchlist_flag:
