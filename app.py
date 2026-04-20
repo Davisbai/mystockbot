@@ -114,6 +114,9 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎與防追高邏輯)
 # ==========================================
+# ==========================================
+# 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎與防追高邏輯)
+# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
@@ -166,109 +169,163 @@ elif menu == "2. 🔎 單股深度診斷":
             st.link_button("📈 技術分析", analysis_url)
 
         # --- 執行分析 ---
-        with st.spinner("正在下載數據並執行 AI 深度診斷..."):
-            # 1. 傳統技術與籌碼分析
-            system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
-            if st.session_state.cached_market_data is None:
-                system.fetch_market_data()
-                st.session_state.cached_market_data = system.market_data
-            else:
-                system.market_data = st.session_state.cached_market_data
-            summary, alerts, logs = system.run_analysis()
-            
-            # 2. AI Meta-Labeling 模型診斷
-            ai_engine = AdvancedQuantEngine(ticker=ticker)
-            meta_prob, regime_idx, ai_success = 0.0, None, False
-            if ai_engine.fetch_data(period="2y"):
-                ai_engine.detect_market_regime()
-                ai_engine.apply_triple_barrier()
-                if ai_engine.train_meta_labeling_model():
-                    latest_ai = ai_engine.data.iloc[-1]
-                    regime_idx = int(latest_ai['Regime'])
-                    feat = latest_ai[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
-                    meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
-                    ai_success = True
-                    
-            REGIME_DESC = {
-                0: "🟢 低波動穩定期",
-                1: "🔴 高波動混亂期",
-                2: "🟡 轉折過渡期"
-            }
+        with st.spinner("正在下載數據並執行系統與 AI 雙重診斷..."):
+            try:
+                # 1. 傳統技術與籌碼分析
+                system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                if st.session_state.cached_market_data is None:
+                    system.fetch_market_data()
+                    st.session_state.cached_market_data = system.market_data
+                else:
+                    system.market_data = st.session_state.cached_market_data
+                summary, alerts, logs = system.run_analysis()
+                
+                if ticker not in alerts:
+                    st.error(f"❌ Yahoo Finance 無法取得 {ticker} 的歷史資料。")
+                    st.stop()
 
-            if ticker in alerts:
+                # 2. AI Meta-Labeling 模型診斷
+                ai_engine = AdvancedQuantEngine(ticker=ticker)
+                meta_prob, regime_idx, ai_success = 0.0, None, False
+                if ai_engine.fetch_data(period="2y"):
+                    ai_engine.detect_market_regime()
+                    ai_engine.apply_triple_barrier()
+                    if ai_engine.train_meta_labeling_model():
+                        latest_ai = ai_engine.data.iloc[-1]
+                        regime_idx = int(latest_ai['Regime'])
+                        feat = latest_ai[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
+                        meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
+                        ai_success = True
+
+                # --- 3. 提取進階訊號 ---
                 alert = alerts[ticker]
                 stock_logs = logs.get(ticker, [])
+                score = alert['今日評分']
+                raw_score = alert['個股原始評分']
+                market_ok = alert['大盤安全']
+                today_return = alert.get('今日漲幅', 0.0)
                 
+                mkt_close = float(system.market_data['Close'].iloc[-1])
+                mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
+                
+                is_rebel = (not market_ok and raw_score >= 75)
+                pro_bottom_breakout = alert.get('專業起漲', False)
+                ambush_setup = alert.get('縮量埋伏', False)
+                is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+                fake_break = alert.get('假跌破', False)
+                
+                macd_val = alert.get('MACD_數值', 0.0)
+                macd_sig = alert.get('MACD_訊號', 0.0)
+                is_water_above = (macd_val > 0)
+                macd_golden_cross = (macd_val > macd_sig)
+
+                # --- 4. 繪製 Streamlit 數據面板 ---
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
+                st.markdown("### 📊 核心數據儀表板")
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric(label="今日收盤價", value=f"{alert['收盤價']:.2f}", delta=f"{today_return:.2f}%")
+                
+                ma20_status = "🌟 剛站上月線" if alert.get('剛過月線') else f"與月線乖離: {(alert['收盤價']-alert['月線價']):.2f}"
+                col2.metric(label="月線 (MA20)", value=f"{alert['月線價']:.2f}", delta=ma20_status, delta_color="off")
+                
+                col3.metric(label="技術籌碼評分", value=f"{score} 分", delta=f"原始: {raw_score}分", delta_color="off")
 
-                # --- 核心數據儀表板 (整合 AI 預測) ---
-                st.markdown("### 📊 系統深度診斷報告")
-                c1, c2, c3 = st.columns(3)
-                c1.metric("收盤價", f"{alert['收盤價']:.2f}")
-                c2.metric("月線 (MA20)", f"{alert['月線價']:.2f}", f"{(alert['收盤價']-alert['月線價']):.2f}")
-                c3.metric("大盤狀態", "✅ 安全" if alert['大盤安全'] else "❌ 警戒")
+                st.markdown("#### 🔍 趨勢與 AI 狀態")
+                mkt_status = "🟢 站上月線 (安全)" if market_ok else "🔴 跌破月線 (風險)"
+                macd_str = "🟢 水上" if is_water_above else "🔴 水下"
+                macd_cross_str = "金叉" if macd_golden_cross else "死叉"
+                
+                st.write(f"- **大盤狀態**: {mkt_status} (指數: {mkt_close:.0f} | 月線: {mkt_ma20:.0f})")
+                st.write(f"- **MACD (10,20,8)**: {macd_str} ({macd_cross_str}) | DIF: {macd_val:.2f}")
 
-                c4, c5, c6 = st.columns(3)
-                c4.metric("技術籌碼評分", f"{alert['今日評分']}分")
                 if ai_success:
-                    c5.metric("AI 預測勝率", f"{meta_prob*100:.1f}%")
-                    c6.metric("GMM 市場狀態", REGIME_DESC.get(regime_idx, "未知"))
+                    REGIME_DESC = {
+                        0: "🟢 0 低波動穩定期 (多頭特徵)",
+                        1: "🔴 1 高波動混亂期 (空頭或洗盤)",
+                        2: "🟡 2 轉折過渡期 (動能改變中)"
+                    }
+                    st.write(f"- **GMM 市場狀態**: {REGIME_DESC.get(regime_idx, '未知狀態')}")
+                    st.write(f"- **AI 預測勝率**: **{meta_prob*100:.1f}%**")
                 else:
-                    c5.metric("AI 預測勝率", "樣本不足")
-                    c6.metric("GMM 市場狀態", "N/A")
+                    st.write("- **AI 預測**: 樣本不足，無法判定")
 
                 st.markdown("---")
-                
-                # --- 🎯 最終系統判定與防追高邏輯 ---
+
+                # --- 5. 核心判定與濾網邏輯 (完全同步) ---
                 st.markdown("### 🎯 最終系統判定")
-                is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
-                
+                add_to_watchlist_flag = False
+
                 if alert.get("是否觸發賣出"):
-                    st.error("👉 **最終判定: 🔴 【建議賣出/停損】**")
-                elif alert['今日評分'] >= 60:
-                    if not ai_success or meta_prob >= 0.6:
-                        if is_chasing_high:
-                            st.warning(f"👉 **最終判定: ⚠️ 【切勿追高】**\n\n(今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
-                        else:
-                            st.success("👉 **最終判定: 🟢 【強力買進】**")
-                            
-                            # 自動寫入長期監控清單
-                            watchlist = load_watchlist()
-                            entry_date = alert["日期"]
-                            entry_price = alert["收盤價"]
-                            
-                            if stock_logs:
-                                for log_entry in reversed(stock_logs):
-                                    if "🟢 買進" in log_entry:
-                                        parts = log_entry.split('|')
-                                        entry_date = parts[0].strip()
-                                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
-                                        if p_match: entry_price = float(p_match.group(1))
-                                        break
-                                    elif "🔴 賣出" in log_entry:
-                                        break
-                                        
-                            if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
-                                watchlist[ticker] = {"名稱": stock_name, "加入日期": entry_date, "加入價格": entry_price}
-                                save_watchlist(watchlist)
-                                st.toast(f"🌟 已自動將 {stock_name} 納入長期監控清單！", icon="✅")
+                    if is_top_divergent:
+                        st.error("🚨 **【高檔警報：獲利了結】** (爆量滯漲或乖離過大，主力可能在出貨)")
                     else:
-                        if is_chasing_high:
-                            st.warning("👉 **最終判定: 🟡 【建議觀望 / ⚠️ 切勿追高】**\n\n(今日漲幅大且 AI 勝率過低，慎防假突破)")
+                        st.error("🔴 **【強制賣出/停損訊號】** (指標轉弱或破月線)")
+                
+                elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
+                    
+                    # 判定原始型態
+                    if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
+                    elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
+                    elif fake_break: base_status = "🟢 【假跌破真拉抬】"
+                    elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
+                    else: base_status = "🟢 【強力買進】"
+
+                    # 🛑 MACD 霸王條款審查
+                    if not is_water_above:
+                        if macd_golden_cross:
+                            st.warning(f"🟡 **【降級：少量試單】** 型態為 {base_status}，但 MACD 仍在水下，動能未確認。")
                         else:
-                            st.warning("👉 **最終判定: 🟡 【建議觀望】**\n\n(技術面 OK 但 AI 勝率過低)")
+                            st.info(f"⚪ **【強制退件：嚴格觀望】** MACD 顯著水下，長線空方慣性仍在，拒絕接刀！")
+                    else:
+                        st.success(f"🔥 **{base_status}** (型態與 MACD 雙重確認放行)")
+                        add_to_watchlist_flag = True
+
+                    # 疊加防追高濾網
+                    if today_return >= 7.0 and add_to_watchlist_flag:
+                        st.warning("⚠️ **【切勿追高】** (今日已大漲表態，請耐心等待量縮回檔再佈局)")
+                        add_to_watchlist_flag = False
+
                 else:
-                    st.info("👉 **最終判定: ⚪ 【建議觀望】**")
+                    st.info("⚪ **【建議觀望】** (綜合評分與動能不足)")
+
+                # --- 6. AI 勝率二次濾網 ---
+                if add_to_watchlist_flag and ai_success:
+                    if meta_prob < 0.6:
+                        st.warning(f"🤖 **【AI 降級觀望】** 技術面達標，但 AI 次階模型預測勝率僅 {meta_prob*100:.1f}%，建議保守。")
+                        add_to_watchlist_flag = False
+
+                # --- 7. 自動收錄至長期監控清單 ---
+                if add_to_watchlist_flag:
+                    watchlist = load_watchlist()
+                    entry_date = alert["日期"]
+                    entry_price = alert["收盤價"]
+                    
+                    if stock_logs:
+                        for log_entry in reversed(stock_logs):
+                            if "🟢 買進" in log_entry:
+                                parts = log_entry.split('|')
+                                entry_date = parts[0].strip()
+                                p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                                if p_match: entry_price = float(p_match.group(1))
+                                break
+                            elif "🔴 賣出" in log_entry: break
+                    
+                    if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
+                        watchlist[ticker] = {"名稱": stock_name, "加入日期": entry_date, "加入價格": entry_price}
+                        save_watchlist(watchlist)
+                        st.balloons() # 加入慶祝特效
+                        st.success(f"📌 **已自動將 {stock_name} ({ticker}) 納入長期監控清單！** (紀錄成本: {entry_price})")
 
                 st.markdown("---")
 
-                # --- 主力行為細節與歷史紀錄 ---
+                # --- 8. 主力行為細節與歷史紀錄 ---
                 col_l, col_r = st.columns(2)
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
                     if alert.get('高檔背離') or alert.get('乖離過大'):
                         st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖離過大。切勿追高。")
-                    elif alert.get('假跌破'):
+                    elif fake_break:
                         st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n殺破支撐後迅速收回，下方籌碼已換手，後市看好。")
                     elif alert.get('縮量埋伏'):
                         st.info("🎭 **偵測到【縮量洗盤】**\n\n股價回落且量能極度萎縮。主力正在壓低吃貨。")
@@ -282,8 +339,9 @@ elif menu == "2. 🔎 單股深度診斷":
                             st.text(f"• {log}")
                     else:
                         st.write("今日無特別系統紀錄。")
-            else:
-                st.error("❌ 無法獲取該股票的歷史資料，請確認代碼是否正確或剛上市。")
+
+            except Exception as e:
+                st.error(f"執行分析時發生錯誤: {e}")
 
 # ==========================================
 # 3️⃣ 策略回測
