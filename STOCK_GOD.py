@@ -867,45 +867,56 @@ def run_single_query_mode_gui():
             console.print(diag_table)
             console.print("-" * 40)
 
-            # 最終決策建議
+            # ==========================================
+            # 🌟 修改點：最終決策建議 (加入切勿追高防呆)
+            # ==========================================
+            is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
+
             if alert["是否觸發賣出"]:
                 console.print("👉 最終判定: [bold red]🔴 【建議賣出/停損】[/bold red]")
             elif alert['今日評分'] >= 60:
                 if not ai_success or meta_prob >= 0.6:
-                    console.print(f"👉 最終判定: [bold green]🟢 【強力買進】[/bold green]")
-                    
-                    # --- [新增]：自動收錄至長期監控清單 ---
-                    watchlist = load_watchlist()
-                    
-                    # 從 logs 中精準抓取 MACD 策略的真實進場點 (與 Menu 1 邏輯同步)
-                    entry_date = alert["日期"]
-                    entry_price = alert["收盤價"]
-                    
-                    if ticker in logs and logs[ticker]:
-                        for log_entry in reversed(logs[ticker]):
-                            if "🟢 買進" in log_entry:
-                                parts = log_entry.split('|')
-                                entry_date = parts[0].strip()
-                                p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
-                                if p_match:
-                                    entry_price = float(p_match.group(1))
-                                break # 找到最近一次買進即停止
-                            elif "🔴 賣出" in log_entry:
-                                break
-                    
-                    # 如果清單內沒有這檔股票，或者需要更新最新買點，就進行寫入
-                    if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
-                        watchlist[ticker] = {
-                            "名稱": stock_name,
-                            "加入日期": entry_date,
-                            "加入價格": entry_price
-                        }
-                        save_watchlist(watchlist)
-                        console.print(f"🌟 [bold cyan]【自動收錄】已將 {stock_name} ({ticker}) 納入長期監控清單！(紀錄成本: {entry_price})[/bold cyan]")
-                    # ----------------------------------------------------
-                    
+                    # 原本要強力買進，但如果今天已經漲超 7%，強制攔截
+                    if is_chasing_high:
+                         console.print(f"👉 最終判定: [bold yellow]⚠️ 【切勿追高】[/bold yellow] (今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
+                    else:
+                        console.print(f"👉 最終判定: [bold green]🟢 【強力買進】[/bold green]")
+                        
+                        # --- [新增]：自動收錄至長期監控清單 ---
+                        watchlist = load_watchlist()
+                        
+                        # 從 logs 中精準抓取 MACD 策略的真實進場點
+                        entry_date = alert["日期"]
+                        entry_price = alert["收盤價"]
+                        
+                        if ticker in logs and logs[ticker]:
+                            for log_entry in reversed(logs[ticker]):
+                                if "🟢 買進" in log_entry:
+                                    parts = log_entry.split('|')
+                                    entry_date = parts[0].strip()
+                                    p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                                    if p_match:
+                                        entry_price = float(p_match.group(1))
+                                    break # 找到最近一次買進即停止
+                                elif "🔴 賣出" in log_entry:
+                                    break
+                        
+                        # 如果清單內沒有這檔股票，或者需要更新最新買點，就進行寫入
+                        if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
+                            watchlist[ticker] = {
+                                "名稱": stock_name,
+                                "加入日期": entry_date,
+                                "加入價格": entry_price
+                            }
+                            save_watchlist(watchlist)
+                            console.print(f"🌟 [bold cyan]【自動收錄】已將 {stock_name} ({ticker}) 納入長期監控清單！(紀錄成本: {entry_price})[/bold cyan]")
+                        # ----------------------------------------------------
                 else:
-                    console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術面 OK 但 AI 勝率過低)")
+                    # AI 擋下來的情況
+                    if is_chasing_high:
+                        console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望 / ⚠️ 切勿追高】[/bold yellow] (今日漲幅大且 AI 勝率過低，慎防假突破)")
+                    else:
+                        console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術面 OK 但 AI 勝率過低)")
             else:
                 console.print(f"👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white]")
 
