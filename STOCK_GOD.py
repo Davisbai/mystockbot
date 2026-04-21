@@ -797,21 +797,19 @@ def run_full_scan_gui(scanner):
 # ==========================================
 # 2️⃣ 單股查詢模組 (修正名稱識別與代碼轉換)
 # ==========================================
-# ==========================================
-# 2️⃣ 單股查詢模組 (整合 AI 診斷 + 市場狀態文字說明 + 同步判定邏輯)
-# ==========================================
 def run_single_query_mode_gui():
     # GMM 狀態說明
     REGIME_DESC = {
-        0: "🟢 0 [bold green]低波動穩定期[/bold green] (多頭特徵)",
-        1: "🔴 1 [bold red]高波動混亂期[/bold red] (空頭或洗盤)",
-        2: "🟡 2 [bold yellow]轉折過渡期[/bold yellow] (動能改變中)"
+        0: "🟢 0 [bold green]低波動穩定期[/bold green] (多頭特徵，價格緩步推升)",
+        1: "🔴 1 [bold red]高波動混亂期[/bold red] (空頭或洗盤，價格起伏巨大)",
+        2: "🟡 2 [bold yellow]轉折過渡期[/bold yellow] (動能改變中，趨勢尚未明確)"
     }
 
     while True:
         console.print("\n" + "="*60)
-        console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (與 Web 版同步)[/bold yellow]")
-        user_input = console.input("👉 [bold cyan]請輸入股票代碼或名稱 (q 離開):[/bold cyan] ").strip()
+        console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (Meta-Labeling v3.0)[/bold yellow]")
+        console.print("[dim]提示：輸入「2884」或「玉山金」皆可；輸入 'q' 返回[/dim]")
+        user_input = console.input("👉 [bold cyan]請輸入股票代碼或名稱:[/bold cyan] ").strip()
         
         if not user_input or user_input.lower() == 'q':
             break
@@ -819,44 +817,62 @@ def run_single_query_mode_gui():
         ticker = ""
         stock_name = ""
 
-        # --- 1. 自動辨識邏輯 ---
+        # --- 1. 強化版代碼與市場自動辨識 ---
         try:
+            import twstock
             if user_input.isdigit():
                 if user_input in twstock.codes:
                     stock_info = twstock.codes[user_input]
-                    ticker = f"{user_input}.TW" if "上市" in stock_info.market else f"{user_input}.TWO"
+                    suffix = ".TW" if "上市" in stock_info.market else ".TWO"
+                    ticker = f"{user_input}{suffix}"
                     stock_name = stock_info.name
-                else: ticker, stock_name = f"{user_input}.TW", user_input
+                else:
+                    ticker = f"{user_input}.TW"
+                    stock_name = user_input
             else:
                 found = False
                 for code, info in twstock.codes.items():
                     if user_input == info.name:
-                        ticker = f"{code}.TW" if "上市" in info.market else f"{code}.TWO"
+                        suffix = ".TW" if "上市" in info.market else ".TWO"
+                        ticker = f"{code}{suffix}"
                         stock_name = info.name
-                        found = True; break
+                        found = True
+                        break
                 if not found:
                     for k, v in STOCK_MAP.items():
-                        if user_input in v: ticker, stock_name = k, v; found = True; break
+                        if user_input in v:
+                            ticker = k
+                            stock_name = v
+                            found = True
+                            break
                 if not found:
-                    console.print(f"[bold red]❌ 無法辨識「{user_input}」。[/bold red]"); continue
-        except Exception:
-            ticker, stock_name = f"{user_input}.TW", user_input
+                    console.print(f"[bold red]❌ 錯誤：無法辨識「{user_input}」。[/bold red]")
+                    continue
+        except Exception as e:
+            ticker = f"{user_input}.TW" if user_input.isdigit() else user_input
+            console.print(f"[dim red]注意：twstock 運作異常，採用預設模式...[/dim red]")
 
-        console.print(f"\n[bold green]✅ 已鎖定標的：{stock_name} ({ticker})[/bold green]")
+        console.print(f"\n[bold green]✅ 已識別：{stock_name} ({ticker})[/bold green]")
 
         # --- 2. 執行分析 ---
         try:
-            with console.status(f"[bold green]正在執行系統與 AI 雙重診斷...[/bold green]"):
+            with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
-                system.fetch_market_data()
+                system.fetch_market_data() 
+                
+                # 獲取大盤具體數值
+                mkt_close = float(system.market_data['Close'].iloc[-1])
+                mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
+                
                 summary, alerts, logs = system.run_analysis()
                 
                 if ticker not in alerts:
-                    console.print(f"[bold red]❌ 無法取得 {ticker} 資料。[/bold red]"); continue
+                    console.print(f"[bold red]❌ Yahoo Finance 無法取得 {ticker} 的歷史資料。[/bold red]")
+                    continue
 
-                # AI 引擎診斷
                 ai_engine = AdvancedQuantEngine(ticker=ticker)
                 meta_prob, regime_idx, ai_success = 0.0, None, False
+
                 if ai_engine.fetch_data(period="2y"):
                     ai_engine.detect_market_regime()
                     ai_engine.apply_triple_barrier()
@@ -867,54 +883,152 @@ def run_single_query_mode_gui():
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-            # --- 3. 提取數據 ---
+            # --- 3. 提取所有訊號與狀態 ---
             alert = alerts[ticker]
             score = alert['今日評分']
+            raw_score = alert['個股原始評分']
+            market_ok = alert['大盤安全']
             today_return = alert.get('今日漲幅', 0.0)
-            is_chasing_high = today_return >= 7.0
             
-            # 型態訊號
+            is_rebel = (not market_ok and raw_score >= 75)
             pro_bottom_breakout = alert.get('專業起漲', False)
             ambush_setup = alert.get('縮量埋伏', False)
+            is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
             fake_break = alert.get('假跌破', False)
+            
             macd_val = alert.get('MACD_數值', 0.0)
             macd_sig = alert.get('MACD_訊號', 0.0)
             is_water_above = (macd_val > 0)
             macd_golden_cross = (macd_val > macd_sig)
 
-            # --- 4. 最終判定邏輯 ---
-            console.print("\n🎯 [bold white on blue] 最終系統判定 [/bold white on blue]")
+            # --- 4. 顯示結果面板 ---
+            console.print(f"\n📊 [bold white on blue] {ticker} ({stock_name}) 深度診斷報告 [/bold white on blue]")
+          
+            diag_table = Table(show_header=False, box=None)
+            diag_table.add_row("[bold]最新收盤價[/bold]", f"{alert['收盤價']} (個股月線: {alert['月線價']})")
+            
+            mkt_status = "✅ 站上月線" if market_ok else "❌ 跌破月線"
+            mkt_color = "green" if market_ok else "red"
+            diag_table.add_row(
+                "[bold]大盤安全狀態[/bold]", 
+                f"[{mkt_color}]{mkt_status}[/{mkt_color}] (指數: [bold]{mkt_close:.0f}[/bold] | 月線: {mkt_ma20:.0f})"
+            )
+            
+            diag_table.add_row("[bold]技術籌碼評分[/bold]", f"{score} 分")
+            
+            # 🌟 新增顯示 MACD 狀態，讓你一目瞭然
+            macd_str = "🟢 水上" if is_water_above else "🔴 水下"
+            macd_cross_str = "金叉" if macd_golden_cross else "死叉"
+            diag_table.add_row("[bold]MACD(10,20,8)[/bold]", f"{macd_str} ({macd_cross_str})")
+
+            if ai_success:
+                regime_text = REGIME_DESC.get(regime_idx, f"狀態 {regime_idx}")
+                diag_table.add_row("[bold]GMM 市場狀態[/bold]", regime_text)
+                diag_table.add_row("[bold]AI 預測勝率[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
+            
+            console.print(diag_table)
+            console.print("-" * 40)
+
+            # ==========================================
+            # 🌟 5. 核心判定邏輯 (與 Menu 1 及 app.py 完全同步)
+            # ==========================================
+            # 1. 預先提取所有需要的變數，徹底防止 is_rebel 報錯
+            score = alert.get('今日評分', 0)
+            raw_score = alert.get('個股原始評分', 0)
+            market_ok = alert.get('大盤安全', True)
+            today_return = alert.get('今日漲幅', 0.0)
+            
+            is_rebel = (not market_ok and raw_score >= 75)
+            pro_bottom_breakout = alert.get('專業起漲', False)
+            ambush_setup = alert.get('縮量埋伏', False)
+            is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+            fake_break = alert.get('假跌破', False)
+            
+            macd_val = alert.get('MACD_數值', 0.0)
+            macd_sig = alert.get('MACD_訊號', 0.0)
+            is_water_above = (macd_val > 0)
+            macd_golden_cross = (macd_val > macd_sig)
+
+            is_chasing_high = today_return >= 7.0
             add_to_watchlist_flag = False
 
-            if alert.get("是否觸發賣出"):
-                console.print("👉 最終判定: [bold red]🔴 【建議賣出/停損】[/bold red]")
-            elif score >= 60:
-                # AI + MACD 雙重過濾
-                if (not ai_success or meta_prob >= 0.6) and (is_water_above or macd_golden_cross):
-                    if is_chasing_high:
-                         console.print(f"👉 最終判定: [bold yellow]⚠️ 【切勿追高】[/bold yellow] (漲幅 {today_return}%, 等待回檔)")
-                    else:
-                        console.print("👉 最終判定: [bold green]🟢 【強力買進】[/bold green]")
-                        add_to_watchlist_flag = True
+            if alert.get("是否觸發賣出", False):
+                if is_top_divergent:
+                    console.print("👉 最終判定: [bold red]🚨 【高檔警報：獲利了結】[/bold red] (快漲完了，短線風險極高)")
                 else:
-                    reason = "AI 勝率過低" if ai_success and meta_prob < 0.6 else "MACD 動能不足"
-                    if is_chasing_high:
-                        console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望 / ⚠️ 切勿追高】[/bold yellow] ({reason})")
-                    else:
-                        console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] ({reason})")
-            else:
-                console.print("👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white] (綜合評分不足)")
+                    console.print("👉 最終判定: [bold red]🔴 【強制賣出/停損訊號】[/bold red] (指標轉弱或破線)")
+            
+            # 🌟 啟動型態特赦 (假跌破等) 與 MACD 霸王條款
+            elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
+                
+                # A. 決定基礎型態
+                if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
+                elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
+                elif fake_break: base_status = "🟢 【假跌破真拉抬】 (洗盤結束)"
+                elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
+                else: base_status = "🟢 【強力買進】"
 
-            # 自動收錄
+                # B. MACD 霸王條款審查 (水上 或 水下金叉 放行)
+                if is_water_above or macd_golden_cross:
+                    
+                    # C. AI 勝率二次濾網
+                    if not ai_success or meta_prob >= 0.6:
+                        if is_chasing_high:
+                            console.print(f"👉 最終判定: [bold yellow]⚠️ 【切勿追高】[/bold yellow] (今日大漲 {today_return:.2f}%, 請耐心等待量縮回檔)")
+                        else:
+                            console.print(f"👉 最終判定: [bold green]{base_status}[/bold green] (型態與 MACD 雙重確認)")
+                            add_to_watchlist_flag = True
+                    else:
+                        if is_chasing_high:
+                            console.print("👉 最終判定: [bold yellow]🟡 【建議觀望 / ⚠️ 切勿追高】[/bold yellow] (漲幅大且 AI 勝率過低，慎防假突破)")
+                        else:
+                            console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術達標，但 AI 勝率僅 {meta_prob*100:.1f}%)")
+                else:
+                    # MACD 審查失敗 (水下且死叉)
+                    console.print(f"👉 最終判定: [bold yellow]🟡 【降級觀望】[/bold yellow] 型態為 {base_status}，但 MACD 水下且未金叉，動能不足。")
+            else:
+                console.print("👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white] (綜合評分與動能不足，且無特殊洗盤型態)")
+                
+            # ==========================================
+            # --- 6. 自動收錄至長期監控清單 ---
+            # ==========================================
             if add_to_watchlist_flag:
                 watchlist = load_watchlist()
-                if ticker not in watchlist:
-                    watchlist[ticker] = {"名稱": stock_name, "加入日期": alert["日期"], "加入價格": alert["收盤價"]}
+                
+                # 從 logs 中精準抓取 MACD 策略的真實進場點
+                entry_date = alert["日期"]
+                entry_price = alert["收盤價"]
+                
+                if ticker in logs and logs[ticker]:
+                    for log_entry in reversed(logs[ticker]):
+                        if "🟢 買進" in log_entry:
+                            parts = log_entry.split('|')
+                            entry_date = parts[0].strip()
+                            p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                            if p_match:
+                                entry_price = float(p_match.group(1))
+                            break # 找到最近一次買進即停止
+                        elif "🔴 賣出" in log_entry:
+                            break
+                
+                # 如果清單內沒有這檔股票，或者需要更新最新買點，就進行寫入
+                if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
+                    watchlist[ticker] = {
+                        "名稱": stock_name,
+                        "加入日期": entry_date,
+                        "加入價格": entry_price
+                    }
                     save_watchlist(watchlist)
-                    console.print(f"📌 [bold cyan]已納入長期監控清單！[/bold cyan]")
+                    console.print(f"🌟 [bold cyan]【自動收錄】已將 {stock_name} ({ticker}) 納入長期監控清單！(紀錄成本: {entry_price})[/bold cyan]")
 
+            if logs.get(ticker):
+                console.print("\n📋 [dim]最近交易紀錄:[/dim]")
+                for log in logs[ticker][-3:]:
+                    console.print(f"   {log}")
         except Exception as e:
-            console.print(f"[bold red]執行分析發生錯誤: {e}[/bold red]")
+            console.print(f"[bold red]執行分析時發生錯誤: {e}[/bold red]")
+    
+    console.print("\n[bold red]已離開查詢模式。[/bold red]")
 
 # ==========================================
 # 📊 大盤現況診斷模組 (新增)
