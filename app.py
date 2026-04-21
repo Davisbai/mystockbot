@@ -257,7 +257,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 掃描系統判定邏輯 100% 同步) ---
+ # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 掃描系統判定邏輯 100% 同步) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
                 is_chasing_high = today_return >= 7.0
