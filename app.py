@@ -211,6 +211,9 @@ elif menu == "2. 🔎 單股深度診斷":
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
+                # 🌟 補回遺漏的獨立強勢 (is_rebel) 變數定義
+                is_rebel = (not market_ok and raw_score >= 75)
+                
                 # 提取洗盤與變盤特徵
                 pro_bottom_breakout = alert.get('專業起漲', False)
                 ambush_setup = alert.get('縮量埋伏', False)
@@ -257,7 +260,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
- # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 掃描系統判定邏輯 100% 同步) ---
+                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 掃描系統判定邏輯 100% 同步) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
                 is_chasing_high = today_return >= 7.0
