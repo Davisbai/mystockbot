@@ -120,9 +120,6 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
 # ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
-# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
@@ -214,9 +211,6 @@ elif menu == "2. 🔎 單股深度診斷":
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
-                # 🌟【關鍵修復點】：定義 is_rebel 獨立強勢變數
-                is_rebel = (not market_ok and raw_score >= 75)
-                
                 # 提取洗盤與變盤特徵
                 pro_bottom_breakout = alert.get('專業起漲', False)
                 ambush_setup = alert.get('縮量埋伏', False)
@@ -263,47 +257,27 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 掃描系統判定邏輯 100% 同步) ---
+                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 完全同步) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
                 is_chasing_high = today_return >= 7.0
 
                 if alert.get("是否觸發賣出"):
                     st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
-                
-                # 🌟 核心同步：加入「型態特赦」條件，只要有特殊強勢型態，分數不到 65 也進入審查
-                elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
-                    
-                    # A. 決定基礎型態建議文字
-                    if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
-                    elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
-                    elif fake_break: base_status = "🟢 【強力買進】 (假跌破真拉抬)"
-                    elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
-                    else: base_status = "🟢 【強力買進】"
-
-                    # B. 🛑 執行 MACD 霸王條款審查 (遵循筆記：水上 或 水下金叉 均放行)
-                    if is_water_above or macd_golden_cross:
-                        
-                        # C. 執行 AI 勝率二次濾網 (門檻 60%)
-                        if not ai_success or meta_prob >= 0.6:
-                            # 判定是否追高
-                            if is_chasing_high:
-                                st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return:.2f}%, 已大漲表態，請耐心等待量縮回檔)")
-                            else:
-                                st.success(f"👉 最終判定: {base_status}")
-                                add_to_watchlist_flag = True
+                elif score >= 60:
+                    if not ai_success or meta_prob >= 0.6:
+                        if is_chasing_high:
+                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return}%, 已大漲表態，請耐心等待量縮回檔)")
                         else:
-                            # AI 勝率低於 60%
-                            if is_chasing_high:
-                                st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (漲幅大且 AI 勝率過低，慎防假突破)")
-                            else:
-                                st.warning(f"👉 最終判定: 🟡 **【建議觀望】** (技術型態達標，但 AI 預測勝率僅 {meta_prob*100:.1f}%)")
+                            st.success("👉 最終判定: 🟢 **【強力買進】**")
+                            add_to_watchlist_flag = True
                     else:
-                        # 未通過 MACD 審查 (水下且未金叉)
-                        st.warning(f"👉 最終判定: 🟡 **【建議觀望】** (型態成立，但 MACD(10,20,8) 處於水下且未金叉，動能不足)")
-
+                        if is_chasing_high:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (今日漲幅大且 AI 勝率過低，慎防假突破)")
+                        else:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面達標但 AI 勝率過低)")
                 else:
-                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足，且無特殊型態發動)")
+                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
                 # --- 6. 自動收錄至長期監控清單 ---
                 if add_to_watchlist_flag:
