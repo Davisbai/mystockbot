@@ -607,6 +607,25 @@ def run_full_scan_gui(scanner):
         # 🌟 判斷是否符合「水上」或「水下黃金交叉」
         macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
+# ... (前面提取 MACD 數值的代碼保留) ...
+        
+        # 🌟 取得專用的 MACD (10, 20, 8) 數值
+        macd_val = alert.get('MACD_數值', 0.0)
+        macd_sig = alert.get('MACD_訊號', 0.0)
+        
+        # 🌟 判斷是否符合「水上」或「水下黃金交叉」
+        macd_pass = (macd_val > 0) or (macd_val > macd_sig)
+
+        # ==========================================
+        # 🛠️ 修正點：在這裡預先給定變數初始值，防止報錯
+        final_entry_date = ""
+        final_entry_price = 0.0
+        # ==========================================
+
+        if alert["是否觸發賣出"]:
+            if is_top_divergent:
+                status = "🚨 【高檔警報：獲利了結】"
+        # ... (後續程式碼皆不變) ...
         if alert["是否觸發賣出"]:
             if is_top_divergent:
                 status = "🚨 【高檔警報：獲利了結】"
