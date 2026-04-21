@@ -932,10 +932,27 @@ def run_single_query_mode_gui():
             # ==========================================
             # 🌟 5. 核心判定邏輯 (與 Menu 1 及 app.py 完全同步)
             # ==========================================
+            # 1. 預先提取所有需要的變數，徹底防止 is_rebel 報錯
+            score = alert.get('今日評分', 0)
+            raw_score = alert.get('個股原始評分', 0)
+            market_ok = alert.get('大盤安全', True)
+            today_return = alert.get('今日漲幅', 0.0)
+            
+            is_rebel = (not market_ok and raw_score >= 75)
+            pro_bottom_breakout = alert.get('專業起漲', False)
+            ambush_setup = alert.get('縮量埋伏', False)
+            is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+            fake_break = alert.get('假跌破', False)
+            
+            macd_val = alert.get('MACD_數值', 0.0)
+            macd_sig = alert.get('MACD_訊號', 0.0)
+            is_water_above = (macd_val > 0)
+            macd_golden_cross = (macd_val > macd_sig)
+
             is_chasing_high = today_return >= 7.0
             add_to_watchlist_flag = False
 
-            if alert["是否觸發賣出"]:
+            if alert.get("是否觸發賣出", False):
                 if is_top_divergent:
                     console.print("👉 最終判定: [bold red]🚨 【高檔警報：獲利了結】[/bold red] (快漲完了，短線風險極高)")
                 else:
@@ -971,7 +988,7 @@ def run_single_query_mode_gui():
                     console.print(f"👉 最終判定: [bold yellow]🟡 【降級觀望】[/bold yellow] 型態為 {base_status}，但 MACD 水下且未金叉，動能不足。")
             else:
                 console.print("👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white] (綜合評分與動能不足，且無特殊洗盤型態)")
-
+                
             # ==========================================
             # --- 6. 自動收錄至長期監控清單 ---
             # ==========================================
