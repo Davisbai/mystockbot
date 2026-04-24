@@ -120,6 +120,9 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
 # ==========================================
+# ==========================================
+# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明 + 基本面顯示)
+# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
@@ -200,7 +203,19 @@ elif menu == "2. 🔎 單股深度診斷":
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-                # --- 3. 提取進階訊號 ---
+                # 🌟 3. 獲取基本面資料 (僅供畫面顯示，絕對不影響後續任何判斷)
+                try:
+                    ticker_obj = yf.Ticker(ticker)
+                    info = ticker_obj.info
+                    raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or 0
+                    # 防呆處理：若 Yahoo 已經乘過 100 給出 4.17，就不再乘；若是 0.0417，則乘 100
+                    dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
+                    book_value = info.get('bookValue', 0)
+                    pb_ratio = info.get('priceToBook', 0)
+                except Exception:
+                    dividend_yield, book_value, pb_ratio = 0, 0, 0
+
+                # --- 4. 提取進階訊號 ---
                 alert = alerts[ticker]
                 stock_logs = logs.get(ticker, [])
                 score = alert['今日評分']
@@ -212,6 +227,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
                 
                 # 提取洗盤與變盤特徵
+                is_rebel = (not market_ok and raw_score >= 75)
                 pro_bottom_breakout = alert.get('專業起漲', False)
                 ambush_setup = alert.get('縮量埋伏', False)
                 fake_break = alert.get('假跌破', False)
@@ -224,7 +240,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 is_water_above = (macd_val > 0)
                 macd_golden_cross = (macd_val > macd_sig)
 
-                # --- 4. 繪製 Streamlit 數據面板 ---
+                # --- 5. 繪製 Streamlit 數據面板 ---
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
                 st.markdown("### 📊 核心數據儀表板")
                 
@@ -235,6 +251,14 @@ elif menu == "2. 🔎 單股深度診斷":
                 col2.metric(label="月線 (MA20)", value=f"{alert['月線價']:.2f}", delta=ma20_status, delta_color="off")
                 
                 col3.metric(label="技術籌碼評分", value=f"{score} 分", delta=f"原始: {raw_score}分", delta_color="off")
+
+                # 🌟 新增：基本面參考指標 (純顯示)
+                st.markdown("#### 💎 基本面參考指標")
+                f_col1, f_col2, f_col3 = st.columns(3)
+                f_col1.metric(label="現金殖利率 (LTM)", value=f"{dividend_yield:.2f} %")
+                f_col2.metric(label="每股淨值 (NAV)", value=f"{book_value:.2f}")
+                pb_color = "normal" if pb_ratio < 2 else "inverse"
+                f_col3.metric(label="股價淨值比 (P/B)", value=f"{pb_ratio:.2f}", delta="價值低估" if pb_ratio > 0 and pb_ratio < 1.5 else "", delta_color=pb_color)
 
                 st.markdown("#### 🔍 趨勢與 AI 狀態")
                 mkt_status = "🟢 站上月線 (安全)" if market_ok else "🔴 跌破月線 (風險)"
@@ -257,17 +281,17 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 5. 核心判定與濾網邏輯 (與 STOCK_GOD.py 完全同步) ---
+                # --- 6. 核心判定與濾網邏輯 (完全保持原邏輯，不受基本面影響) ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
-                is_chasing_high = today_return >= 7.0
+                is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
 
                 if alert.get("是否觸發賣出"):
                     st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
                 elif score >= 60:
                     if not ai_success or meta_prob >= 0.6:
                         if is_chasing_high:
-                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return}%, 已大漲表態，請耐心等待量縮回檔)")
+                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
                         else:
                             st.success("👉 最終判定: 🟢 **【強力買進】**")
                             add_to_watchlist_flag = True
@@ -279,7 +303,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 else:
                     st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
-                # --- 6. 自動收錄至長期監控清單 ---
+                # --- 7. 自動收錄至長期監控清單 ---
                 if add_to_watchlist_flag:
                     watchlist = load_watchlist()
                     entry_date = alert["日期"]
@@ -303,7 +327,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 7. 主力行為細節與歷史紀錄 (完美還原截圖與 UI 介面) ---
+                # --- 8. 主力行為細節與歷史紀錄 ---
                 col_l, col_r = st.columns(2)
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
