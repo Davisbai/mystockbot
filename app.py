@@ -129,6 +129,9 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (同步除權息提醒版)
 # ==========================================
+# ==========================================
+# 2️⃣ 單股深度診斷 (同步除權息提醒版 - 強效防呆)
+# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
@@ -209,31 +212,45 @@ elif menu == "2. 🔎 單股深度診斷":
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-                # 🌟 3. 獲取基本面資料 (含除權息日期提醒)
+                # 🌟 3. 獲取基本面資料 (獨立防呆隔離機制)
+                dividend_yield, book_value, pb_ratio = 0, 0, 0
+                ex_date_str, ex_alert = "未提供", ""
+                
                 try:
                     ticker_obj = yf.Ticker(ticker)
                     info = ticker_obj.info
                     
-                    # 殖利率防呆處理
+                    # 殖利率與淨值解析
                     raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or 0
-                    dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
+                    try:
+                        raw_yield = float(raw_yield)
+                        dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
+                    except (ValueError, TypeError):
+                        pass
+                    
                     book_value = info.get('bookValue', 0)
                     pb_ratio = info.get('priceToBook', 0)
                     
-                    # 📅 除權息日期處理
-                    ex_date_raw = info.get('exDividendDate')
-                    ex_date_str = "未提供"
-                    ex_alert = ""
-                    if ex_date_raw:
-                        ex_date = datetime.date.fromtimestamp(ex_date_raw)
-                        ex_date_str = ex_date.strftime('%Y-%m-%d')
-                        # 判斷是否在一個月內 (30天)
-                        today = datetime.date.today()
-                        delta = (ex_date - today).days
-                        if 0 <= delta <= 30:
-                            ex_alert = " (即將進行除權息)"
+                    # 📅 除權息日期單獨解析 (防崩潰)
+                    try:
+                        ex_date_raw = info.get('exDividendDate')
+                        if ex_date_raw is not None:
+                            # 檢查是否為正確的 Unix 時間戳 (數字)
+                            if isinstance(ex_date_raw, (int, float)):
+                                ex_date = datetime.date.fromtimestamp(ex_date_raw)
+                                ex_date_str = ex_date.strftime('%Y-%m-%d')
+                                
+                                # 判斷是否在 30 天內
+                                delta = (ex_date - datetime.date.today()).days
+                                if 0 <= delta <= 30:
+                                    ex_alert = " (即將進行除權息)"
+                            else:
+                                ex_date_str = str(ex_date_raw) # 萬一雅虎給的是字串，直接顯示
+                    except Exception:
+                        ex_date_str = "格式異常"
+                        
                 except Exception:
-                    dividend_yield, book_value, pb_ratio, ex_date_str, ex_alert = 0, 0, 0, "讀取失敗", ""
+                    pass # 若 yfinance 完全抓不到資料，維持上述設定的預設值
 
                 # --- 4. 提取進階訊號 ---
                 alert = alerts[ticker]
@@ -272,7 +289,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 col3.metric(label="技術籌碼評分", value=f"{score} 分", delta=f"原始: {raw_score}分", delta_color="off")
 
-                # 🌟 新增：基本面參考指標 (含除權息日期與即將除權息註記)
+                # 🌟 新增：基本面參考指標
                 st.markdown("#### 💎 基本面參考指標")
                 f_col1, f_col2, f_col3 = st.columns(3)
                 f_col1.metric(label="現金殖利率 (LTM)", value=f"{dividend_yield:.2f} %")
@@ -280,7 +297,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 pb_color = "normal" if pb_ratio < 2 else "inverse"
                 f_col3.metric(label="股價淨值比 (P/B)", value=f"{pb_ratio:.2f}", delta="價值低估" if pb_ratio > 0 and pb_ratio < 1.5 else "", delta_color=pb_color)
                 
-                # 單獨顯示除權息日期，避免 Metric 擠壓
+                # 單獨顯示除權息日期
                 st.write(f"📅 **除權息日期**: {ex_date_str} :red[**{ex_alert}**]")
 
                 st.markdown("#### 🔍 趨勢與 AI 狀態")
@@ -304,7 +321,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 6. 核心判定與濾網邏輯 (完全保持原邏輯) ---
+                # --- 6. 核心判定與濾網邏輯 ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
                 is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
