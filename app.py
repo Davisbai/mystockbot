@@ -225,18 +225,9 @@ elif menu == "2. 🔎 單股深度診斷":
                 macd_golden_cross = (macd_val > macd_sig)
 
                 # --- 4. 繪製 Streamlit 數據面板 ---
-                # 🌟 新增：獲取個股基本面資料 (殖利率與淨值)
-                with st.spinner("正在讀取基本面數據..."):
-                    ticker_obj = yf.Ticker(ticker)
-                    info = ticker_obj.info
-                    dividend_yield = info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0
-                    book_value = info.get('bookValue', 0)
-                    pb_ratio = info.get('priceToBook', 0)
-
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
                 st.markdown("### 📊 核心數據儀表板")
                 
-                # 第一排：價格與評分
                 col1, col2, col3 = st.columns(3)
                 col1.metric(label="今日收盤價", value=f"{alert['收盤價']:.2f}", delta=f"{today_return:.2f}%")
                 
@@ -245,22 +236,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 col3.metric(label="技術籌碼評分", value=f"{score} 分", delta=f"原始: {raw_score}分", delta_color="off")
 
-                # 🌟 新增第二排：基本面表現
-                st.markdown("#### 💎 基本面參考指標")
-                f_col1, f_col2, f_col3 = st.columns(3)
-                
-                # 顯示殖利率
-                f_col1.metric(label="現金殖利率 (LTM)", value=f"{dividend_yield:.2f} %")
-                
-                # 顯示淨值 (Book Value)
-                f_col2.metric(label="每股淨值 (NAV)", value=f"{book_value:.2f}")
-                
-                # 顯示股價淨值比 (P/B Ratio)
-                pb_color = "normal" if pb_ratio < 2 else "inverse" # 通常 PB < 2 較具投資價值
-                f_col3.metric(label="股價淨值比 (P/B)", value=f"{pb_ratio:.2f}", delta="偏低" if pb_ratio < 1.5 else "", delta_color=pb_color)
-
                 st.markdown("#### 🔍 趨勢與 AI 狀態")
-                # ... (後續大盤狀態、MACD 狀態、AI 預測等程式碼保持不變) ...
                 mkt_status = "🟢 站上月線 (安全)" if market_ok else "🔴 跌破月線 (風險)"
                 macd_str = "🟢 水上" if is_water_above else "🔴 水下"
                 macd_cross_str = "金叉" if macd_golden_cross else "死叉"
