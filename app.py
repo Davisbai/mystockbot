@@ -120,11 +120,8 @@ if menu == "1. 🚀 執行完整策略掃描":
 # ==========================================
 # 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
 # ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (終極統一版：型態 + AI + 基本面)
-# ==========================================
 elif menu == "2. 🔎 單股深度診斷":
-    st.header("🔎 單股深度診斷 (整合 AI 勝率與基本面)")
+    st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
     
     with st.expander("💡 籌碼與技術型態小百科：如何看懂主力意圖？"):
         st.markdown("""
@@ -174,7 +171,7 @@ elif menu == "2. 🔎 單股深度診斷":
             analysis_url = f"https://tw.stock.yahoo.com/quote/{ticker}/technical-analysis"
             st.link_button("📈 技術分析", analysis_url)
 
-        # --- 執行核心分析 ---
+        # --- 執行分析 ---
         with st.spinner("正在下載數據並執行系統與 AI 雙重診斷..."):
             try:
                 # 1. 傳統技術與籌碼分析
@@ -203,19 +200,7 @@ elif menu == "2. 🔎 單股深度診斷":
                         meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
                         ai_success = True
 
-                # 3. 獲取基本面資料 (含防呆除錯機制)
-                try:
-                    ticker_obj = yf.Ticker(ticker)
-                    info = ticker_obj.info
-                    raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or 0
-                    # 防呆處理：若 Yahoo 給的是 4.17，就不乘 100；若是 0.0417，則乘 100
-                    dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
-                    book_value = info.get('bookValue', 0)
-                    pb_ratio = info.get('priceToBook', 0)
-                except Exception:
-                    dividend_yield, book_value, pb_ratio = 0, 0, 0
-
-                # --- 提取進階訊號 ---
+                # --- 3. 提取進階訊號 ---
                 alert = alerts[ticker]
                 stock_logs = logs.get(ticker, [])
                 score = alert['今日評分']
@@ -225,8 +210,6 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 mkt_close = float(system.market_data['Close'].iloc[-1])
                 mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
-                
-                is_rebel = (not market_ok and raw_score >= 75)
                 
                 # 提取洗盤與變盤特徵
                 pro_bottom_breakout = alert.get('專業起漲', False)
@@ -242,10 +225,18 @@ elif menu == "2. 🔎 單股深度診斷":
                 macd_golden_cross = (macd_val > macd_sig)
 
                 # --- 4. 繪製 Streamlit 數據面板 ---
+                # 🌟 新增：獲取個股基本面資料 (殖利率與淨值)
+                with st.spinner("正在讀取基本面數據..."):
+                    ticker_obj = yf.Ticker(ticker)
+                    info = ticker_obj.info
+                    dividend_yield = info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0
+                    book_value = info.get('bookValue', 0)
+                    pb_ratio = info.get('priceToBook', 0)
+
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
                 st.markdown("### 📊 核心數據儀表板")
                 
-                # 第一排：技術指標
+                # 第一排：價格與評分
                 col1, col2, col3 = st.columns(3)
                 col1.metric(label="今日收盤價", value=f"{alert['收盤價']:.2f}", delta=f"{today_return:.2f}%")
                 
@@ -254,16 +245,22 @@ elif menu == "2. 🔎 單股深度診斷":
                 
                 col3.metric(label="技術籌碼評分", value=f"{score} 分", delta=f"原始: {raw_score}分", delta_color="off")
 
-                # 第二排：基本面指標
+                # 🌟 新增第二排：基本面表現
                 st.markdown("#### 💎 基本面參考指標")
                 f_col1, f_col2, f_col3 = st.columns(3)
+                
+                # 顯示殖利率
                 f_col1.metric(label="現金殖利率 (LTM)", value=f"{dividend_yield:.2f} %")
+                
+                # 顯示淨值 (Book Value)
                 f_col2.metric(label="每股淨值 (NAV)", value=f"{book_value:.2f}")
-                pb_color = "normal" if pb_ratio < 2 else "inverse"
-                f_col3.metric(label="股價淨值比 (P/B)", value=f"{pb_ratio:.2f}", delta="價值低估" if pb_ratio > 0 and pb_ratio < 1.5 else "", delta_color=pb_color)
+                
+                # 顯示股價淨值比 (P/B Ratio)
+                pb_color = "normal" if pb_ratio < 2 else "inverse" # 通常 PB < 2 較具投資價值
+                f_col3.metric(label="股價淨值比 (P/B)", value=f"{pb_ratio:.2f}", delta="偏低" if pb_ratio < 1.5 else "", delta_color=pb_color)
 
-                # 趨勢與 AI
                 st.markdown("#### 🔍 趨勢與 AI 狀態")
+                # ... (後續大盤狀態、MACD 狀態、AI 預測等程式碼保持不變) ...
                 mkt_status = "🟢 站上月線 (安全)" if market_ok else "🔴 跌破月線 (風險)"
                 macd_str = "🟢 水上" if is_water_above else "🔴 水下"
                 macd_cross_str = "金叉" if macd_golden_cross else "死叉"
@@ -291,35 +288,20 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 if alert.get("是否觸發賣出"):
                     st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
-                
-                elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
-                    
-                    if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
-                    elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
-                    elif fake_break: base_status = "🟢 【強力買進】 (假跌破真拉抬)"
-                    elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
-                    else: base_status = "🟢 【強力買進】"
-
-                    # 🛑 MACD 霸王條款審查
-                    if is_water_above or macd_golden_cross:
-                        
-                        # AI 勝率二次濾網
-                        if not ai_success or meta_prob >= 0.6:
-                            if is_chasing_high:
-                                st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return:.2f}%, 已大漲表態，請耐心等待量縮回檔)")
-                            else:
-                                st.success(f"👉 最終判定: {base_status}")
-                                add_to_watchlist_flag = True
+                elif score >= 60:
+                    if not ai_success or meta_prob >= 0.6:
+                        if is_chasing_high:
+                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {today_return}%, 已大漲表態，請耐心等待量縮回檔)")
                         else:
-                            if is_chasing_high:
-                                st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (漲幅大且 AI 勝率過低，慎防假突破)")
-                            else:
-                                st.warning(f"👉 最終判定: 🟡 **【建議觀望】** (技術型態達標，但 AI 預測勝率僅 {meta_prob*100:.1f}%)")
+                            st.success("👉 最終判定: 🟢 **【強力買進】**")
+                            add_to_watchlist_flag = True
                     else:
-                        st.warning(f"👉 最終判定: 🟡 **【建議觀望】** (型態成立，但 MACD(10,20,8) 處於水下且未金叉，動能不足)")
-
+                        if is_chasing_high:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (今日漲幅大且 AI 勝率過低，慎防假突破)")
+                        else:
+                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面達標但 AI 勝率過低)")
                 else:
-                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足，且無特殊型態發動)")
+                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
                 # --- 6. 自動收錄至長期監控清單 ---
                 if add_to_watchlist_flag:
@@ -345,12 +327,12 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 7. 主力行為細節與歷史紀錄 ---
+                # --- 7. 主力行為細節與歷史紀錄 (完美還原截圖與 UI 介面) ---
                 col_l, col_r = st.columns(2)
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
                     if is_top_divergent:
-                        st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖過大。切勿追高。")
+                        st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖離過大。切勿追高。")
                     elif fake_break:
                         st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n近期刻意殺破支撐後迅速收回。這代表主力洗盤成功，下方籌碼已換手，後市看好。")
                     elif ambush_setup:
