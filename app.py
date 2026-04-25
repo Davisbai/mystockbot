@@ -33,9 +33,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🚀 優化點：初始化大盤快取狀態 ---
-if 'cached_market_data' not in st.session_state:
-    st.session_state.cached_market_data = None
+# --- 🚀 優化點：初始化大盤快取狀態 (升級為字典支援多市場) ---
+if 'market_cache' not in st.session_state:
+    st.session_state.market_cache = {}
 
 # ==========================================
 # 🗂️ 側邊欄選單
@@ -76,11 +76,11 @@ if menu == "1. 🚀 執行完整策略掃描":
             
             system = TaiwanStockTradingSystem(tickers=list(COMBINED_MAP.keys()), start_date="2025-01-01")
             
-            if st.session_state.cached_market_data is None:
+            if "^TWII" not in st.session_state.market_cache:
                 system.fetch_market_data()
-                st.session_state.cached_market_data = system.market_data
+                st.session_state.market_cache["^TWII"] = system.market_data
             else:
-                system.market_data = st.session_state.cached_market_data
+                system.market_data = st.session_state.market_cache["^TWII"]
                 
             summary, alerts, logs = system.run_analysis()
             
@@ -112,19 +112,7 @@ if menu == "1. 🚀 執行完整策略掃描":
                 st.info("今日無特別訊號。")
 
 # ==========================================
-# 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎與防追高邏輯)
-# ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎與防追高邏輯)
-# ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明)
-# ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明 + 基本面顯示)
-# ==========================================
-# ==========================================
-# 2️⃣ 單股深度診斷 (簡單判斷邏輯 + 豐富 UI 說明 + 基本面顯示)
+# 2️⃣ 單股深度診斷 (🌟 完美結合 AI 引擎、美股與防追高邏輯)
 # ==========================================
 elif menu == "2. 🔎 單股深度診斷":
     st.header("🔎 單股深度診斷 (整合 AI 勝率預測)")
@@ -141,34 +129,41 @@ elif menu == "2. 🔎 單股深度診斷":
         * **均線糾結：** 短中長期均線黏合，股價帶量突破將展開大行情。
         """)
 
-    user_input = st.text_input("請輸入股票代碼或名稱 (例如: 2330, 鈊象, 或 台積電)", "2330")
+    user_input = st.text_input("請輸入股票代碼或名稱 (例如: 2330, AAPL, 或 台積電)", "2330")
     
     if st.button("開始診斷", type="primary"):
         user_input = user_input.strip()
+        user_upper = user_input.upper()
         ticker = ""
         stock_name = ""
+        mkt_ticker = "^TWII"
 
-        # --- 自動辨識邏輯 ---
-        try:
-            if user_input.isdigit():
-                if user_input in twstock.codes:
-                    info = twstock.codes[user_input]
-                    ticker = f"{user_input}.TW" if "上市" in info.market else f"{user_input}.TWO"
-                    stock_name = info.name
-                else: ticker, stock_name = f"{user_input}.TW", user_input
-            else:
-                found = False
-                for code, info in twstock.codes.items():
-                    if user_input == info.name:
-                        ticker = f"{code}.TW" if "上市" in info.market else f"{code}.TWO"
+        # --- 自動辨識邏輯 (支援美股) ---
+        if re.match(r'^[A-Z]+$', user_upper):
+            ticker = user_upper
+            stock_name = ticker
+            mkt_ticker = "^GSPC"  # 美股切換大盤
+        else:
+            try:
+                if user_input.isdigit():
+                    if user_input in twstock.codes:
+                        info = twstock.codes[user_input]
+                        ticker = f"{user_input}.TW" if "上市" in info.market else f"{user_input}.TWO"
                         stock_name = info.name
-                        found = True; break
-                if not found:
-                    for k, v in STOCK_MAP.items():
-                        if user_input in v: ticker, stock_name = k, v; found = True; break
-                if not found: st.error(f"❌ 無法辨識「{user_input}」"); st.stop()
-        except Exception:
-            ticker, stock_name = f"{user_input}.TW", user_input
+                    else: ticker, stock_name = f"{user_input}.TW", user_input
+                else:
+                    found = False
+                    for code, info in twstock.codes.items():
+                        if user_input == info.name:
+                            ticker = f"{code}.TW" if "上市" in info.market else f"{code}.TWO"
+                            stock_name = info.name
+                            found = True; break
+                    if not found:
+                        for k, v in STOCK_MAP.items():
+                            if user_input in v: ticker, stock_name = k, v; found = True; break
+                    if not found: st.error(f"❌ 無法辨識「{user_input}」"); st.stop()
+            except Exception:
+                ticker, stock_name = f"{user_input}.TW", user_input
 
         col_left, col_right = st.columns([3, 1])
         with col_left:
@@ -182,11 +177,15 @@ elif menu == "2. 🔎 單股深度診斷":
             try:
                 # 1. 傳統技術與籌碼分析
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
-                if st.session_state.cached_market_data is None:
+                system.market_ticker = mkt_ticker
+                
+                # 自動判斷並隔離美股與台股大盤快取
+                if mkt_ticker not in st.session_state.market_cache:
                     system.fetch_market_data()
-                    st.session_state.cached_market_data = system.market_data
+                    st.session_state.market_cache[mkt_ticker] = system.market_data
                 else:
-                    system.market_data = st.session_state.cached_market_data
+                    system.market_data = st.session_state.market_cache[mkt_ticker]
+                    
                 summary, alerts, logs = system.run_analysis()
                 
                 if ticker not in alerts:
@@ -211,7 +210,6 @@ elif menu == "2. 🔎 單股深度診斷":
                     ticker_obj = yf.Ticker(ticker)
                     info = ticker_obj.info
                     raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or 0
-                    # 防呆處理：若 Yahoo 已經乘過 100 給出 4.17，就不再乘；若是 0.0417，則乘 100
                     dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
                     book_value = info.get('bookValue', 0)
                     pb_ratio = info.get('priceToBook', 0)
@@ -267,8 +265,9 @@ elif menu == "2. 🔎 單股深度診斷":
                 mkt_status = "🟢 站上月線 (安全)" if market_ok else "🔴 跌破月線 (風險)"
                 macd_str = "🟢 水上" if is_water_above else "🔴 水下"
                 macd_cross_str = "金叉" if macd_golden_cross else "死叉"
+                mkt_name = "標普500" if mkt_ticker == "^GSPC" else "加權指數"
                 
-                st.write(f"- **大盤狀態**: {mkt_status} (指數: {mkt_close:.0f} | 月線: {mkt_ma20:.0f})")
+                st.write(f"- **{mkt_name}大盤狀態**: {mkt_status} (指數: {mkt_close:.0f} | 月線: {mkt_ma20:.0f})")
                 st.write(f"- **MACD (10,20,8)**: {macd_str} ({macd_cross_str}) | DIF: {macd_val:.2f}")
 
                 if ai_success:
@@ -284,7 +283,7 @@ elif menu == "2. 🔎 單股深度診斷":
 
                 st.markdown("---")
 
-                # --- 6. 核心判定與濾網邏輯 (完全保持原邏輯，不受基本面影響) ---
+                # --- 6. 核心判定與濾網邏輯 ---
                 st.markdown("### 🎯 最終系統判定")
                 add_to_watchlist_flag = False
                 is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
@@ -375,11 +374,11 @@ elif menu == "3. 📈 策略回測":
             STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
             system = TaiwanStockTradingSystem(tickers=list(STATIC_YF_MAP.keys()), start_date="2024-01-01")
             
-            if st.session_state.cached_market_data is None:
+            if "^TWII" not in st.session_state.market_cache:
                 system.fetch_market_data()
-                st.session_state.cached_market_data = system.market_data
+                st.session_state.market_cache["^TWII"] = system.market_data
             else:
-                system.market_data = st.session_state.cached_market_data
+                system.market_data = st.session_state.market_cache["^TWII"]
                 
             summary, alerts, logs = system.run_analysis()
             
@@ -399,12 +398,17 @@ elif menu == "3. 📈 策略回測":
 # 5️⃣ 檢查大盤現況
 # ==========================================
 elif menu == "5. 📊 檢查大盤現況":
-    st.header("📊 台股大盤即時診斷 (^TWII)")
+    st.header("📊 大盤即時診斷")
+    
+    # 🌟 新增選項，讓使用者可以選擇美股或台股大盤
+    mkt_option = st.radio("請選擇要診斷的大盤:", ("🇹🇼 台股加權指數 (^TWII)", "🇺🇸 美股標普 500 (^GSPC)"), horizontal=True)
+    market_ticker = "^TWII" if "TWII" in mkt_option else "^GSPC"
     
     if st.button("開始診斷", type="primary"):
-        with st.spinner("獲取大盤數據中..."):
+        with st.spinner(f"獲取 {market_ticker} 大盤數據中..."):
             try:
-                df = yf.download("^TWII", period="3mo", progress=False, auto_adjust=True)
+                # 🌟 校正 auto_adjust=False 確保價格回溯準確性
+                df = yf.download(market_ticker, period="3mo", progress=False, auto_adjust=False)
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = df.columns.get_level_values(0)
                 
@@ -416,7 +420,8 @@ elif menu == "5. 📊 檢查大盤現況":
                 ma5 = float(df['MA5'].iloc[-1])
                 prev_close = float(df['Close'].iloc[-2])
                 
-                st.session_state.cached_market_data = df.assign(Market_MA20=df['MA20'], Market_OK=df['Close'] > df['MA20'])
+                # 同步更新快取
+                st.session_state.market_cache[market_ticker] = df.assign(Market_MA20=df['MA20'], Market_OK=df['Close'] > df['MA20'])
 
                 change = last_close - prev_close
                 pct_change = (change / prev_close) * 100

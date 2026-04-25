@@ -48,12 +48,19 @@ def save_watchlist(watchlist):
         json.dump(watchlist, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# 📱 LINE 推播模組
+# 📱 LINE 推播模組 (修正字數限制版)
 # ==========================================
 def send_line_message(text_content):
     # ⚠️ 建議未來將憑證移至 .env 檔案中以提高安全性
     channel_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
     user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
+    
+    # 🚀 修正邏輯：若長度超過 5000 字，則進行刪除截斷
+    # LINE Text Message 限制為 5000 字元
+    if len(text_content) > 5000:
+        # 截斷至 4990 字並加上提示，確保總長度安全
+        text_content = text_content[:4990] + "\n...(字數過多已截斷)"
+        console.print('\n⚠️ [bold yellow][系統提示] 訊息長度超過 5000 字，系統已自動截斷以利發送。[/bold yellow]')
     
     headers = {
         'Content-Type': 'application/json',
@@ -176,8 +183,8 @@ class TaiwanStockTradingSystem:
         self.market_data = None
         
     def fetch_market_data(self):
-        print("\n正在獲取大盤(加權指數)數據...")
-        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=True)
+        print(f"\n正在獲取大盤({self.market_ticker})數據...")
+        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
         if isinstance(self.market_data.columns, pd.MultiIndex):
             self.market_data.columns = self.market_data.columns.get_level_values(0)
             
@@ -248,7 +255,7 @@ class TaiwanStockTradingSystem:
         tw_tz = datetime.timezone(datetime.timedelta(hours=8))
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
-        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -607,25 +614,12 @@ def run_full_scan_gui(scanner):
         # 🌟 判斷是否符合「水上」或「水下黃金交叉」
         macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
-# ... (前面提取 MACD 數值的代碼保留) ...
-        
-        # 🌟 取得專用的 MACD (10, 20, 8) 數值
-        macd_val = alert.get('MACD_數值', 0.0)
-        macd_sig = alert.get('MACD_訊號', 0.0)
-        
-        # 🌟 判斷是否符合「水上」或「水下黃金交叉」
-        macd_pass = (macd_val > 0) or (macd_val > macd_sig)
-
         # ==========================================
         # 🛠️ 修正點：在這裡預先給定變數初始值，防止報錯
         final_entry_date = ""
         final_entry_price = 0.0
         # ==========================================
 
-        if alert["是否觸發賣出"]:
-            if is_top_divergent:
-                status = "🚨 【高檔警報：獲利了結】"
-        # ... (後續程式碼皆不變) ...
         if alert["是否觸發賣出"]:
             if is_top_divergent:
                 status = "🚨 【高檔警報：獲利了結】"
@@ -666,9 +660,6 @@ def run_full_scan_gui(scanner):
             if alert.get('今日漲幅', 0) >= 7.0:
                  raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
 
-            # 從回測紀錄抓取真實進場點
-            # ... (後續 final_entry_date 相關代碼保持不變) ...
-            
             # 從回測紀錄抓取真實進場點
             final_entry_date = alert["日期"]
             final_entry_price = alert["收盤價"]
@@ -808,7 +799,7 @@ def run_single_query_mode_gui():
     while True:
         console.print("\n" + "="*60)
         console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (Meta-Labeling v3.0)[/bold yellow]")
-        console.print("[dim]提示：輸入「2884」或「玉山金」皆可；輸入 'q' 返回[/dim]")
+        console.print("[dim]提示：輸入「2884」、「玉山金」或美股代碼「AAPL」皆可；輸入 'q' 返回[/dim]")
         user_input = console.input("👉 [bold cyan]請輸入股票代碼或名稱:[/bold cyan] ").strip()
         
         if not user_input or user_input.lower() == 'q':
@@ -816,41 +807,48 @@ def run_single_query_mode_gui():
             
         ticker = ""
         stock_name = ""
+        mkt_ticker = "^TWII" # 預設台股大盤
 
-        # --- 1. 強化版代碼與市場自動辨識 ---
-        try:
-            import twstock
-            if user_input.isdigit():
-                if user_input in twstock.codes:
-                    stock_info = twstock.codes[user_input]
-                    suffix = ".TW" if "上市" in stock_info.market else ".TWO"
-                    ticker = f"{user_input}{suffix}"
-                    stock_name = stock_info.name
+        # --- 1. 強化版代碼與市場自動辨識 (加入美股支援) ---
+        user_upper = user_input.upper()
+        if re.match(r'^[A-Z]+$', user_upper):  # 判斷為純英文字母 (美股代碼)
+            ticker = user_upper
+            stock_name = ticker
+            mkt_ticker = "^GSPC"  # 美股對標 S&P 500 大盤
+        else:
+            try:
+                import twstock
+                if user_input.isdigit():
+                    if user_input in twstock.codes:
+                        stock_info = twstock.codes[user_input]
+                        suffix = ".TW" if "上市" in stock_info.market else ".TWO"
+                        ticker = f"{user_input}{suffix}"
+                        stock_name = stock_info.name
+                    else:
+                        ticker = f"{user_input}.TW"
+                        stock_name = user_input
                 else:
-                    ticker = f"{user_input}.TW"
-                    stock_name = user_input
-            else:
-                found = False
-                for code, info in twstock.codes.items():
-                    if user_input == info.name:
-                        suffix = ".TW" if "上市" in info.market else ".TWO"
-                        ticker = f"{code}{suffix}"
-                        stock_name = info.name
-                        found = True
-                        break
-                if not found:
-                    for k, v in STOCK_MAP.items():
-                        if user_input in v:
-                            ticker = k
-                            stock_name = v
+                    found = False
+                    for code, info in twstock.codes.items():
+                        if user_input == info.name:
+                            suffix = ".TW" if "上市" in info.market else ".TWO"
+                            ticker = f"{code}{suffix}"
+                            stock_name = info.name
                             found = True
                             break
-                if not found:
-                    console.print(f"[bold red]❌ 錯誤：無法辨識「{user_input}」。[/bold red]")
-                    continue
-        except Exception as e:
-            ticker = f"{user_input}.TW" if user_input.isdigit() else user_input
-            console.print(f"[dim red]注意：twstock 運作異常，採用預設模式...[/dim red]")
+                    if not found:
+                        for k, v in STOCK_MAP.items():
+                            if user_input in v:
+                                ticker = k
+                                stock_name = v
+                                found = True
+                                break
+                    if not found:
+                        console.print(f"[bold red]❌ 錯誤：無法辨識「{user_input}」。[/bold red]")
+                        continue
+            except Exception as e:
+                ticker = f"{user_input}.TW" if user_input.isdigit() else user_input
+                console.print(f"[dim red]注意：twstock 運作異常，採用預設模式...[/dim red]")
 
         console.print(f"\n[bold green]✅ 已識別：{stock_name} ({ticker})[/bold green]")
 
@@ -858,6 +856,7 @@ def run_single_query_mode_gui():
         try:
             with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                system.market_ticker = mkt_ticker  # 動態切換對標大盤
                 system.fetch_market_data() 
                 
                 # 獲取大盤具體數值
@@ -909,14 +908,16 @@ def run_single_query_mode_gui():
             
             mkt_status = "✅ 站上月線" if market_ok else "❌ 跌破月線"
             mkt_color = "green" if market_ok else "red"
+            
+            # 根據大盤代碼顯示對應名稱
+            mkt_name = "標普500" if mkt_ticker == "^GSPC" else "加權指數"
             diag_table.add_row(
-                "[bold]大盤安全狀態[/bold]", 
+                f"[bold]{mkt_name}狀態[/bold]", 
                 f"[{mkt_color}]{mkt_status}[/{mkt_color}] (指數: [bold]{mkt_close:.0f}[/bold] | 月線: {mkt_ma20:.0f})"
             )
             
             diag_table.add_row("[bold]技術籌碼評分[/bold]", f"{score} 分")
             
-            # 🌟 新增顯示 MACD 狀態，讓你一目瞭然
             macd_str = "🟢 水上" if is_water_above else "🔴 水下"
             macd_cross_str = "金叉" if macd_golden_cross else "死叉"
             diag_table.add_row("[bold]MACD(10,20,8)[/bold]", f"{macd_str} ({macd_cross_str})")
@@ -930,25 +931,8 @@ def run_single_query_mode_gui():
             console.print("-" * 40)
 
             # ==========================================
-            # 🌟 5. 核心判定邏輯 (與 Menu 1 及 app.py 完全同步)
+            # 🌟 5. 核心判定邏輯
             # ==========================================
-            # 1. 預先提取所有需要的變數，徹底防止 is_rebel 報錯
-            score = alert.get('今日評分', 0)
-            raw_score = alert.get('個股原始評分', 0)
-            market_ok = alert.get('大盤安全', True)
-            today_return = alert.get('今日漲幅', 0.0)
-            
-            is_rebel = (not market_ok and raw_score >= 75)
-            pro_bottom_breakout = alert.get('專業起漲', False)
-            ambush_setup = alert.get('縮量埋伏', False)
-            is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
-            fake_break = alert.get('假跌破', False)
-            
-            macd_val = alert.get('MACD_數值', 0.0)
-            macd_sig = alert.get('MACD_訊號', 0.0)
-            is_water_above = (macd_val > 0)
-            macd_golden_cross = (macd_val > macd_sig)
-
             is_chasing_high = today_return >= 7.0
             add_to_watchlist_flag = False
 
@@ -958,20 +942,15 @@ def run_single_query_mode_gui():
                 else:
                     console.print("👉 最終判定: [bold red]🔴 【強制賣出/停損訊號】[/bold red] (指標轉弱或破線)")
             
-            # 🌟 啟動型態特赦 (假跌破等) 與 MACD 霸王條款
             elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
                 
-                # A. 決定基礎型態
                 if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
                 elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
                 elif fake_break: base_status = "🟢 【假跌破真拉抬】 (洗盤結束)"
                 elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
                 else: base_status = "🟢 【強力買進】"
 
-                # B. MACD 霸王條款審查 (水上 或 水下金叉 放行)
                 if is_water_above or macd_golden_cross:
-                    
-                    # C. AI 勝率二次濾網
                     if not ai_success or meta_prob >= 0.6:
                         if is_chasing_high:
                             console.print(f"👉 最終判定: [bold yellow]⚠️ 【切勿追高】[/bold yellow] (今日大漲 {today_return:.2f}%, 請耐心等待量縮回檔)")
@@ -984,18 +963,13 @@ def run_single_query_mode_gui():
                         else:
                             console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術達標，但 AI 勝率僅 {meta_prob*100:.1f}%)")
                 else:
-                    # MACD 審查失敗 (水下且死叉)
                     console.print(f"👉 最終判定: [bold yellow]🟡 【降級觀望】[/bold yellow] 型態為 {base_status}，但 MACD 水下且未金叉，動能不足。")
             else:
                 console.print("👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white] (綜合評分與動能不足，且無特殊洗盤型態)")
                 
-            # ==========================================
             # --- 6. 自動收錄至長期監控清單 ---
-            # ==========================================
             if add_to_watchlist_flag:
                 watchlist = load_watchlist()
-                
-                # 從 logs 中精準抓取 MACD 策略的真實進場點
                 entry_date = alert["日期"]
                 entry_price = alert["收盤價"]
                 
@@ -1007,11 +981,10 @@ def run_single_query_mode_gui():
                             p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
                             if p_match:
                                 entry_price = float(p_match.group(1))
-                            break # 找到最近一次買進即停止
+                            break 
                         elif "🔴 賣出" in log_entry:
                             break
                 
-                # 如果清單內沒有這檔股票，或者需要更新最新買點，就進行寫入
                 if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
                     watchlist[ticker] = {
                         "名稱": stock_name,
