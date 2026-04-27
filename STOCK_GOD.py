@@ -51,10 +51,9 @@ def save_watchlist(watchlist):
 # 📱 LINE 推播模組 (強化版：自動分段發送，突破 5000 字限制)
 # ==========================================
 def send_line_message(text_content):
-    # ⚠️ 這裡請保留你原本寫的 Token 與 API URL 設定
-    line_access_token = os.environ.get('LINE_ACCESS_TOKEN', '你原本的預設TOKEN') 
-    line_user_id = os.environ.get('LINE_USER_ID', '你原本的預設USER_ID')
-    
+    # ⚠️ 建議未來將憑證移至 .env 檔案中以提高安全性
+    line_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
+    line_user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Content-Type": "application/json",
