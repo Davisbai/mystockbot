@@ -48,43 +48,55 @@ def save_watchlist(watchlist):
         json.dump(watchlist, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# 📱 LINE 推播模組 (修正字數限制版)
+# 📱 LINE 推播模組 (強化版：自動分段發送，突破 5000 字限制)
 # ==========================================
 def send_line_message(text_content):
-    # ⚠️ 建議未來將憑證移至 .env 檔案中以提高安全性
-    channel_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
-    user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
+    # ⚠️ 這裡請保留你原本寫的 Token 與 API URL 設定
+    line_access_token = os.environ.get('LINE_ACCESS_TOKEN', '你原本的預設TOKEN') 
+    line_user_id = os.environ.get('LINE_USER_ID', '你原本的預設USER_ID')
     
-    # 🚀 修正邏輯：若長度超過 5000 字，則進行刪除截斷
-    # LINE Text Message 限制為 5000 字元
-    if len(text_content) > 5000:
-        # 截斷至 4990 字並加上提示，確保總長度安全
-        text_content = text_content[:4990] + "\n...(字數過多已截斷)"
-        console.print('\n⚠️ [bold yellow][系統提示] 訊息長度超過 5000 字，系統已自動截斷以利發送。[/bold yellow]')
-    
+    url = "https://api.line.me/v2/bot/message/push"
     headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {channel_access_token}'
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {line_access_token}"
     }
+
+    # 🌟 核心修正：將超長訊息分割成多個區塊 (每塊安全上限抓 4500 字)
+    MAX_LENGTH = 4500
     
-    data = {
-        'to': user_id,
-        'messages': [
-            {
-                'type': 'text',
-                'text': text_content
-            }
-        ]
-    }
-    
-    try:
-        response = requests.post('https://api.line.me/v2/bot/message/push', headers=headers, data=json.dumps(data))
-        if response.status_code == 200:
-            console.print('\n✅ [bold green][系統提示] LINE 訊息已成功推播至您的手機！[/bold green]')
-        else:
-            console.print(f'\n❌ [bold red][系統提示] 發送 LINE 訊息失敗：{response.status_code} - {response.text}[/bold red]')
-    except Exception as e:
-        console.print(f"\n❌ [bold red][系統提示] LINE API 請求發生錯誤: {e}[/bold red]")
+    # 利用 Python 列表推導式進行字串分割
+    chunks = [text_content[i:i+MAX_LENGTH] for i in range(0, len(text_content), MAX_LENGTH)]
+
+    for idx, chunk in enumerate(chunks):
+        # 如果訊息被切成了多段，在開頭加上提示，方便你在手機上閱讀
+        if len(chunks) > 1:
+            chunk = f"📄 【台股獵手報告 第 {idx+1}/{len(chunks)} 頁】\n\n" + chunk
+            
+        data = {
+            "to": line_user_id,
+            "messages": [
+                {
+                    "type": "text",
+                    "text": chunk
+                }
+            ]
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status() # 檢查 HTTP 錯誤
+            
+            if len(chunks) > 1:
+                print(f"[系統] 成功發送 LINE 推播 (第 {idx+1}/{len(chunks)} 頁)")
+            else:
+                print("[系統] 成功發送 LINE 推播。")
+                
+            time.sleep(1) # 🌟 避免連續發送太快被 LINE 官方判定為機器人攻擊而封鎖
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ [系統提示] 發送 LINE 訊息失敗：{e}")
+            if response is not None:
+                print(f"詳細錯誤內容: {response.text}")
 
 # 全域的股票代碼對應表
 STOCK_MAP = {
