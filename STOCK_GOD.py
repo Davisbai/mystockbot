@@ -48,7 +48,7 @@ def save_watchlist(watchlist):
         json.dump(watchlist, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# 📱 LINE 推播模組 (強化版：自動分段發送，突破 5000 字限制)
+# 📱 LINE 推播模組 (強化版：自動分段發送 + 本地日誌記錄)
 # ==========================================
 def send_line_message(text_content):
     # ⚠️ 建議未來將憑證移至 .env 檔案中以提高安全性
@@ -65,6 +65,8 @@ def send_line_message(text_content):
     
     # 利用 Python 列表推導式進行字串分割
     chunks = [text_content[i:i+MAX_LENGTH] for i in range(0, len(text_content), MAX_LENGTH)]
+
+    success_count = 0 # 記錄成功發送的段數
 
     for idx, chunk in enumerate(chunks):
         # 如果訊息被切成了多段，在開頭加上提示，方便你在手機上閱讀
@@ -90,6 +92,7 @@ def send_line_message(text_content):
             else:
                 print("[系統] 成功發送 LINE 推播。")
                 
+            success_count += 1
             time.sleep(1) # 🌟 避免連續發送太快被 LINE 官方判定為機器人攻擊而封鎖
             
         except requests.exceptions.RequestException as e:
@@ -97,6 +100,24 @@ def send_line_message(text_content):
             if response is not None:
                 print(f"詳細錯誤內容: {response.text}")
 
+    # ======== 📝 新增：記錄推播訊息到本地檔案 ========
+    if success_count > 0:
+        try:
+            import datetime
+            # 確保寫入 log 的時間戳記對齊台北時間 (UTC+8)
+            tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+            now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+            
+            with open("line_push_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"[{now_str}] 推播紀錄 (成功發送 {success_count}/{len(chunks)} 段)\n")
+                f.write(text_content + "\n")
+                f.write("="*60 + "\n")
+            print('[系統] 📝 推播內容已同步記錄至 line_push_log.txt')
+        except Exception as log_e:
+            print(f"⚠️ [系統提示] 寫入 log 檔案失敗: {log_e}")
+    # ===================================================
+
+    
 # 全域的股票代碼對應表
 STOCK_MAP = {
         "2303.TW": "聯電", "3481.TW": "群創", "2344.TW": "華邦電",
