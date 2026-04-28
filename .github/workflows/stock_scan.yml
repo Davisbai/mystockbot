@@ -2,7 +2,7 @@ name: Stock Strategy Daily Scan
 
 on:
   schedule:
-    # 台灣時間 19:00
+    # 台灣時間 19:00 (UTC 11:00)
     - cron: '0 11 * * 1-5'  
   workflow_dispatch: 
 
@@ -28,7 +28,7 @@ jobs:
         else 
           python -m pip install pandas numpy scikit-learn yfinance rich FinMind requests tqdm twstock
         fi
-        # 修正縮進，確保偵錯指令能執行
+        # 確保偵錯指令能執行
         python -c "import tqdm; print('tqdm version:', tqdm.__version__)"
 
     - name: 4. 執行盤後策略掃描 (自動輸入 1)
@@ -39,3 +39,21 @@ jobs:
         # 使用 -u 確保輸出即時顯示在 GitHub Log
         echo 1 | python -u STOCK_GOD.py 
         echo "--- 掃描執行完畢 ---"
+
+    - name: 5. 儲存日誌與監控清單回 GitHub
+      run: |
+        # 設定 Git 機器人身分
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # 把變更的檔案加入暫存區 (如果有新產生的檔案也會被加入)
+        git add long_term_watchlist.json
+        git add line_push_log.txt
+        
+        # 檢查是否有檔案真的被修改，避免沒有變更時 commit 報錯
+        if git diff --staged --quiet; then
+          echo "檔案沒有變動，無需提交。"
+        else
+          git commit -m "Auto-update: 同步監控清單與 LINE 推播日誌"
+          git push
+        fi
