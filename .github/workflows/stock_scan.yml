@@ -41,16 +41,17 @@ jobs:
         echo "--- 掃描執行完畢 ---"
 
     - name: 5. 儲存日誌與監控清單回 GitHub
+      if: always()  # 🛡️ 終極保險：不管前面的步驟是成功還是紅燈報錯，這一步都強制執行！
       run: |
         # 設定 Git 機器人身分
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         
-        # 把變更的檔案加入暫存區 (如果有新產生的檔案也會被加入)
+        # 把變更的檔案加入暫存區
         git add long_term_watchlist.json
         git add line_push_log.txt
         
-        # 檢查是否有檔案真的被修改，避免沒有變更時 commit 報錯
+        # 檢查是否有檔案真的被修改
         if git diff --staged --quiet; then
           echo "檔案沒有變動，無需提交。"
         else
