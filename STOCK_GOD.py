@@ -1375,23 +1375,26 @@ def main():
     rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M')}")
     
     scanner = YahooMarketScanner()
-        # 如果是在自動化環境，先檢查是否開盤
 
-# 如果是在自動化環境，先檢查是否開盤
-# 如果是在自動化環境，不再強制退出，確保掃描一定會執行
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
-        print("偵測到 GitHub Actions 自動化環境，跳過開市驗證，直接執行...")
-        # 將原本的 if not is_taiwan_stock_open() 邏輯註解掉或移除
-        print("✅ 強制執行策略掃描與推播。")
+    # 偵測是否為自動化環境
+    is_github_action = os.environ.get('GITHUB_ACTIONS') == 'true'
 
+    if is_github_action:
+        print("偵測到 GitHub Actions 自動化環境，將執行完整策略掃描 (選項 1)...")
+        # 直接執行功能，不需要經過 input
+        run_full_scan_gui(scanner)
+        print("✅ 自動化任務完成。")
+        return # 執行完直接結束程式，避免進入無意義的迴圈
+
+    # 如果是本地開發環境，則顯示選單
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         
         menu = Panel(
             "1. 🚀 [bold cyan]執行完整策略掃描[/bold cyan] (大盤監控 + 庫存更新 + LINE推播)\n"
-            "2. 🔎 [bold yellow]單股深度診斷[/bold yellow] (即時回測與技術籌碼評分)\n"
-            "3. 🔎 [bold yellow]回測[/bold yellow] (回測)\n"
-            "5. 📊 [bold magenta]檢查大盤現況[/bold magenta] (加權指數體質與均線分析)\n" # 新增這一行
+            "2. 🔎 [bold yellow]單股深度診斷[/bold yellow]\n"
+            "3. 🔎 [bold yellow]回測[/bold yellow]\n"
+            "5. 📊 [bold magenta]檢查大盤現況[/bold magenta]\n"
             "q. [bold red]退出系統[/bold red]",
             title="🎯 台股獵手 v2.0 - GUI Terminal",
             border_style="bright_blue"
@@ -1406,7 +1409,7 @@ def main():
             run_single_query_mode_gui()
         elif choice == '3':
             run_test(scanner)
-        elif choice == '5': # 新增這一行
+        elif choice == '5':
             run_market_health_check_gui()
         elif choice == 'q':
             console.print("\n[bold red]👋 系統已退出，祝您投資順利！[/bold red]\n")
