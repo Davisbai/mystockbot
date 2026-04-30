@@ -379,7 +379,8 @@ class TaiwanStockTradingSystem:
         # 🛡️ [強化：主力洗盤與假跌破偵測]
         # ==========================================
         df['Lowest_5'] = df['Low'].rolling(window=5).min()
-        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
+        # 加入 (df['Close'] > df['Open'])，確保這是一個收紅 K 的強勢拉抬日，而非下跌回檔日
+        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Close'] > df['Open']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
         
         # ==========================================
         # ⚡ [強化：沉寂多時與即將噴發偵測]
