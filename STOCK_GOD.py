@@ -681,7 +681,7 @@ def run_full_scan_gui(scanner):
                 del watchlist[stock]
                 watchlist_updated = True
                 
-elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
+        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
             
             # 🛑 核心邏輯：防守濾網 (收黑或大跌的處置)
             if not alert.get("收紅K", True) or alert.get('今日漲幅', 0) < 0:
