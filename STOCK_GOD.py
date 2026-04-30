@@ -434,18 +434,25 @@ class TaiwanStockTradingSystem:
         # ==========================================
         # ⚖️ [新增：當日動能與 K 線濾網]
         # ==========================================
+        # ==========================================
+        # ⚖️ [新增：當日動能與 K 線濾網]
+        # ==========================================
+        # 🚨 修正點：必須在這裡先計算 Returns，下方才能調用
+        df['Returns'] = df['Close'].pct_change()
+
         df['Is_Green_Candle'] = df['Close'] >= df['Open'] # 收紅或平盤
         df['Is_Up_Today'] = df['Returns'] > 0             # 今日上漲
         df['Is_Heavy_Drop'] = df['Returns'] < -0.02       # 跌幅超過 2% 的實體黑K
 
         # ==========================================
-        # 買賣訊號與部位計算 (嚴格版)
+        # 買賣訊號與部位計算
         # ==========================================
         # 買進條件：分數達標 + 不能是大跌日 + 必須收紅K (防禦下跌刀子)
         df['Buy_Signal'] = (df['Score'] >= 60) & (~df['Is_Heavy_Drop']) & df['Is_Green_Candle']
         
         # 針對縮量埋伏，要求更加嚴格，跌幅不能超過 1%
         df.loc[df['Ambush_Setup'] & (df['Returns'] < -0.01), 'Buy_Signal'] = False
+        
         
         macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
