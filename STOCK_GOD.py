@@ -1370,20 +1370,23 @@ def is_taiwan_stock_open():
 # ==========================================
 # 🏠 主程式入口
 # ==========================================
+# ==========================================
+# 🏠 主程式入口
+# ==========================================
 def main():
     tw_tz = datetime.timezone(datetime.timedelta(hours=8))
     rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M')}")
     
     scanner = YahooMarketScanner()
-        # 如果是在自動化環境，先檢查是否開盤
 
-# 如果是在自動化環境，先檢查是否開盤
-# 如果是在自動化環境，不再強制退出，確保掃描一定會執行
+    # 🌟 關鍵：雲端環境執行完直接 return，絕對不能讓它往下走進 while True
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         print("偵測到 GitHub Actions 自動化環境，跳過開市驗證，直接執行...")
-        # 將原本的 if not is_taiwan_stock_open() 邏輯註解掉或移除
         print("✅ 強制執行策略掃描與推播。")
+        run_full_scan_gui(scanner)  # 自動執行選項 1 的功能
+        return                      # 🛑 執行完畢直接跳出，程式安全結束 (Exit Code 0)
 
+    # --- 以下只有你在自己電腦上手動執行時，才會碰到 ---
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         
