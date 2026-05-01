@@ -127,6 +127,14 @@ STOCK_MAP = {
 }
 
 # ==========================================
+# 🌟 [策略優化] 影片核心戰略專屬清單
+# ==========================================
+CORE_ETF_LIST = ["0050.TW", "006208.TW", "0056.TW", "00878.TW"]
+
+# 絕對不會下市的產業龍頭 (可依個人喜好增減，例如：台積電、聯發科、鴻海、台達電、富邦金、中華電)
+BLUE_CHIP_LIST = ["2330.TW", "2454.TW", "2317.TW", "2308.TW", "2881.TW", "2412.TW"]
+
+# ==========================================
 # 🕷️ 爬蟲模組：擷取當日強勢股與外資籌碼
 # ==========================================
 class YahooMarketScanner:
@@ -586,6 +594,21 @@ def run_full_scan_gui(scanner):
     # 🌟 第一段 LINE 訊息陣列 (只放今日交易提示)
     line_message_1 = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
 
+    # 🚨 【策略一】股災雷達：大跌時佈局寬基 ETF
+    try:
+        mkt_close = system.market_data['Close'].iloc[-1]
+        # 計算大盤半年線 (120日均線)
+        mkt_ma120 = system.market_data['Close'].rolling(window=120).mean().iloc[-1]
+        # 計算乖離率
+        mkt_bias = ((mkt_close - mkt_ma120) / mkt_ma120) * 100
+        
+        # 當大盤跌破半年線且負乖離超過 8%，視為極度恐慌 (股災級別)
+        if mkt_bias <= -8.0: 
+            line_message_1.append(f"🚨【史詩級大跌浮現】大盤半年線乖離率達 {mkt_bias:.2f}%！")
+            line_message_1.append(f"💡 策略提示：市場極度恐慌，建議立刻啟動寬基 ETF (如 0050, 006208) 分批危機入市！\n")
+    except Exception:
+        pass
+
     # 3. 自動清理邏輯
     for stock in list(watchlist.keys()):
         stock_trade_history = logs.get(stock, [])
@@ -713,19 +736,55 @@ def run_full_scan_gui(scanner):
                 watchlist[stock] = {"名稱": stock_name, "加入日期": final_entry_date, "加入價格": final_entry_price}
                 watchlist_updated = True
 
-            # 顯示訊息處理
-            if final_entry_date == alert["日期"]:
-                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}"
-            else:
-                display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
+            # 原本的顯示訊息處理 (預設值)
+            display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}" if final_entry_date == alert["日期"] else f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
         else:
             status = f"⚪ 【觀望】 (評分: {score}分)"
             raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
+            display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
         
-        # 🌟 第一天發動 Highlight
+        # ==========================================
+        # 🧠 智能推播語氣與策略整合引擎
+        # ==========================================
+        first_day_term_tag = ""
+        first_day_line_tag = ""
+        
         is_first_day = (alert.get("日期") == final_entry_date)
-        first_day_term_tag = " 🚨[bold white on red]【🔥第一天發動🔥】[/bold white on red]" if is_first_day else ""
-        first_day_line_tag = " 🚨【🔥第一天發動🔥】" if is_first_day else ""
+        cost_price = watchlist.get(stock, {}).get("加入價格", "無紀錄")
+        is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
+        
+        if not alert.get("是否觸發賣出") and (score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break):
+            # 💎【策略三】龍頭好公司的價值投資 (好公司遇到大跌打折)
+            if stock in BLUE_CHIP_LIST and alert.get('今日漲幅', 0) <= -3.0:
+                first_day_term_tag = " 💎[bold cyan]【龍頭打折專區】[/bold cyan]"
+                first_day_line_tag = " 💎【龍頭打折專區】"
+                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 龍頭罕見重挫，長線價值浮現 | 價格: {final_entry_price}"
+                
+            # 🔄【策略二】專注少數標的做波段 (活化長期監控清單，降低成本)
+            elif stock in watchlist:
+                if alert.get('高檔背離') or alert.get('乖離過大') or is_chasing_high:
+                    first_day_term_tag = " ✂️[bold yellow]【波段減碼提示】[/bold yellow]"
+                    first_day_line_tag = " ✂️【波段減碼提示】"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🔴 漲多正乖離大，可適度減碼收割 (原始成本: {cost_price})"
+                elif alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
+                    first_day_term_tag = " 🔄[bold green]【波段降成本】[/bold green]"
+                    first_day_line_tag = " 🔄【波段降成本】"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🟢 縮量回測支撐，考慮用獲利資金買回"
+                else:
+                    first_day_term_tag = " 📊[bold blue]【波段持股續抱】[/bold blue]"
+                    first_day_line_tag = " 📊【波段持股續抱】"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
+                    
+            # 🏹【原系統戰術】短線型態突破與右側埋伏 (非龍頭、非持股的新獵物)
+            elif is_first_day:
+                if alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
+                    first_day_term_tag = " 🥷[bold green]【悄悄埋伏佈局】[/bold green]"
+                    first_day_line_tag = " 🥷【悄悄埋伏佈局】"
+                    display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日逢低建倉 (切勿追高) | 價格: {final_entry_price}"
+                else:
+                    first_day_term_tag = " 🚨[bold white on red]【🔥第一天發動🔥】[/bold white on red]"
+                    first_day_line_tag = " 🚨【🔥第一天發動🔥】"
+                    display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日強勢突破 | 價格: {final_entry_price}"
 
         # 輸出到終端機
         print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}{first_day_term_tag}")
