@@ -379,8 +379,7 @@ class TaiwanStockTradingSystem:
         # 🛡️ [強化：主力洗盤與假跌破偵測]
         # ==========================================
         df['Lowest_5'] = df['Low'].rolling(window=5).min()
-        # 加入 (df['Close'] > df['Open'])，確保這是一個收紅 K 的強勢拉抬日，而非下跌回檔日
-        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Close'] > df['Open']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
+        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
         
         # ==========================================
         # ⚡ [強化：沉寂多時與即將噴發偵測]
@@ -431,28 +430,7 @@ class TaiwanStockTradingSystem:
         # ==========================================
         # 買賣訊號與部位計算
         # ==========================================
-        # ==========================================
-        # ⚖️ [新增：當日動能與 K 線濾網]
-        # ==========================================
-        # ==========================================
-        # ⚖️ [新增：當日動能與 K 線濾網]
-        # ==========================================
-        # 🚨 修正點：必須在這裡先計算 Returns，下方才能調用
-        df['Returns'] = df['Close'].pct_change()
-
-        df['Is_Green_Candle'] = df['Close'] >= df['Open'] # 收紅或平盤
-        df['Is_Up_Today'] = df['Returns'] > 0             # 今日上漲
-        df['Is_Heavy_Drop'] = df['Returns'] < -0.02       # 跌幅超過 2% 的實體黑K
-
-        # ==========================================
-        # 買賣訊號與部位計算
-        # ==========================================
-        # 買進條件：分數達標 + 不能是大跌日 + 必須收紅K (防禦下跌刀子)
-        df['Buy_Signal'] = (df['Score'] >= 60) & (~df['Is_Heavy_Drop']) & df['Is_Green_Candle']
-        
-        # 針對縮量埋伏，要求更加嚴格，跌幅不能超過 1%
-        df.loc[df['Ambush_Setup'] & (df['Returns'] < -0.01), 'Buy_Signal'] = False
-        
+        df['Buy_Signal'] = (df['Score'] >= 60)
         
         macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
@@ -518,8 +496,6 @@ class TaiwanStockTradingSystem:
                 "縮量埋伏": bool(last_day.get('Ambush_Setup', False)),
                 "高檔背離": bool(last_day.get('Top_Divergence', False)),
                 "乖離過大": bool(last_day.get('Overextended_MA5', False)),
-                "收紅K": bool(last_day.get('Is_Green_Candle', False)), # 新增傳出
-                "今日大跌": bool(last_day.get('Is_Heavy_Drop', False)), # 新增傳出
                 
                 # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
                 "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
@@ -690,27 +666,18 @@ def run_full_scan_gui(scanner):
                 
         elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
             
-            # 🛑 核心邏輯：防守濾網 (收黑或大跌的處置)
-            if not alert.get("收紅K", True) or alert.get('今日漲幅', 0) < 0:
-                status = "🟡 【滿足條件：等待轉強】"
-                if ambush_setup:
-                    raw_advice = "⚪ 【埋伏區觀察】 指標進入洗盤尾聲，但今日收黑，切勿猜底，等收紅再進場。"
-                else:
-                    raw_advice = "⚪ 【建議觀望】 籌碼達標但今日動能轉弱，建議等待帶量紅K確認。"
-                
-                # 強制清空 entry 紀錄，避免被判定為第一天發動
-                final_entry_date = "" 
-
             # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
-            elif fake_break and not macd_pass:
+            if fake_break and not macd_pass:
                 status = "🟡 【列入觀察/少量試單】"
                 raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
             elif fake_break and macd_pass:
                 status = "🟢 【強力買進】 (假跌破 + 動能確認)"
                 raw_advice = "🔥 【綠燈放行】 假跌破真拉抬，且 MACD(10,20,8) 已翻轉，可強力試單"
+                
+            # 下方為原有其他訊號邏輯
             elif ambush_setup:
                 status = "🥷 【縮量黃金：右側埋伏】"
-                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲，今日確認收紅表態)"
+                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
             elif pro_bottom_breakout:
                 status = "🌊 【VCP 波動收斂突破】"
                 raw_advice = "🔥 【強力買進】 MACD 零軸啟動，建議建立核心部位"
@@ -1408,26 +1375,23 @@ def main():
     rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M')}")
     
     scanner = YahooMarketScanner()
+        # 如果是在自動化環境，先檢查是否開盤
 
-    # 偵測是否為自動化環境
-    is_github_action = os.environ.get('GITHUB_ACTIONS') == 'true'
+# 如果是在自動化環境，先檢查是否開盤
+# 如果是在自動化環境，不再強制退出，確保掃描一定會執行
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print("偵測到 GitHub Actions 自動化環境，跳過開市驗證，直接執行...")
+        # 將原本的 if not is_taiwan_stock_open() 邏輯註解掉或移除
+        print("✅ 強制執行策略掃描與推播。")
 
-    if is_github_action:
-        print("偵測到 GitHub Actions 自動化環境，將執行完整策略掃描 (選項 1)...")
-        # 直接執行功能，不需要經過 input
-        run_full_scan_gui(scanner)
-        print("✅ 自動化任務完成。")
-        return # 執行完直接結束程式，避免進入無意義的迴圈
-
-    # 如果是本地開發環境，則顯示選單
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         
         menu = Panel(
             "1. 🚀 [bold cyan]執行完整策略掃描[/bold cyan] (大盤監控 + 庫存更新 + LINE推播)\n"
-            "2. 🔎 [bold yellow]單股深度診斷[/bold yellow]\n"
-            "3. 🔎 [bold yellow]回測[/bold yellow]\n"
-            "5. 📊 [bold magenta]檢查大盤現況[/bold magenta]\n"
+            "2. 🔎 [bold yellow]單股深度診斷[/bold yellow] (即時回測與技術籌碼評分)\n"
+            "3. 🔎 [bold yellow]回測[/bold yellow] (回測)\n"
+            "5. 📊 [bold magenta]檢查大盤現況[/bold magenta] (加權指數體質與均線分析)\n" # 新增這一行
             "q. [bold red]退出系統[/bold red]",
             title="🎯 台股獵手 v2.0 - GUI Terminal",
             border_style="bright_blue"
@@ -1442,7 +1406,7 @@ def main():
             run_single_query_mode_gui()
         elif choice == '3':
             run_test(scanner)
-        elif choice == '5':
+        elif choice == '5': # 新增這一行
             run_market_health_check_gui()
         elif choice == 'q':
             console.print("\n[bold red]👋 系統已退出，祝您投資順利！[/bold red]\n")
