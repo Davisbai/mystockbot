@@ -744,49 +744,55 @@ def run_full_scan_gui(scanner):
             display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
         
         # ==========================================
-        # 🧠 智能推播語氣與策略整合引擎
+        # 🧠 智能推播語氣與策略整合引擎 (奧地利學派風險控管版)
         # ==========================================
         first_day_term_tag = ""
         first_day_line_tag = ""
+        position_advice = ""  # 🌟 新增：資金控管建議
         
         is_first_day = (alert.get("日期") == final_entry_date)
         cost_price = watchlist.get(stock, {}).get("加入價格", "無紀錄")
         is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
         
         if not alert.get("是否觸發賣出") and (score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break):
-            # 💎【策略三】龍頭好公司的價值投資 (好公司遇到大跌打折)
+            # 💎【策略三】龍頭好公司的價值投資
             if stock in BLUE_CHIP_LIST and alert.get('今日漲幅', 0) <= -3.0:
                 first_day_term_tag = " 💎[bold cyan]【龍頭打折專區】[/bold cyan]"
                 first_day_line_tag = " 💎【龍頭打折專區】"
+                position_advice = "🛡️ 資金策略: 價值浮現，建議採【倒金字塔分批建倉】，首批最多 10% 資金。"
                 display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 龍頭罕見重挫，長線價值浮現 | 價格: {final_entry_price}"
                 
-            # 🔄【策略二】專注少數標的做波段 (活化長期監控清單，降低成本)
+            # 🔄【策略二】專注少數標的做波段 (降成本)
             elif stock in watchlist:
                 if alert.get('高檔背離') or alert.get('乖離過大') or is_chasing_high:
                     first_day_term_tag = " ✂️[bold yellow]【波段減碼提示】[/bold yellow]"
                     first_day_line_tag = " ✂️【波段減碼提示】"
+                    position_advice = "🛡️ 資金策略: 市場狂熱具不確定性，建議【收回本金或減碼 30%-50%】鎖定利潤。"
                     display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🔴 漲多正乖離大，可適度減碼收割 (原始成本: {cost_price})"
                 elif alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
                     first_day_term_tag = " 🔄[bold green]【波段降成本】[/bold green]"
                     first_day_line_tag = " 🔄【波段降成本】"
+                    position_advice = "🛡️ 資金策略: 趁量縮恐慌，建議【僅使用已獲利之資金】逢低買回試單。"
                     display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🟢 縮量回測支撐，考慮用獲利資金買回"
                 else:
                     first_day_term_tag = " 📊[bold blue]【波段持股續抱】[/bold blue]"
                     first_day_line_tag = " 📊【波段持股續抱】"
+                    position_advice = "🛡️ 資金策略: 趨勢未變，維持既有部位，嚴守移動停利紀律。"
                     display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
                     
-            # 🏹【原系統戰術】短線型態突破與右側埋伏 (非龍頭、非持股的新獵物)
+            # 🏹【原系統戰術】短線型態突破與右側埋伏
             elif is_first_day:
                 if alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
                     first_day_term_tag = " 🥷[bold green]【悄悄埋伏佈局】[/bold green]"
                     first_day_line_tag = " 🥷【悄悄埋伏佈局】"
+                    position_advice = "🛡️ 資金策略: 左側摸底不確定性極高，建議【嚴格控制在總資金 5%】試單。"
                     display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日逢低建倉 (切勿追高) | 價格: {final_entry_price}"
                 else:
                     first_day_term_tag = " 🚨[bold white on red]【🔥第一天發動🔥】[/bold white on red]"
                     first_day_line_tag = " 🚨【🔥第一天發動🔥】"
+                    position_advice = "🛡️ 資金策略: 右側動能確認，建議【標準部位 10%-20%】，跌破發動紅K低點即停損。"
                     display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日強勢突破 | 價格: {final_entry_price}"
-
-        # 輸出到終端機
+# 輸出到終端機
         print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}{first_day_term_tag}")
         print(display_log_msg)
         print(f"👉 系統判定: {status}")
@@ -794,12 +800,17 @@ def run_full_scan_gui(scanner):
         
         # 加入第一段 LINE 訊息
         line_prefix = "🔥" if "獨立" in status else tag
-        line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
-        line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
-        line_message_1.append(display_log_msg)
-        line_message_1.append(f"👉 {status}")
-        if not market_ok: line_message_1.append(f"💡 獨立建議: {raw_advice}")
-        line_message_1.append("")
+        
+        # 🌟 修正：只有在符合條件時，才把這檔股票加入 LINE 推播，並帶上資金建議
+        if is_first_day or alert.get("是否觸發賣出") or (stock in watchlist and (alert.get('高檔背離') or alert.get('乖離過大') or alert.get('縮量埋伏'))):
+            line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
+            line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
+            line_message_1.append(display_log_msg)
+            if position_advice:  # 若有資金策略，也加進去
+                line_message_1.append(position_advice)
+            line_message_1.append(f"👉 {status}")
+            if not market_ok: line_message_1.append(f"💡 獨立建議: {raw_advice}")
+            line_message_1.append("")
         
     if watchlist_updated:
         save_watchlist(watchlist)
@@ -1016,9 +1027,14 @@ def run_single_query_mode_gui():
             if ai_success:
                 regime_text = REGIME_DESC.get(regime_idx, f"狀態 {regime_idx}")
                 diag_table.add_row("[bold]GMM 市場狀態[/bold]", regime_text)
-                diag_table.add_row("[bold]AI 預測勝率[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
+                # 🌟 修正措辭：強調這是「歷史回測勝率」，而非未來預言
+                diag_table.add_row("[bold]AI 歷史回測勝率[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
             
             console.print(diag_table)
+            
+            # 🌟 新增：風險與不確定性免責聲明
+            if ai_success and meta_prob >= 0.6:
+                console.print("[dim italic]💡 註：此勝率代表在「過去類似的歷史條件下」，後續上漲機率較高。但人類市場沒有物理常數，歷史不會完美重演，請務必搭配資金控管。[/dim italic]")
             console.print("-" * 40)
 
             # ==========================================
@@ -1377,11 +1393,14 @@ def run_analysis(ticker):
     table.add_row("[bold]初階策略訊號[/bold]", "[green]做多 (均線之上)[/green]" if primary_signal == 1 else "[red]觀望 (均線之下)[/red]")
     
     if primary_signal == 1:
-        table.add_row("[bold]次階 AI 勝率預測[/bold]", f"{meta_prob*100:.1f}%")
-        table.add_row("[bold]系統最終決策[/bold]", "[bold green]✅ 建議執行[/bold green]" if execute_trade else "[bold yellow]🚫 過濾偽陽性 (拒絕執行)[/bold yellow]")
+        # 🌟 修正點 1：更名為「歷史回測勝率」，避免預測未來的錯覺
+        table.add_row("[bold]次階 AI 歷史回測勝率[/bold]", f"{meta_prob*100:.1f}%")
+        
+        # 🌟 修正點 2：加上資金控管提示
+        table.add_row("[bold]系統最終決策[/bold]", "[bold green]✅ 建議執行 (仍需控管資金)[/bold green]" if execute_trade else "[bold yellow]🚫 過濾偽陽性 (拒絕執行)[/bold yellow]")
+        
         table.add_row("[bold]動態建議資金權重[/bold]", f"{target_weight*100:.1f}% (基於波動率目標)")
         table.add_row("[bold]台股單筆預估摩擦成本[/bold]", f"{friction:.1f} TWD (以1000股計，含手續費)")
-        
     console.print(table)
     
     if execute_trade:
