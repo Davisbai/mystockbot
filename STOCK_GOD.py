@@ -801,8 +801,8 @@ def run_full_scan_gui(scanner):
         # 加入第一段 LINE 訊息
         line_prefix = "🔥" if "獨立" in status else tag
         
-        # 🌟 修正：只有在符合條件時，才把這檔股票加入 LINE 推播，並帶上資金建議
-        if is_first_day or alert.get("是否觸發賣出") or (stock in watchlist and (alert.get('高檔背離') or alert.get('乖離過大') or alert.get('縮量埋伏'))):
+        # 🌟 恢復顯示：只要是「固定清單」、庫存，或是今天有特殊動作，就顯示在 LINE 報告中讓您安心
+        if tag == "[固定]" or stock in watchlist or is_first_day or alert.get("是否觸發賣出"):
             line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
             line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
             line_message_1.append(display_log_msg)
