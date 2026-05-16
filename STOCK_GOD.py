@@ -288,6 +288,12 @@ class TaiwanStockTradingSystem:
         # 3. 均線與籌碼輔助
         df['MA20'] = df['Close'].rolling(window=20).mean()
         df['Inst_Consecutive'] = ((df['Foreign_Buy'] > 0) | (df['Trust_Buy'] > 0)).rolling(window=3).sum() >= 2
+        
+        # === 🎬 影片戰術調教：漲停基因與數量限制 ===
+        df['Is_Limit_Up'] = df['Close'].pct_change() >= 0.099
+        df['Limit_Up_Count_20'] = df['Is_Limit_Up'].rolling(window=20).sum()
+        df['Has_Limit_Up_Gene'] = (df['Limit_Up_Count_20'] >= 1) & (df['Limit_Up_Count_20'] <= 3)
+        
         return df
 
     def process_stock(self, ticker):
@@ -369,6 +375,39 @@ class TaiwanStockTradingSystem:
         
         df['Ambush_Setup'] = df['No_New_Lows'] & df['Has_Recent_Action'] & df['Volume_Dry_Up'] & (df['Close'] > df['MA5'])
 
+        # === 🎬 修改點 2：動態尋找首板關鍵支撐位 ===
+        df['Limit_Up_Support'] = np.nan
+        df['Limit_Up_Type'] = "NONE"
+
+        for i in range(20, len(df)):
+            sub_df = df.iloc[i-20:i+1]
+            limit_up_days = sub_df[sub_df['Is_Limit_Up']]
+            
+            if not limit_up_days.empty:
+                first_lu_idx = limit_up_days.index[0]
+                first_lu_row = df.loc[first_lu_idx]
+                total_lu = len(limit_up_days)
+                
+                if total_lu == 1:
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Open']
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "SINGLE"
+                elif total_lu in [2, 3]:
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Close']
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "MULTI"
+                    
+        df['Limit_Up_Support'] = df['Limit_Up_Support'].ffill()
+        df['Limit_Up_Type'] = df['Limit_Up_Type'].ffill()
+
+        # === 🎬 修改點 3：漲停回檔低吸訊號組合 ===
+        df['Support_Held'] = (df['Low'] >= df['Limit_Up_Support'] * 0.99) & (df['Close'] >= df['Limit_Up_Support'])
+        df['Pullback_Volume_Dry'] = df['Volume_Dry_Up'].rolling(window=3).max() == 1
+        df['Volume_Turnaround'] = (df['Close'] > df['Open']) & (df['Volume'] > df['Volume'].rolling(window=5).mean() * 1.2)
+        
+        df['Limit_Up_Pullback_Buy'] = df['Has_Limit_Up_Gene'] & \
+                                      df['Support_Held'] & \
+                                      df['Pullback_Volume_Dry'] & \
+                                      df['Volume_Turnaround'] & \
+                                      (~df['Is_Limit_Up'])
         # ==========================================
         # 🚨 [精髓：快漲完了 (逃頂/避險特徵)]
         # ==========================================
@@ -431,6 +470,7 @@ class TaiwanStockTradingSystem:
         df.loc[df['Pro_Bottom_Breakout'], 'Raw_Score'] += 35
         df.loc[df['Ambush_Setup'], 'Raw_Score'] += 25
 
+        df.loc[df['Limit_Up_Pullback_Buy'], 'Raw_Score'] += 35
         df['Score'] = df['Raw_Score']
         df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] 
         df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
@@ -443,9 +483,8 @@ class TaiwanStockTradingSystem:
         macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
         
-        # 整合逃頂訊號：原本是破月線才賣，現在加入高檔量價背離、乖離過大、假突破壓力位
-        df['Sell_Signal'] = macd_death_cross | break_ma20 | df['Top_Divergence'] | df['Overextended_MA5'] | hit_resistance
-        df.loc[df['Buy_Signal'], 'Sell_Signal'] = False 
+        break_limit_up_support = (df['Close'] < df['Limit_Up_Support'] * 0.98)
+        df['Sell_Signal'] = macd_death_cross | break_ma20 | df['Top_Divergence'] | df['Overextended_MA5'] | hit_resistance | break_limit_up_support
 
         df['Position'] = np.nan
         df.loc[df['Buy_Signal'], 'Position'] = 1
@@ -504,7 +543,7 @@ class TaiwanStockTradingSystem:
                 "縮量埋伏": bool(last_day.get('Ambush_Setup', False)),
                 "高檔背離": bool(last_day.get('Top_Divergence', False)),
                 "乖離過大": bool(last_day.get('Overextended_MA5', False)),
-                
+                "漲停低吸": bool(last_day.get('Limit_Up_Pullback_Buy', False)),
                 # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
                 "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
                 "MACD_訊號": float(last_day.get('Signal_Custom', 0.0))
