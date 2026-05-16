@@ -290,11 +290,7 @@ class TaiwanStockTradingSystem:
         df['Inst_Consecutive'] = ((df['Foreign_Buy'] > 0) | (df['Trust_Buy'] > 0)).rolling(window=3).sum() >= 2
         
         # === 🎬 影片戰術調教：漲停基因與數量限制 ===
-        df['Is_Limit_Up'] = (
-            (df['Close'].pct_change() >= 0.095) &
-            (df['Close'] > df['Open']) &
-            (df['Volume'] > df['Volume'].rolling(20).mean() * 1.3)
-        )
+        df['Is_Limit_Up'] = df['Close'].pct_change() >= 0.099
         df['Limit_Up_Count_20'] = df['Is_Limit_Up'].rolling(window=20).sum()
         df['Has_Limit_Up_Gene'] = (df['Limit_Up_Count_20'] >= 1) & (df['Limit_Up_Count_20'] <= 3)
         
@@ -396,47 +392,22 @@ class TaiwanStockTradingSystem:
                     df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Open']
                     df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "SINGLE"
                 elif total_lu in [2, 3]:
-                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['High']
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Close']
                     df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "MULTI"
                     
         df['Limit_Up_Support'] = df['Limit_Up_Support'].ffill()
         df['Limit_Up_Type'] = df['Limit_Up_Type'].ffill()
 
         # === 🎬 修改點 3：漲停回檔低吸訊號組合 ===
-        df['Support_Held'] = (
-            (df['Low'] <= df['Limit_Up_Support'] * 1.03) &
-            (df['Close'] >= df['Limit_Up_Support'] * 0.98)
-        )
-        df['DC_Volume_Dry'] = (
-            df['Volume'].rolling(3).mean() < df['Volume'].rolling(20).mean() * 0.85
-        )
-        df['Pullback_Volume_Dry'] = df['DC_Volume_Dry'].rolling(window=3).max() == 1
-        df['Volume_Turnaround'] = (
-            (df['Close'] > df['Open']) &
-            (df['Close'] > df['Close'].shift(1)) &
-            (df['Volume'] > df['Volume'].rolling(window=5).mean() * 1.1)
-        )
+        df['Support_Held'] = (df['Low'] >= df['Limit_Up_Support'] * 0.99) & (df['Close'] >= df['Limit_Up_Support'])
+        df['Pullback_Volume_Dry'] = df['Volume_Dry_Up'].rolling(window=3).max() == 1
+        df['Volume_Turnaround'] = (df['Close'] > df['Open']) & (df['Volume'] > df['Volume'].rolling(window=5).mean() * 1.2)
         
-         # ==========================================
-        # 🎯 [核心邏輯補回]：計算 Independent_Alpha
-        # ==========================================
-        df['RS_Line'] = df['Close'] / df['Close_Mkt']
-        df['RS_Slope'] = df['RS_Line'].pct_change(5) 
-        stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
-        
-        df['Independent_Alpha'] = (
-            (~df['Market_OK']) & 
-            (df['Close'] > df['MA20']) & 
-            (stock_ma20_up) & 
-            (df['RS_Slope'] > 0)
-        )
-
         df['Limit_Up_Pullback_Buy'] = df['Has_Limit_Up_Gene'] & \
                                       df['Support_Held'] & \
                                       df['Pullback_Volume_Dry'] & \
                                       df['Volume_Turnaround'] & \
-                                      (~df['Is_Limit_Up']) & \
-                                      (df['Market_OK'] | df['Independent_Alpha']) # 👈 新增這行，避開系統性崩盤
+                                      (~df['Is_Limit_Up'])
         # ==========================================
         # 🚨 [精髓：快漲完了 (逃頂/避險特徵)]
         # ==========================================
@@ -468,7 +439,19 @@ class TaiwanStockTradingSystem:
         # 沉寂後的成交量異動 (量增 1.5 倍)
         df['Quiet_Momentum'] = df['Long_Quiet'].shift(1) & (df['Volume'] > df['Volume'].rolling(20).mean() * 1.5) & (df['Close'] > df['Open'])
 
-       
+        # ==========================================
+        # 🎯 [核心邏輯補回]：計算 Independent_Alpha
+        # ==========================================
+        df['RS_Line'] = df['Close'] / df['Close_Mkt']
+        df['RS_Slope'] = df['RS_Line'].pct_change(5) 
+        stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
+        
+        df['Independent_Alpha'] = (
+            (~df['Market_OK']) & 
+            (df['Close'] > df['MA20']) & 
+            (stock_ma20_up) & 
+            (df['RS_Slope'] > 0)
+        )
 
         # ==========================================
         # ⚖️ [評分邏輯強化]
@@ -500,11 +483,9 @@ class TaiwanStockTradingSystem:
         macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
         
-        # 判定今日與昨日是否都收盤跌破支撐 2%
-        break_limit_up_support_raw = (df['Close'] < df['Limit_Up_Support'] * 0.98)
-        break_limit_up_support = break_limit_up_support_raw & break_limit_up_support_raw.shift(1) # 👈 修改這行
-        
+        break_limit_up_support = (df['Close'] < df['Limit_Up_Support'] * 0.98)
         df['Sell_Signal'] = macd_death_cross | break_ma20 | df['Top_Divergence'] | df['Overextended_MA5'] | hit_resistance | break_limit_up_support
+
         df['Position'] = np.nan
         df.loc[df['Buy_Signal'], 'Position'] = 1
         df.loc[df['Sell_Signal'], 'Position'] = 0
@@ -563,10 +544,6 @@ class TaiwanStockTradingSystem:
                 "高檔背離": bool(last_day.get('Top_Divergence', False)),
                 "乖離過大": bool(last_day.get('Overextended_MA5', False)),
                 "漲停低吸": bool(last_day.get('Limit_Up_Pullback_Buy', False)),
-                "漲停基因": bool(last_day.get('Has_Limit_Up_Gene', False)),
-                "近期漲停數": int(last_day.get('Limit_Up_Count_20', 0)) if not pd.isna(last_day.get('Limit_Up_Count_20', np.nan)) else 0,
-                "漲停支撐價": round(float(last_day.get('Limit_Up_Support', 0)), 2) if not pd.isna(last_day.get('Limit_Up_Support', np.nan)) else 0,
-                "漲停型態": str(last_day.get('Limit_Up_Type', 'NONE')),
                 # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
                 "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
                 "MACD_訊號": float(last_day.get('Signal_Custom', 0.0))
@@ -723,7 +700,6 @@ def run_full_scan_gui(scanner):
         ambush_setup = alert.get('縮量埋伏', False)
         is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
         fake_break = alert.get('假跌破', False)
-        dc_pullback = alert.get('漲停低吸', False)
         
         # 🌟 取得專用的 MACD (10, 20, 8) 數值
         macd_val = alert.get('MACD_數值', 0.0)
@@ -750,15 +726,12 @@ def run_full_scan_gui(scanner):
                 del watchlist[stock]
                 watchlist_updated = True
                 
-        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback:
+        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
             
             # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
             if fake_break and not macd_pass:
                 status = "🟡 【列入觀察/少量試單】"
                 raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
-            elif dc_pullback:
-                status = "🎯 【DC 漲停回檔低吸】"
-                raw_advice = "🔥 【強勢股第二波低吸】 漲停後縮量回測支撐，今日放量止跌反彈"
             elif fake_break and macd_pass:
                 status = "🟢 【強力買進】 (假跌破 + 動能確認)"
                 raw_advice = "🔥 【綠燈放行】 假跌破真拉抬，且 MACD(10,20,8) 已翻轉，可強力試單"
@@ -820,7 +793,7 @@ def run_full_scan_gui(scanner):
         cost_price = watchlist.get(stock, {}).get("加入價格", "無紀錄")
         is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
         
-        if not alert.get("是否觸發賣出") and (score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback):
+        if not alert.get("是否觸發賣出") and (score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break):
             # 💎【策略三】龍頭好公司的價值投資
             if stock in BLUE_CHIP_LIST and alert.get('今日漲幅', 0) <= -3.0:
                 first_day_term_tag = " 💎[bold cyan]【龍頭打折專區】[/bold cyan]"
@@ -828,12 +801,6 @@ def run_full_scan_gui(scanner):
                 position_advice = "🛡️ 資金策略: 價值浮現，建議採【倒金字塔分批建倉】，首批最多 10% 資金。"
                 display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 龍頭罕見重挫，長線價值浮現 | 價格: {final_entry_price}"
                 
-            elif dc_pullback:
-                first_day_term_tag = " 🎯[bold magenta]【DC漲停回檔低吸】[/bold magenta]"
-                first_day_line_tag = " 🎯【DC漲停回檔低吸】"
-                position_advice = "🛡️ 資金策略: 強勢股第二波低吸，建議小部位 5%-10% 試單；跌破漲停支撐 2% 停損。"
-                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 DC 回檔低吸觸發 | 價格: {final_entry_price}"
-
             # 🔄【策略二】專注少數標的做波段 (降成本)
             elif stock in watchlist:
                 if alert.get('高檔背離') or alert.get('乖離過大') or is_chasing_high:
@@ -877,8 +844,6 @@ def run_full_scan_gui(scanner):
         if tag == "[固定]" or stock in watchlist or is_first_day or alert.get("是否觸發賣出"):
             line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
             line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
-            if alert.get('漲停低吸'):
-                line_message_1.append(f"🎯 DC支撐: {alert.get('漲停支撐價')} | 型態: {alert.get('漲停型態')} | 20日漲停數: {alert.get('近期漲停數')}")
             line_message_1.append(display_log_msg)
             if position_advice:  # 若有資金策略，也加進去
                 line_message_1.append(position_advice)
@@ -1070,7 +1035,6 @@ def run_single_query_mode_gui():
             ambush_setup = alert.get('縮量埋伏', False)
             is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
             fake_break = alert.get('假跌破', False)
-            dc_pullback = alert.get('漲停低吸', False)
             
             macd_val = alert.get('MACD_數值', 0.0)
             macd_sig = alert.get('MACD_訊號', 0.0)
@@ -1099,18 +1063,6 @@ def run_single_query_mode_gui():
             macd_cross_str = "金叉" if macd_golden_cross else "死叉"
             diag_table.add_row("[bold]MACD(10,20,8)[/bold]", f"{macd_str} ({macd_cross_str})")
 
-            # ==== 🌟 這裡新增：DC 戰術專屬技術看板 (大約在第 403 行位置) ====
-            if alert.get('漲停基因'):
-                support_price = alert.get('漲停支撐價', 0)
-                lu_type_str = "單板底部" if alert.get('漲停型態') == "SINGLE" else "首板最高點"
-                diag_table.add_row(
-                    "[bold]🏹 DC 戰術看板[/bold]", 
-                    f"[bold magenta]符合基因[/bold magenta] (近20日漲停: [cyan]{alert.get('近期漲停數')}[/cyan] 次) | 關鍵支撐: [yellow]{support_price:.2f}[/yellow] ({lu_type_str})"
-                )
-            else:
-                diag_table.add_row("[bold]🏹 DC 戰術看板[/bold]", "[dim]近期無漲停基因，未觸發低吸追蹤[/dim]")
-            # ==========================================================
-
             if ai_success:
                 regime_text = REGIME_DESC.get(regime_idx, f"狀態 {regime_idx}")
                 diag_table.add_row("[bold]GMM 市場狀態[/bold]", regime_text)
@@ -1136,10 +1088,9 @@ def run_single_query_mode_gui():
                 else:
                     console.print("👉 最終判定: [bold red]🔴 【強制賣出/停損訊號】[/bold red] (指標轉弱或破線)")
             
-            elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback:
+            elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break:
                 
-                if dc_pullback: base_status = "🎯 【DC 漲停回檔低吸】"
-                elif ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
+                if ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
                 elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
                 elif fake_break: base_status = "🟢 【假跌破真拉抬】 (洗盤結束)"
                 elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
