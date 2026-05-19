@@ -497,17 +497,42 @@ class TaiwanStockTradingSystem:
         # ==========================================
         df['Buy_Signal'] = (df['Score'] >= 60)
         
-        macd_death_cross = (df['MACD'] < df['Signal']) & (df['MACD'].shift(1) >= df['Signal'].shift(1))
+        macd_death_cross = (
+            (df['MACD'] < df['Signal']) & 
+            (df['MACD'].shift(1) >= df['Signal'].shift(1))
+        )
+
         break_ma20 = df['Close'] < (df['MA20'] * 0.98)
         
-        # 判定今日與昨日是否都收盤跌破支撐 2%
-        break_limit_up_support_raw = (df['Close'] < df['Limit_Up_Support'] * 0.98)
-        break_limit_up_support = break_limit_up_support_raw & break_limit_up_support_raw.shift(1) # 👈 修改這行
+        # 判定今日與昨日是否都收盤跌破漲停支撐 2%
+        break_limit_up_support_raw = (
+            df['Close'] < df['Limit_Up_Support'] * 0.98
+        )
+
+        break_limit_up_support = (
+            break_limit_up_support_raw & 
+            break_limit_up_support_raw.shift(1).fillna(False)
+        )
         
-        df['Sell_Signal'] = macd_death_cross | break_ma20 | df['Top_Divergence'] | df['Overextended_MA5'] | hit_resistance | break_limit_up_support
+        df['Sell_Signal'] = (
+            macd_death_cross |
+            break_ma20 |
+            df['Top_Divergence'] |
+            df['Overextended_MA5'] |
+            hit_resistance |
+            break_limit_up_support
+        )
+
+        # ✅ 關鍵修正：
+        # 若當天分數仍達買進門檻，代表趨勢尚未完全轉弱，
+        # 不允許同一天被 Sell_Signal 覆蓋成賣出。
+        # 這樣可避免「評分 60 以上卻強制賣出」的矛盾。
+        df.loc[df['Buy_Signal'], 'Sell_Signal'] = False
+
         df['Position'] = np.nan
         df.loc[df['Buy_Signal'], 'Position'] = 1
         df.loc[df['Sell_Signal'], 'Position'] = 0
+
         df['Position'] = df['Position'].ffill().fillna(0)
         
         df['Trade_Action'] = df['Position'].diff()
