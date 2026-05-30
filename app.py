@@ -37,6 +37,104 @@ st.markdown("""
 if 'market_cache' not in st.session_state:
     st.session_state.market_cache = {}
 
+
+# ==========================================
+# 🧠 前面策略優化欄位的前端判讀工具
+#    僅讀取 STOCK_GOD 已輸出的 alert 欄位，不改動核心演算法
+# ==========================================
+def _flag(alert, key, default=False):
+    return bool(alert.get(key, default))
+
+def _num(alert, key, default=0):
+    try:
+        return float(alert.get(key, default))
+    except Exception:
+        return default
+
+def get_limitup_structure(alert):
+    if _flag(alert, '低位縮量漲停'):
+        return '🟢 低位縮量漲停｜籌碼鎖定佳，續航力較強'
+    if _flag(alert, '前高放量漲停'):
+        return '🔥 前高放量突破｜有效消化套牢賣壓'
+    if _flag(alert, '低位放量漲停'):
+        return '🟡 低位放量漲停｜分歧較大，等洗盤確認'
+    if _flag(alert, '前高縮量漲停'):
+        return '🔴 前高縮量漲停｜假突破風險高'
+    if _flag(alert, '漲停基因'):
+        return '🏹 近期有漲停基因｜等待量價結構確認'
+    return '—'
+
+def get_rule7_tags(alert):
+    tags = []
+    if _flag(alert, '上升趨勢'):
+        tags.append('📈 上升趨勢')
+    if _flag(alert, '紅肥綠瘦'):
+        tags.append('💪 紅肥綠瘦')
+    if _flag(alert, '短線資格'):
+        tags.append('🆕 短線資格')
+    if _flag(alert, '連續小陽'):
+        tags.append('🌱 連續小陽')
+    if _flag(alert, '連續小陰'):
+        tags.append('⚠️ 連續小陰')
+    if _flag(alert, '恐慌反轉'):
+        tags.append('🔄 恐慌反轉')
+    if _flag(alert, '強勢高位'):
+        tags.append('🚀 強勢高位')
+    if _flag(alert, '高位過熱'):
+        tags.append('🔥 高位過熱')
+    if _num(alert, '新鮮度分數', 0) >= 15:
+        tags.append(f"🆕 新鮮度{int(_num(alert, '新鮮度分數', 0))}")
+    return ' / '.join(tags) if tags else '—'
+
+def get_frontend_status(alert, score_threshold=60):
+    score = int(alert.get('今日評分', 0))
+    raw_score = int(alert.get('個股原始評分', score))
+    market_ok = _flag(alert, '大盤安全')
+    is_rebel = (not market_ok and raw_score >= 75)
+
+    if _flag(alert, '是否觸發賣出'):
+        return '🔴 建議賣出/停損'
+    if _flag(alert, '假突破風險') or _flag(alert, '前高縮量漲停'):
+        return '🚨 假突破風險'
+    if _flag(alert, '高檔背離') or _flag(alert, '乖離過大') or _flag(alert, '高位過熱'):
+        return '🚨 高檔過熱/了結'
+    if _flag(alert, '漲停低吸'):
+        return '🎯 漲停回檔低吸'
+    if _flag(alert, '前高放量漲停'):
+        return '🔥 前高放量突破'
+    if _flag(alert, '低位縮量漲停'):
+        return '🟢 低位縮量發動'
+    if _flag(alert, '沉寂發動'):
+        return '⚡ 沉寂噴發'
+    if _flag(alert, '專業起漲'):
+        return '🌊 VCP 突破'
+    if _flag(alert, '縮量埋伏'):
+        return '🥷 縮量埋伏'
+    if _flag(alert, '假跌破'):
+        return '🛡️ 假摔洗盤'
+    if _flag(alert, '恐慌反轉'):
+        return '🔄 恐慌反轉觀察'
+    if score >= score_threshold and (_flag(alert, '上升趨勢') or _flag(alert, '短線資格') or is_rebel):
+        return '🟢 強力買進'
+    if score >= score_threshold:
+        return '🟡 達分數但濾網不足'
+    return '⚪ 觀望'
+
+def is_frontend_watchlist_candidate(alert, ticker):
+    score = int(alert.get('今日評分', 0))
+    market_ok = _flag(alert, '大盤安全')
+    raw_score = int(alert.get('個股原始評分', score))
+    is_rebel = (not market_ok and raw_score >= 75)
+    pass_trend = _flag(alert, '上升趨勢') or _flag(alert, '漲停低吸') or _flag(alert, '獨立行情') or is_rebel
+    pass_short = _flag(alert, '短線資格') or _flag(alert, '漲停基因') or ticker in STOCK_MAP
+    blocked = (
+        _flag(alert, '是否觸發賣出') or
+        _flag(alert, '假突破風險') or
+        _flag(alert, '前高縮量漲停') or
+        _flag(alert, '高位過熱')
+    )
+    return score >= 60 and pass_trend and pass_short and not blocked
+
 # ==========================================
 # 🗂️ 側邊欄選單
 # ==========================================
@@ -88,21 +186,18 @@ if menu == "1. 🚀 執行完整策略掃描":
             alert_data = []
             for stock, alert in alerts.items():
                 name = COMBINED_MAP.get(stock, "")
-                status = "⚪ 觀望"
-                
-                if alert.get('是否觸發賣出'): status = "🔴 強制賣出"
-                elif alert.get('高檔背離') or alert.get('乖離過大'): status = "🚨 高檔了結"
-                elif alert.get('沉寂發動'): status = "⚡ 沉寂噴發"
-                elif alert.get('專業起漲'): status = "🌊 VCP 突破"
-                elif alert.get('縮量埋伏'): status = "🥷 縮量埋伏"
-                elif alert.get('假跌破'): status = "🛡️ 假摔洗盤"
-                elif alert['今日評分'] >= 65: status = "🟢 強力買進"
+                status = get_frontend_status(alert)
                 
                 alert_data.append({
                     "代碼": stock.replace('.TW', '').replace('.TWO', ''),
                     "名稱": name,
                     "收盤價": alert['收盤價'],
+                    "漲幅%": alert.get('今日漲幅', 0),
                     "今日評分": alert['今日評分'],
+                    "量能倍率": alert.get('量能倍率', 0),
+                    "區間位置": alert.get('區間位置', 0),
+                    "漲停量價結構": get_limitup_structure(alert),
+                    "七法則標籤": get_rule7_tags(alert),
                     "系統判定": status
                 })
             
@@ -127,6 +222,10 @@ elif menu == "2. 🔎 單股深度診斷":
         * **布林極致壓縮 (Squeeze)：** 股價波動縮小到極限，代表多空即將決裂，通常是變盤前兆。
         * **長期沉寂量增 (Quiet Breakout)：** 股價長期低迷（橫盤震幅<10%），今日突然量比急增，是起漲訊號。
         * **均線糾結：** 短中長期均線黏合，股價帶量突破將展開大行情。
+
+        **【前面新增的兩套短線濾網】**
+        * **漲停量價結構：** 低位縮量漲停偏強；前高放量突破偏強；低位放量需等洗盤；前高縮量需防假突破。
+        * **七法則標籤：** 上升趨勢、紅肥綠瘦、短線資格、新鮮度、連續小陽、恐慌反轉與高位過熱會同步顯示在診斷面板。
         """)
 
     user_input = st.text_input("請輸入股票代碼或名稱 (例如: 2330, AAPL, 或 台積電)", "2330")
@@ -241,6 +340,16 @@ elif menu == "2. 🔎 單股深度診斷":
                 is_water_above = (macd_val > 0)
                 macd_golden_cross = (macd_val > macd_sig)
 
+                # 前面策略加強版欄位：若 STOCK_GOD 尚未升級，皆以預設值安全處理
+                false_breakout_risk = alert.get('假突破風險', False) or alert.get('前高縮量漲停', False)
+                trend_up_strong = alert.get('上升趨勢', False)
+                strong_candle_structure = alert.get('紅肥綠瘦', False)
+                short_term_eligible = alert.get('短線資格', False)
+                panic_reversal = alert.get('恐慌反轉', False)
+                high_position_strong = alert.get('強勢高位', False)
+                high_position_overheat = alert.get('高位過熱', False)
+                fresh_theme_score = alert.get('新鮮度分數', 0)
+
                 # --- 5. 繪製 Streamlit 數據面板 ---
                 st.info(f"📅 數據日期: **{alert.get('日期', 'N/A')}**")
                 st.markdown("### 📊 核心數據儀表板")
@@ -270,6 +379,23 @@ elif menu == "2. 🔎 單股深度診斷":
                 st.write(f"- **{mkt_name}大盤狀態**: {mkt_status} (指數: {mkt_close:.0f} | 月線: {mkt_ma20:.0f})")
                 st.write(f"- **MACD (10,20,8)**: {macd_str} ({macd_cross_str}) | DIF: {macd_val:.2f}")
 
+                st.markdown("#### 🏹 漲停量價結構")
+                lu_col1, lu_col2, lu_col3 = st.columns(3)
+                lu_col1.metric("量能倍率", f"{alert.get('量能倍率', 0):.2f}x" if isinstance(alert.get('量能倍率', 0), (int, float)) else str(alert.get('量能倍率', 0)))
+                lu_col2.metric("區間位置", f"{alert.get('區間位置', 0):.2f}" if isinstance(alert.get('區間位置', 0), (int, float)) else str(alert.get('區間位置', 0)))
+                lu_col3.metric("近期漲停數", f"{alert.get('近期漲停數', 0)}")
+                st.write(f"- **漲停結構判讀**: {get_limitup_structure(alert)}")
+                if false_breakout_risk:
+                    st.error("🚨 前高附近縮量或假突破風險偏高，短線不宜追價，需等補量或回測支撐確認。")
+
+                st.markdown("#### 📌 七法則短線濾網")
+                rule_cols = st.columns(4)
+                rule_cols[0].metric("上升趨勢", "✅" if trend_up_strong else "—")
+                rule_cols[1].metric("紅肥綠瘦", "✅" if strong_candle_structure else "—")
+                rule_cols[2].metric("短線資格", "✅" if short_term_eligible else "—")
+                rule_cols[3].metric("新鮮度分數", f"{fresh_theme_score}")
+                st.write(f"- **七法則標籤**: {get_rule7_tags(alert)}")
+
                 if ai_success:
                     REGIME_DESC = {
                         0: "🟢 0 低波動穩定期 (多頭特徵)",
@@ -292,20 +418,28 @@ elif menu == "2. 🔎 單股深度診斷":
                 add_to_watchlist_flag = False
                 is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
 
+                frontend_status = get_frontend_status(alert)
+                add_to_watchlist_flag = is_frontend_watchlist_candidate(alert, ticker)
+
                 if alert.get("是否觸發賣出"):
                     st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
+                elif false_breakout_risk:
+                    st.error("👉 最終判定: 🚨 **【假突破風險】**：前高縮量或量價結構不健康，先觀望，不自動收錄。")
+                    add_to_watchlist_flag = False
+                elif high_position_overheat:
+                    st.warning("👉 最終判定: 🚨 **【高位過熱】**：短線可能仍強，但不適合追高，等待量縮回測。")
+                    add_to_watchlist_flag = False
                 elif score >= 60:
-                    if not ai_success or meta_prob >= 0.6:
-                        if is_chasing_high:
-                             st.warning(f"👉 最終判定: ⚠️ **【切勿追高】** (今日漲幅達 {alert.get('今日漲幅', 0)}%, 已大漲表態，請耐心等待量縮回檔)")
-                        else:
-                            st.success("👉 最終判定: 🟢 **【強力買進】**")
-                            add_to_watchlist_flag = True
+                    if ai_success and meta_prob < 0.6:
+                        st.warning("👉 最終判定: 🟡 **【建議觀望】**：技術面達標，但 AI 歷史樣本勝率偏低。")
+                        add_to_watchlist_flag = False
+                    elif is_chasing_high and not high_position_strong:
+                        st.warning(f"👉 最終判定: ⚠️ **【切勿追高】**：今日漲幅達 {alert.get('今日漲幅', 0)}%，但尚未通過強勢高位濾網。")
+                        add_to_watchlist_flag = False
+                    elif add_to_watchlist_flag:
+                        st.success(f"👉 最終判定: 🟢 **【{frontend_status.replace('🟢 ', '').replace('🔥 ', '').replace('🎯 ', '')}】**")
                     else:
-                        if is_chasing_high:
-                            st.warning("👉 最終判定: 🟡 **【建議觀望 / ⚠️ 切勿追高】** (今日漲幅大且 AI 勝率過低，慎防假突破)")
-                        else:
-                            st.warning("👉 最終判定: 🟡 **【建議觀望】** (技術面達標但 AI 勝率過低)")
+                        st.warning(f"👉 最終判定: 🟡 **【{frontend_status.replace('🟡 ', '')}】**：分數達標，但短線資格、趨勢或風險濾網尚未完全通過。")
                 else:
                     st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
@@ -337,7 +471,9 @@ elif menu == "2. 🔎 單股深度診斷":
                 col_l, col_r = st.columns(2)
                 with col_l:
                     st.markdown("### 🏹 主力洗盤辨識")
-                    if is_top_divergent:
+                    if false_breakout_risk:
+                        st.error("🚨 **警告：【前高縮量假突破風險】**\n\n價格接近前高但量能不足，可能尚未真正消化套牢賣壓，需等補量續攻或回測不破。")
+                    elif is_top_divergent:
                         st.error("🚨 **警告：【誘多出貨風險】**\n\n股價雖處高檔，但動能背離或乖離過大。切勿追高。")
                     elif fake_break:
                         st.success("🛡️ **偵測到【假跌破真拉抬】**\n\n近期刻意殺破支撐後迅速收回。這代表主力洗盤成功，下方籌碼已換手，後市看好。")
@@ -355,6 +491,16 @@ elif menu == "2. 🔎 單股深度診斷":
                         st.success("🌊 **標的特徵：【VCP 波動收斂突破】**\n\n籌碼極限壓縮後今日帶量突破，建議建立核心部位。")
                     else:
                         st.write("📊 目前無明顯的變盤特徵。")
+
+                    st.markdown("### 📌 七法則細節")
+                    if trend_up_strong and strong_candle_structure and short_term_eligible:
+                        st.success("✅ **短線結構完整**：同時具備上升趨勢、紅肥綠瘦與近期漲停/新高/新量資格。")
+                    elif trend_up_strong or strong_candle_structure or short_term_eligible:
+                        st.info(f"📊 **部分條件成立**：{get_rule7_tags(alert)}")
+                    elif panic_reversal:
+                        st.info("🔄 **逆向觀察**：連續下跌後出現止跌收紅，適合觀察，不宜直接重倉。")
+                    else:
+                        st.write("目前七法則短線濾網尚未形成完整共振。")
 
                 with col_r:
                     st.markdown("### 📋 最近交易紀錄")

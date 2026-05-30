@@ -290,11 +290,10 @@ class TaiwanStockTradingSystem:
         df['Inst_Consecutive'] = ((df['Foreign_Buy'] > 0) | (df['Trust_Buy'] > 0)).rolling(window=3).sum() >= 2
         
         # === 🎬 影片戰術調教：漲停基因與數量限制 ===
-        # 注意：這裡只判斷「是否漲停」，不再把放量寫進漲停條件。
-        # 縮量 / 放量會在 process_stock() 中用 Vol_Ratio_20 另外分類，避免漏抓低位縮量漲停。
         df['Is_Limit_Up'] = (
             (df['Close'].pct_change() >= 0.095) &
-            (df['Close'] > df['Open'])
+            (df['Close'] > df['Open']) &
+            (df['Volume'] > df['Volume'].rolling(20).mean() * 1.3)
         )
         df['Limit_Up_Count_20'] = df['Is_Limit_Up'].rolling(window=20).sum()
         df['Has_Limit_Up_Gene'] = (df['Limit_Up_Count_20'] >= 1) & (df['Limit_Up_Count_20'] <= 3)
@@ -317,44 +316,6 @@ class TaiwanStockTradingSystem:
         df = self.calculate_indicators(df)
         df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
         df['Market_OK'] = df['Market_OK'].fillna(False)
-
-        # ==========================================
-        # 🎯 漲停位置與量能結構判斷：低位 / 前高壓力
-        # ==========================================
-        # 影片邏輯：漲停板不能只看縮量或放量，必須先判斷位置。
-        # 低位縮量漲停：籌碼鎖定，續航力較強。
-        # 低位放量漲停：分歧較大，容易先洗盤。
-        # 前高放量漲停：有效突破，代表主力吸收套牢賣壓。
-        # 前高縮量漲停：假突破風險高。
-        df['Vol_Ratio_20'] = df['Volume'] / (df['Volume'].rolling(20).mean() + 1e-5)
-        df['High_60'] = df['High'].rolling(60).max().shift(1)
-        df['Low_60'] = df['Low'].rolling(60).min().shift(1)
-        df['Price_Position_60'] = (
-            (df['Close'] - df['Low_60']) /
-            (df['High_60'] - df['Low_60'] + 1e-5)
-        )
-
-        df['At_Low_Level'] = df['Price_Position_60'] <= 0.35
-        df['Near_Resistance'] = (
-            (df['Close'] >= df['High_60'] * 0.95) |
-            (df['High'] >= df['High_60'] * 0.98)
-        )
-
-        df['Shrink_LimitUp'] = df['Is_Limit_Up'] & (df['Vol_Ratio_20'] < 1.2)
-        df['HighVol_LimitUp'] = df['Is_Limit_Up'] & (df['Vol_Ratio_20'] >= 2.0)
-
-        df['Low_Shrink_LimitUp'] = df['Is_Limit_Up'] & df['At_Low_Level'] & (df['Vol_Ratio_20'] < 1.2)
-        df['Low_HighVol_LimitUp'] = df['Is_Limit_Up'] & df['At_Low_Level'] & (df['Vol_Ratio_20'] >= 2.0)
-        df['Resistance_HighVol_LimitUp'] = df['Is_Limit_Up'] & df['Near_Resistance'] & (df['Vol_Ratio_20'] >= 2.0)
-        df['Resistance_Shrink_LimitUp'] = df['Is_Limit_Up'] & df['Near_Resistance'] & (df['Vol_Ratio_20'] < 1.2)
-
-        df['Good_LimitUp_Context'] = (
-            df['Low_Shrink_LimitUp'].rolling(20).max().fillna(False).astype(bool) |
-            df['Resistance_HighVol_LimitUp'].rolling(20).max().fillna(False).astype(bool)
-        )
-        df['Bad_LimitUp_Context'] = (
-            df['Resistance_Shrink_LimitUp'].rolling(20).max().fillna(False).astype(bool)
-        )
 
         # ==========================================
         # 🚀 [一般起漲點偵測指標]
@@ -471,13 +432,11 @@ class TaiwanStockTradingSystem:
         )
 
         df['Limit_Up_Pullback_Buy'] = df['Has_Limit_Up_Gene'] & \
-                                      df['Good_LimitUp_Context'] & \
-                                      (~df['Bad_LimitUp_Context']) & \
                                       df['Support_Held'] & \
                                       df['Pullback_Volume_Dry'] & \
                                       df['Volume_Turnaround'] & \
                                       (~df['Is_Limit_Up']) & \
-                                      (df['Market_OK'] | df['Independent_Alpha']) # 👈 避開系統性崩盤，且只接受良性漲停背景
+                                      (df['Market_OK'] | df['Independent_Alpha']) # 👈 新增這行，避開系統性崩盤
         # ==========================================
         # 🚨 [精髓：快漲完了 (逃頂/避險特徵)]
         # ==========================================
@@ -497,14 +456,6 @@ class TaiwanStockTradingSystem:
         # ==========================================
         df['Lowest_5'] = df['Low'].rolling(window=5).min()
         df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
-
-        # 前高縮量假突破風險：接近前高但沒有補量，容易引發套牢盤與短線獲利盤同時賣出
-        df['False_Breakout_Risk'] = (
-            df['Near_Resistance'] &
-            (df['Close'] > df['High_60'] * 0.98) &
-            (df['Vol_Ratio_20'] < 1.2) &
-            (df['Close'] / df['MA20'] > 1.08)
-        )
         
         # ==========================================
         # ⚡ [強化：沉寂多時與即將噴發偵測]
@@ -517,89 +468,7 @@ class TaiwanStockTradingSystem:
         # 沉寂後的成交量異動 (量增 1.5 倍)
         df['Quiet_Momentum'] = df['Long_Quiet'].shift(1) & (df['Volume'] > df['Volume'].rolling(20).mean() * 1.5) & (df['Close'] > df['Open'])
 
-        # ==========================================
-        # 🧠 [七大短線法則強化]：趨勢、K線結構、新鮮度與逆向訊號
-        # ==========================================
-        # 法則二：連續小陽 / 小陰，觀察主力墊高或轉弱
-        df['Candle_Body_Pct'] = (df['Close'] - df['Open']).abs() / (df['Open'] + 1e-5)
-        df['Small_Red'] = (df['Close'] > df['Open']) & (df['Candle_Body_Pct'] <= 0.025)
-        df['Small_Green'] = (df['Close'] < df['Open']) & (df['Candle_Body_Pct'] <= 0.025)
-        df['Consecutive_Small_Red_3'] = df['Small_Red'].rolling(3).sum() >= 3
-        df['Consecutive_Small_Green_3'] = df['Small_Green'].rolling(3).sum() >= 3
-        df['Pre_Big_Red_Setup'] = (
-            df['Consecutive_Small_Red_3'] &
-            (df['Close'] > df['MA20']) &
-            (df['Volume'].rolling(3).mean() < df['Volume'].rolling(20).mean() * 1.2)
-        )
-
-        # 法則三：紅肥綠瘦，強勢股上漲陽線較大、回檔陰線較小
-        df['Red_Candle'] = df['Close'] > df['Open']
-        df['Green_Candle'] = df['Close'] < df['Open']
-        df['Red_Count_10'] = df['Red_Candle'].rolling(10).sum()
-        df['Green_Count_10'] = df['Green_Candle'].rolling(10).sum()
-        df['Red_Body'] = np.where(df['Red_Candle'], df['Close'] - df['Open'], 0)
-        df['Green_Body'] = np.where(df['Green_Candle'], df['Open'] - df['Close'], 0)
-        df['Red_Body_Avg_10'] = pd.Series(df['Red_Body'], index=df.index).rolling(10).mean()
-        df['Green_Body_Avg_10'] = pd.Series(df['Green_Body'], index=df.index).rolling(10).mean()
-        df['Strong_Candle_Structure'] = (
-            (df['Red_Count_10'] >= df['Green_Count_10']) &
-            (df['Red_Body_Avg_10'] > df['Green_Body_Avg_10'] * 1.5) &
-            (df['Close'] > df['MA20'])
-        )
-
-        # 法則四：短線不恐高，但要區分強勢高位與過熱追高
-        df['Hot_Overcrowded_Risk'] = (
-            (df['Close'].pct_change(5) >= 0.25) &
-            (df['Volume'] > df['Volume'].rolling(20).mean() * 2.5) &
-            (df['Close'] > df['MA20'] * 1.15)
-        )
-        df['High_Position_Strong'] = (
-            (df['Close'] > df['MA20'] * 1.05) &
-            (df['Close'] <= df['MA20'] * 1.15) &
-            df['Strong_Candle_Structure'] &
-            df['Has_Limit_Up_Gene']
-        )
-        df['High_Position_Overheat'] = (
-            (df['Close'] > df['MA20'] * 1.18) |
-            df['Hot_Overcrowded_Risk']
-        )
-
-        # 法則五：只做上升趨勢，避免下跌趨勢中的誘多反彈
-        df['MA10'] = df['Close'].rolling(10).mean()
-        df['Trend_Up_Strong'] = (
-            (df['MA5'] > df['MA10']) &
-            (df['MA10'] > df['MA20']) &
-            (df['MA20'] > df['MA20'].shift(5)) &
-            (df['Close'] > df['MA20'])
-        )
-
-        # 法則六：短線追求新，偵測新高、新量與剛站上月線
-        df['Just_Crossed_MA20'] = (df['Close'] > df['MA20']) & (df['Close'].shift(1) <= df['MA20'].shift(1))
-        df['Fresh_60D_High'] = df['Close'] >= df['Close'].rolling(60).max()
-        df['Fresh_Volume_Breakout'] = df['Volume'] >= df['Volume'].rolling(60).max()
-        df['Fresh_Theme_Score'] = 0
-        df.loc[df['Fresh_60D_High'], 'Fresh_Theme_Score'] += 10
-        df.loc[df['Fresh_Volume_Breakout'], 'Fresh_Theme_Score'] += 10
-        df.loc[df['Just_Crossed_MA20'], 'Fresh_Theme_Score'] += 5
-
-        # 法則七：短線優先關注近期有漲停、新高或新量的股票
-        df['Short_Term_Eligible'] = (
-            df['Has_Limit_Up_Gene'] |
-            df['Fresh_60D_High'] |
-            df['Fresh_Volume_Breakout']
-        )
-
-        # 法則一：逆向思維，大跌後不再破底且收紅，才列為恐慌反轉觀察
-        df['Panic_Drop_3D'] = df['Close'].pct_change(3) <= -0.10
-        df['Panic_Reversal'] = (
-            df['Panic_Drop_3D'] &
-            (df['Close'] > df['Open']) &
-            (df['Close'] > df['Close'].shift(1)) &
-            (df['Volume'] < df['Volume'].rolling(20).mean() * 1.5)
-        )
-
-        # 龍頭股例外：大型龍頭不一定會頻繁漲停，仍允許走趨勢與價值回檔邏輯
-        is_blue_chip = ticker in BLUE_CHIP_LIST
+       
 
         # ==========================================
         # ⚖️ [評分邏輯強化]
@@ -618,26 +487,7 @@ class TaiwanStockTradingSystem:
         df.loc[df['Pro_Bottom_Breakout'], 'Raw_Score'] += 35
         df.loc[df['Ambush_Setup'], 'Raw_Score'] += 25
 
-        # 🎯 漲停結構加減分：依「位置 + 量能」判斷漲停品質
-        df.loc[df['Low_Shrink_LimitUp'], 'Raw_Score'] += 30          # 低位縮量漲停：籌碼鎖定
-        df.loc[df['Resistance_HighVol_LimitUp'], 'Raw_Score'] += 25  # 前高放量漲停：有效突破
-        df.loc[df['Low_HighVol_LimitUp'], 'Raw_Score'] += 5          # 低位放量漲停：可能先洗盤
-        df.loc[df['Resistance_Shrink_LimitUp'], 'Raw_Score'] -= 35   # 前高縮量漲停：假突破風險
-        df.loc[df['False_Breakout_Risk'], 'Raw_Score'] -= 20         # 前高縮量假突破額外扣分
-
         df.loc[df['Limit_Up_Pullback_Buy'], 'Raw_Score'] += 35
-
-        # 🧠 七大短線法則加減分
-        df.loc[df['Pre_Big_Red_Setup'], 'Raw_Score'] += 10             # 連續小陽墊高，可能醞釀大陽
-        df.loc[df['Consecutive_Small_Green_3'], 'Raw_Score'] -= 10     # 連續小陰，短線轉弱
-        df.loc[df['Strong_Candle_Structure'], 'Raw_Score'] += 20       # 紅肥綠瘦，強勢股結構
-        df.loc[df['Trend_Up_Strong'], 'Raw_Score'] += 20               # MA5 > MA10 > MA20 且月線上彎
-        df.loc[~df['Trend_Up_Strong'], 'Raw_Score'] -= 10              # 非上升趨勢，降低誘多風險
-        df.loc[df['Fresh_Theme_Score'] >= 15, 'Raw_Score'] += 15       # 新高 / 新量 / 新發動
-        df.loc[df['Panic_Reversal'], 'Raw_Score'] += 10                # 恐慌後止跌反轉
-        df.loc[df['High_Position_Strong'], 'Raw_Score'] += 10          # 強勢高位，不因高位直接排除
-        df.loc[df['High_Position_Overheat'], 'Raw_Score'] -= 25        # 高位過熱，防止失控追高
-
         df['Score'] = df['Raw_Score']
         df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] 
         df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
@@ -645,18 +495,7 @@ class TaiwanStockTradingSystem:
         # ==========================================
         # 買賣訊號與部位計算
         # ==========================================
-        # 短線股必須具備近期漲停 / 新高 / 新量資格；大型龍頭則保留例外。
-        # 同時要求上升趨勢、漲停低吸或獨立強勢，避免下跌趨勢中的誘多。
-        df['Buy_Signal'] = (
-            (df['Score'] >= 60) &
-            (df['Short_Term_Eligible'] | is_blue_chip) &
-            (
-                df['Trend_Up_Strong'] |
-                df['Limit_Up_Pullback_Buy'] |
-                df['Independent_Alpha'] |
-                df['Panic_Reversal']
-            )
-        )
+        df['Buy_Signal'] = (df['Score'] >= 60)
         
         macd_death_cross = (
             (df['MACD'] < df['Signal']) & 
@@ -681,8 +520,7 @@ class TaiwanStockTradingSystem:
             df['Top_Divergence'] |
             df['Overextended_MA5'] |
             hit_resistance |
-            break_limit_up_support |
-            df['False_Breakout_Risk']
+            break_limit_up_support
         )
 
         # ✅ 關鍵修正：
@@ -754,24 +592,6 @@ class TaiwanStockTradingSystem:
                 "近期漲停數": int(last_day.get('Limit_Up_Count_20', 0)) if not pd.isna(last_day.get('Limit_Up_Count_20', np.nan)) else 0,
                 "漲停支撐價": round(float(last_day.get('Limit_Up_Support', 0)), 2) if not pd.isna(last_day.get('Limit_Up_Support', np.nan)) else 0,
                 "漲停型態": str(last_day.get('Limit_Up_Type', 'NONE')),
-                "低位縮量漲停": bool(last_day.get('Low_Shrink_LimitUp', False)),
-                "低位放量漲停": bool(last_day.get('Low_HighVol_LimitUp', False)),
-                "前高放量漲停": bool(last_day.get('Resistance_HighVol_LimitUp', False)),
-                "前高縮量漲停": bool(last_day.get('Resistance_Shrink_LimitUp', False)),
-                "假突破風險": bool(last_day.get('False_Breakout_Risk', False)),
-                "量能倍率": round(float(last_day.get('Vol_Ratio_20', 0)), 2) if not pd.isna(last_day.get('Vol_Ratio_20', np.nan)) else 0,
-                "區間位置": round(float(last_day.get('Price_Position_60', 0)), 2) if not pd.isna(last_day.get('Price_Position_60', np.nan)) else 0,
-                "上升趨勢": bool(last_day.get('Trend_Up_Strong', False)),
-                "紅肥綠瘦": bool(last_day.get('Strong_Candle_Structure', False)),
-                "連續小陽": bool(last_day.get('Pre_Big_Red_Setup', False)),
-                "連續小陰": bool(last_day.get('Consecutive_Small_Green_3', False)),
-                "短線資格": bool(last_day.get('Short_Term_Eligible', False)),
-                "新高": bool(last_day.get('Fresh_60D_High', False)),
-                "新量": bool(last_day.get('Fresh_Volume_Breakout', False)),
-                "新鮮度分數": int(last_day.get('Fresh_Theme_Score', 0)) if not pd.isna(last_day.get('Fresh_Theme_Score', np.nan)) else 0,
-                "恐慌反轉": bool(last_day.get('Panic_Reversal', False)),
-                "強勢高位": bool(last_day.get('High_Position_Strong', False)),
-                "高位過熱": bool(last_day.get('High_Position_Overheat', False)),
                 # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
                 "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
                 "MACD_訊號": float(last_day.get('Signal_Custom', 0.0))
@@ -937,12 +757,6 @@ def run_full_scan_gui(scanner):
         # 🌟 判斷是否符合「水上」或「水下黃金交叉」
         macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
-        # 🧠 七大短線法則濾網：短線股要有近期漲停 / 新高 / 新量，且趨勢不能太弱
-        strategy_buy_filter = (
-            (alert.get('短線資格', False) or stock in BLUE_CHIP_LIST) and
-            (alert.get('上升趨勢', False) or dc_pullback or is_rebel or alert.get('恐慌反轉', False))
-        )
-
         # ==========================================
         # 🛠️ 修正點：在這裡預先給定變數初始值，防止報錯
         final_entry_date = ""
@@ -961,15 +775,12 @@ def run_full_scan_gui(scanner):
                 del watchlist[stock]
                 watchlist_updated = True
                 
-        elif ((score >= 65 and strategy_buy_filter) or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback or alert.get('恐慌反轉', False)):
+        elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback:
             
             # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
             if fake_break and not macd_pass:
                 status = "🟡 【列入觀察/少量試單】"
                 raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
-            elif alert.get('恐慌反轉', False):
-                status = "🟣 【恐慌後止跌反轉】"
-                raw_advice = "🟣 【逆向觀察】 連跌後收紅止跌，僅適合小部位試單並嚴守停損"
             elif dc_pullback:
                 status = "🎯 【DC 漲停回檔低吸】"
                 raw_advice = "🔥 【強勢股第二波低吸】 漲停後縮量回測支撐，今日放量止跌反彈"
@@ -991,10 +802,8 @@ def run_full_scan_gui(scanner):
                 status = "🟢 【強力買進】"
                 raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
             
-            # 🌟 防追高警示濾網：強勢高位不直接否定，但高位過熱必須降級
-            if alert.get('高位過熱', False):
-                 raw_advice = "⚠️ 【高位過熱】(漲幅、量能或乖離已偏熱，避免失控追高，等量縮回檔)"
-            elif alert.get('今日漲幅', 0) >= 7.0 and not alert.get('強勢高位', False):
+            # 🌟 防追高警示濾網
+            if alert.get('今日漲幅', 0) >= 7.0:
                  raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
 
             # 從回測紀錄抓取真實進場點
@@ -1036,7 +845,7 @@ def run_full_scan_gui(scanner):
         cost_price = watchlist.get(stock, {}).get("加入價格", "無紀錄")
         is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
         
-        if not alert.get("是否觸發賣出") and (((score >= 65 and strategy_buy_filter) or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback or alert.get('恐慌反轉', False))):
+        if not alert.get("是否觸發賣出") and (score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback):
             # 💎【策略三】龍頭好公司的價值投資
             if stock in BLUE_CHIP_LIST and alert.get('今日漲幅', 0) <= -3.0:
                 first_day_term_tag = " 💎[bold cyan]【龍頭打折專區】[/bold cyan]"
@@ -1093,27 +902,8 @@ def run_full_scan_gui(scanner):
         if tag == "[固定]" or stock in watchlist or is_first_day or alert.get("是否觸發賣出"):
             line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
             line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
-            line_message_1.append(f"短線資格: {'是' if alert.get('短線資格') else '否'} | 上升趨勢: {'是' if alert.get('上升趨勢') else '否'} | 紅肥綠瘦: {'是' if alert.get('紅肥綠瘦') else '否'}")
-            if alert.get('新高') or alert.get('新量') or alert.get('連續小陽') or alert.get('恐慌反轉') or alert.get('高位過熱'):
-                law_tags = []
-                if alert.get('新高'): law_tags.append('新高')
-                if alert.get('新量'): law_tags.append('新量')
-                if alert.get('連續小陽'): law_tags.append('連續小陽')
-                if alert.get('恐慌反轉'): law_tags.append('恐慌反轉')
-                if alert.get('高位過熱'): law_tags.append('高位過熱')
-                line_message_1.append('七法則標籤: ' + ' / '.join(law_tags))
             if alert.get('漲停低吸'):
                 line_message_1.append(f"🎯 DC支撐: {alert.get('漲停支撐價')} | 型態: {alert.get('漲停型態')} | 20日漲停數: {alert.get('近期漲停數')}")
-
-            if alert.get('低位縮量漲停'):
-                line_message_1.append(f"🟢 漲停結構: 低位縮量漲停 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}")
-            elif alert.get('前高放量漲停'):
-                line_message_1.append(f"🔥 漲停結構: 前高放量突破 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}")
-            elif alert.get('低位放量漲停'):
-                line_message_1.append(f"🟡 漲停結構: 低位放量漲停，分歧較大，等待洗盤後回測 | 量能倍率: {alert.get('量能倍率')}")
-            elif alert.get('前高縮量漲停') or alert.get('假突破風險'):
-                line_message_1.append(f"🔴 漲停結構: 前高縮量漲停 / 假突破風險，不宜追高 | 量能倍率: {alert.get('量能倍率')}")
-
             line_message_1.append(display_log_msg)
             if position_advice:  # 若有資金策略，也加進去
                 line_message_1.append(position_advice)
@@ -1344,33 +1134,6 @@ def run_single_query_mode_gui():
                 )
             else:
                 diag_table.add_row("[bold]🏹 DC 戰術看板[/bold]", "[dim]近期無漲停基因，未觸發低吸追蹤[/dim]")
-
-            if alert.get('低位縮量漲停'):
-                limitup_context_text = f"🟢 低位縮量漲停，籌碼鎖定佳 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}"
-            elif alert.get('前高放量漲停'):
-                limitup_context_text = f"🔥 前高放量突破，突破品質較佳 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}"
-            elif alert.get('低位放量漲停'):
-                limitup_context_text = f"🟡 低位放量漲停，分歧較大，等待洗盤後回測 | 量能倍率: {alert.get('量能倍率')}"
-            elif alert.get('前高縮量漲停') or alert.get('假突破風險'):
-                limitup_context_text = f"🔴 前高縮量漲停 / 假突破風險，不宜追高 | 量能倍率: {alert.get('量能倍率')}"
-            else:
-                limitup_context_text = f"[dim]今日未出現明確漲停量價結構 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}[/dim]"
-            diag_table.add_row("[bold]漲停量價結構[/bold]", limitup_context_text)
-
-            law_tags = []
-            if alert.get('短線資格'): law_tags.append('短線合格')
-            if alert.get('上升趨勢'): law_tags.append('上升趨勢')
-            if alert.get('紅肥綠瘦'): law_tags.append('紅肥綠瘦')
-            if alert.get('連續小陽'): law_tags.append('連續小陽')
-            if alert.get('新高'): law_tags.append('新高')
-            if alert.get('新量'): law_tags.append('新量')
-            if alert.get('恐慌反轉'): law_tags.append('恐慌反轉')
-            if alert.get('強勢高位'): law_tags.append('強勢高位')
-            if alert.get('高位過熱'): law_tags.append('高位過熱警戒')
-            diag_table.add_row(
-                "[bold]七法則看板[/bold]",
-                " / ".join(law_tags) if law_tags else "[dim]暫無明確七法則標籤[/dim]"
-            )
             # ==========================================================
 
             if ai_success:
