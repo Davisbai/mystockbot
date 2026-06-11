@@ -1,0 +1,1850 @@
+import sys
+import yfinance as yf
+import warnings
+import pandas as pd
+import numpy as np
+import datetime
+import pytz
+import requests
+import re
+import time
+import json
+import os
+from bs4 import BeautifulSoup
+from io import StringIO
+from sklearn.mixture import GaussianMixture
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+# 引入 rich 套件以支援終端機 UI
+from rich.console import Console
+from rich.panel import Panel
+from rich import print as rprint
+# 引入 rich 套件以支援終端機 UI
+from rich.table import Table
+from rich.progress import track
+
+console = Console()
+
+try:
+    import twstock
+except ImportError:
+    pass
+
+# ==========================================
+# 📂 本地資料庫設定 (用於記錄長期監控清單)
+# ==========================================
+WATCHLIST_FILE = "long_term_watchlist.json"
+
+def load_watchlist():
+    if os.path.exists(WATCHLIST_FILE):
+        with open(WATCHLIST_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_watchlist(watchlist):
+    with open(WATCHLIST_FILE, 'w', encoding='utf-8') as f:
+        json.dump(watchlist, f, ensure_ascii=False, indent=4)
+
+# ==========================================
+# 📱 LINE 推播模組 (強化版：自動分段發送 + 本地日誌記錄)
+# ==========================================
+def send_line_message(text_content):
+    # ⚠️ 建議未來將憑證移至 .env 檔案中以提高安全性
+    line_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
+    line_user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {line_access_token}"
+    }
+
+    # 🌟 核心修正：將超長訊息分割成多個區塊 (每塊安全上限抓 4500 字)
+    MAX_LENGTH = 4500
+    
+    # 利用 Python 列表推導式進行字串分割
+    chunks = [text_content[i:i+MAX_LENGTH] for i in range(0, len(text_content), MAX_LENGTH)]
+
+    success_count = 0 # 記錄成功發送的段數
+
+    for idx, chunk in enumerate(chunks):
+        # 如果訊息被切成了多段，在開頭加上提示，方便你在手機上閱讀
+        if len(chunks) > 1:
+            chunk = f"📄 【台股獵手報告 第 {idx+1}/{len(chunks)} 頁】\n\n" + chunk
+            
+        data = {
+            "to": line_user_id,
+            "messages": [
+                {
+                    "type": "text",
+                    "text": chunk
+                }
+            ]
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status() # 檢查 HTTP 錯誤
+            
+            if len(chunks) > 1:
+                print(f"[系統] 成功發送 LINE 推播 (第 {idx+1}/{len(chunks)} 頁)")
+            else:
+                print("[系統] 成功發送 LINE 推播。")
+                
+            success_count += 1
+            time.sleep(1) # 🌟 避免連續發送太快被 LINE 官方判定為機器人攻擊而封鎖
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ [系統提示] 發送 LINE 訊息失敗：{e}")
+            if response is not None:
+                print(f"詳細錯誤內容: {response.text}")
+
+    # ======== 📝 新增：記錄推播訊息到本地檔案 ========
+    if success_count > 0:
+        try:
+            import datetime
+            # 確保寫入 log 的時間戳記對齊台北時間 (UTC+8)
+            tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+            now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+            
+            with open("line_push_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"[{now_str}] 推播紀錄 (成功發送 {success_count}/{len(chunks)} 段)\n")
+                f.write(text_content + "\n")
+                f.write("="*60 + "\n")
+            print('[系統] 📝 推播內容已同步記錄至 line_push_log.txt')
+        except Exception as log_e:
+            print(f"⚠️ [系統提示] 寫入 log 檔案失敗: {log_e}")
+    # ===================================================
+
+    
+# 全域的股票代碼對應表
+STOCK_MAP = {
+        "2303.TW": "聯電", "3481.TW": "群創", "2344.TW": "華邦電",
+        "2408.TW": "南亞科", "2603.TW": "長榮", "2609.TW": "陽明",
+        "2308.TW": "台達電", "2313.TW": "華通", "6770.TW": "力積電",
+        "3231.TW": "緯創", "2014.TW": "中鴻", "1216.TW": "統一", "2884.TW": "玉山金"
+}
+
+# ==========================================
+# 🌟 [策略優化] 影片核心戰略專屬清單
+# ==========================================
+CORE_ETF_LIST = ["0050.TW", "006208.TW", "0056.TW", "00878.TW"]
+
+# 絕對不會下市的產業龍頭 (可依個人喜好增減，例如：台積電、聯發科、鴻海、台達電、富邦金、中華電)
+BLUE_CHIP_LIST = ["2330.TW", "2454.TW", "2317.TW", "2308.TW", "2881.TW", "2412.TW"]
+
+# ==========================================
+# 🕷️ 爬蟲模組：擷取當日強勢股與外資籌碼
+# ==========================================
+class YahooMarketScanner:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({'User-Agent': 'Mozilla/5.0'})
+        self.scan_limit = 15
+
+    def get_chinese_name(self, code):
+        check_code = f"{code}.TW"
+        if check_code in STOCK_MAP: return STOCK_MAP[check_code]
+        try:
+            if 'twstock' in globals() and code in twstock.codes:
+                return twstock.codes[code].name
+        except: pass
+        return code
+
+    def get_foreign_buying(self, code):
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0',
+                'Referer': f'https://fubon-ebrokerdj.fbs.com.tw/z/zc/zcl/zcl.djhtm?a={code}'
+            }
+            url = f"https://fubon-ebrokerdj.fbs.com.tw/z/zc/zcl/zcl.djhtm?a={code}"
+            
+            res = self.session.get(url, headers=headers, timeout=10)
+            res.encoding = 'cp950'
+            dfs = pd.read_html(StringIO(res.text))
+            
+            for df in dfs:
+                if df.shape[1] < 2: continue
+                combined_text = "".join([str(x) for x in df.values.flatten()])
+                if '外資' in combined_text and '買賣超' in combined_text:
+                    for i in range(len(df)):
+                        cell_date = str(df.iloc[i, 0])
+                        if '/' in cell_date and len(cell_date) <= 10:
+                            raw_val = str(df.iloc[i, 1])
+                            clean_val = re.sub(r'[^-0-9]', '', raw_val)
+                            if clean_val: return int(clean_val), cell_date
+            return 0, "無數據"
+        except: return 0, "錯誤"
+
+    def fetch_top_gainers(self):
+        url = "https://tw.stock.yahoo.com/rank/change-up?exchange=TAI"
+        try:
+            res = self.session.get(url, timeout=10)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            links = soup.find_all('a', href=re.compile(r'/quote/\d{4}\.TW$'))
+            candidates, seen = [], set()
+            for link in links:
+                match = re.search(r'/quote/(\d{4})\.TW', link.get('href'))
+                if match:
+                    code = match.group(1)
+                    if code not in seen:
+                        seen.add(code)
+                        candidates.append({'code': code, 'name': self.get_chinese_name(code)})
+                if len(candidates) >= self.scan_limit: break
+            return candidates
+        except: return []
+
+    def scan(self):
+        candidates = self.fetch_top_gainers()
+        qualified = []
+        print(f"\n🔍 --- 掃描熱門股 (前 {len(candidates)} 名) ---")
+        for item in candidates:
+            code, name = item['code'], item['name']
+            fb, date = self.get_foreign_buying(code)
+            if fb > 0:
+                print(f"{code} {name:<4}: 外資買 {fb:>5} 張 -> ✅")
+                qualified.append(item)
+                check_code = f"{code}.TW"
+                if check_code not in STOCK_MAP: STOCK_MAP[check_code] = name
+            else:
+                print(f"{code} {name:<4}: 外資賣超或無資料 -> ❌")
+            time.sleep(0.1)
+        return qualified
+
+# ==========================================
+# 📈 策略回測與訊號分析模組 (最終整合版)
+# ==========================================
+class TaiwanStockTradingSystem:
+    def __init__(self, tickers, start_date="2023-01-01"):
+        self.tickers = tickers
+        self.start_date = start_date
+        self.market_ticker = "^TWII"
+        self.market_data = None
+        
+    def fetch_market_data(self):
+        print(f"\n正在獲取大盤({self.market_ticker})數據...")
+        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
+        if isinstance(self.market_data.columns, pd.MultiIndex):
+            self.market_data.columns = self.market_data.columns.get_level_values(0)
+            
+        # 強制時間歸零，確保與個股完美對齊
+        self.market_data.index = pd.to_datetime(self.market_data.index).tz_localize(None).normalize()
+        
+        self.market_data['Market_MA20'] = self.market_data['Close'].rolling(window=20).mean()
+        self.market_data['Market_OK'] = self.market_data['Close'] > self.market_data['Market_MA20']
+
+    def fetch_real_chip_data(self, df, ticker):
+        code = ticker.replace('.TW', '').replace('.TWO', '')
+        start_date_str = df.index[0].strftime('%Y-%m-%d')
+        
+        df['Foreign_Buy'] = 0.0
+        df['Trust_Buy'] = 0.0
+        df['Margin_Balance'] = 0.0
+        
+        try:
+            url_inst = f"https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestorsBuySell&data_id={code}&start_date={start_date_str}"
+            res_inst = requests.get(url_inst, timeout=10).json()
+            
+            if res_inst.get('msg') == 'success' and res_inst.get('data'):
+                df_inst = pd.DataFrame(res_inst['data'])
+                
+                is_foreign = df_inst['name'].str.contains('外資', na=False)
+                df_foreign = df_inst[is_foreign]
+                if not df_foreign.empty:
+                    foreign_buy = df_foreign.groupby('date').apply(lambda x: x['buy'].sum() - x['sell'].sum())
+                    foreign_buy.index = pd.to_datetime(foreign_buy.index).normalize() # 確保籌碼時間也歸零
+                    df['Foreign_Buy'] = foreign_buy / 1000
+
+                is_trust = df_inst['name'] == '投信'
+                df_trust = df_inst[is_trust]
+                if not df_trust.empty:
+                    trust_buy = df_trust.groupby('date').apply(lambda x: x['buy'].sum() - x['sell'].sum())
+                    trust_buy.index = pd.to_datetime(trust_buy.index).normalize()
+                    df['Trust_Buy'] = trust_buy / 1000
+                    
+            time.sleep(0.5)
+        except Exception as e:
+            pass # 略過錯誤，直接使用預設值 0
+            
+        df['Foreign_Buy'] = df['Foreign_Buy'].fillna(0)
+        df['Trust_Buy'] = df['Trust_Buy'].fillna(0)
+        return df
+
+    def calculate_indicators(self, df):
+        # 1. KD 隨機指標
+        low_min = df['Low'].rolling(window=9).min()
+        high_max = df['High'].rolling(window=9).max()
+        df['RSV'] = 100 * (df['Close'] - low_min) / (high_max - low_min)
+        df['K'] = df['RSV'].ewm(com=2, adjust=False).mean()
+        df['D'] = df['K'].ewm(com=2, adjust=False).mean()
+        
+        # 2. MACD 指標
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = exp1 - exp2
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        
+        # 3. 均線與籌碼輔助
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['Inst_Consecutive'] = ((df['Foreign_Buy'] > 0) | (df['Trust_Buy'] > 0)).rolling(window=3).sum() >= 2
+        
+        # === 🎬 影片戰術調教：漲停基因與數量限制 ===
+        # 注意：這裡只判斷「是否漲停」，不再把放量寫進漲停條件。
+        # 縮量 / 放量會在 process_stock() 中用 Vol_Ratio_20 另外分類，避免漏抓低位縮量漲停。
+        df['Is_Limit_Up'] = (
+            (df['Close'].pct_change() >= 0.095) &
+            (df['Close'] > df['Open'])
+        )
+        df['Limit_Up_Count_20'] = df['Is_Limit_Up'].rolling(window=20).sum()
+        df['Has_Limit_Up_Gene'] = (df['Limit_Up_Count_20'] >= 1) & (df['Limit_Up_Count_20'] <= 3)
+        
+        return df
+
+    def process_stock(self, ticker):
+        # 🟢 強制使用台北時間對齊 (UTC+8)
+        tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+        tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
+        if df.empty: return None
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            
+        df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
+            
+        df = self.fetch_real_chip_data(df, ticker)
+        df = self.calculate_indicators(df)
+        df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
+        df['Market_OK'] = df['Market_OK'].fillna(False)
+
+        # ==========================================
+        # 🎯 漲停位置與量能結構判斷：低位 / 前高壓力
+        # ==========================================
+        # 影片邏輯：漲停板不能只看縮量或放量，必須先判斷位置。
+        # 低位縮量漲停：籌碼鎖定，續航力較強。
+        # 低位放量漲停：分歧較大，容易先洗盤。
+        # 前高放量漲停：有效突破，代表主力吸收套牢賣壓。
+        # 前高縮量漲停：假突破風險高。
+        df['Vol_Ratio_20'] = df['Volume'] / (df['Volume'].rolling(20).mean() + 1e-5)
+        df['High_60'] = df['High'].rolling(60).max().shift(1)
+        df['Low_60'] = df['Low'].rolling(60).min().shift(1)
+        df['Price_Position_60'] = (
+            (df['Close'] - df['Low_60']) /
+            (df['High_60'] - df['Low_60'] + 1e-5)
+        )
+
+        df['At_Low_Level'] = df['Price_Position_60'] <= 0.35
+        df['Near_Resistance'] = (
+            (df['Close'] >= df['High_60'] * 0.95) |
+            (df['High'] >= df['High_60'] * 0.98)
+        )
+
+        df['Shrink_LimitUp'] = df['Is_Limit_Up'] & (df['Vol_Ratio_20'] < 1.2)
+        df['HighVol_LimitUp'] = df['Is_Limit_Up'] & (df['Vol_Ratio_20'] >= 2.0)
+
+        df['Low_Shrink_LimitUp'] = df['Is_Limit_Up'] & df['At_Low_Level'] & (df['Vol_Ratio_20'] < 1.2)
+        df['Low_HighVol_LimitUp'] = df['Is_Limit_Up'] & df['At_Low_Level'] & (df['Vol_Ratio_20'] >= 2.0)
+        df['Resistance_HighVol_LimitUp'] = df['Is_Limit_Up'] & df['Near_Resistance'] & (df['Vol_Ratio_20'] >= 2.0)
+        df['Resistance_Shrink_LimitUp'] = df['Is_Limit_Up'] & df['Near_Resistance'] & (df['Vol_Ratio_20'] < 1.2)
+
+        df['Good_LimitUp_Context'] = (
+            df['Low_Shrink_LimitUp'].rolling(20).max().fillna(False).astype(bool) |
+            df['Resistance_HighVol_LimitUp'].rolling(20).max().fillna(False).astype(bool)
+        )
+        df['Bad_LimitUp_Context'] = (
+            df['Resistance_Shrink_LimitUp'].rolling(20).max().fillna(False).astype(bool)
+        )
+
+        # ==========================================
+        # 🚀 [一般起漲點偵測指標]
+        # ==========================================
+        df['Price_Breakout'] = df['Close'] >= df['Close'].rolling(window=10).max()
+        df['Volume_Surge'] = df['Volume'] > (df['Volume'].rolling(window=5).mean() * 1.5)
+        
+        ma5 = df['Close'].rolling(5).mean()
+        ma10 = df['Close'].rolling(10).mean()
+        ma_max = pd.concat([ma5, ma10, df['MA20']], axis=1).max(axis=1)
+        ma_min = pd.concat([ma5, ma10, df['MA20']], axis=1).min(axis=1)
+        df['MA_Squeeze'] = (ma_max - ma_min) / ma_min < 0.03
+        
+        macd_gold_cross = (df['MACD'] > df['Signal']) & (df['MACD'].shift(1) <= df['Signal'].shift(1))
+        df['Early_Start'] = macd_gold_cross & (df['MACD'] < 0)
+
+        # ==========================================
+        # 🌊 [專業版：VCP 深潭與湧泉 - 量價與波動率結構偵測]
+        # ==========================================
+        exp1 = df['Close'].ewm(span=10, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=20, adjust=False).mean()
+        df['MACD_Custom'] = exp1 - exp2
+        df['Signal_Custom'] = df['MACD_Custom'].ewm(span=8, adjust=False).mean()
+
+        df['BB_Mid'] = df['Close'].rolling(window=20).mean()
+        df['BB_Std'] = df['Close'].rolling(window=20).std()
+        df['BB_Upper'] = df['BB_Mid'] + 2 * df['BB_Std']
+        df['BB_Lower'] = df['BB_Mid'] - 2 * df['BB_Std']
+        df['BBW'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Mid'] 
+        df['BBW_Min_120'] = df['BBW'].rolling(window=120).min()
+        df['Is_Squeezing'] = df['BBW'] <= (df['BBW_Min_120'] * 1.3) 
+
+        df['Up_Volume'] = np.where(df['Close'] > df['Close'].shift(1), df['Volume'], 0)
+        df['Down_Volume'] = np.where(df['Close'] < df['Close'].shift(1), df['Volume'], 0)
+        df['Acc_Vol_Ratio'] = df['Up_Volume'].rolling(60).sum() / (df['Down_Volume'].rolling(60).sum() + 1e-5)
+        df['Smart_Money_Accumulating'] = df['Acc_Vol_Ratio'] > 1.25 
+
+        df['Volume_Breakout_Pro'] = df['Volume'] > df['Volume'].rolling(20).mean() * 2.5
+        df['Price_Breakout_BB'] = (df['Close'] > df['BB_Upper']) & (df['Close'] > df['Open'])
+        df['MACD_Gold_Cross_Pro'] = (df['MACD_Custom'] > df['Signal_Custom']) & (df['MACD_Custom'].shift(1) <= df['Signal_Custom'].shift(1))
+        df['MACD_Near_Zero'] = df['MACD_Custom'].abs() < (df['Close'] * 0.015) 
+
+        df['Pro_Bottom_Breakout'] = df['Is_Squeezing'].shift(1) & \
+                                    df['Smart_Money_Accumulating'] & \
+                                    df['Volume_Breakout_Pro'] & \
+                                    df['Price_Breakout_BB'] & \
+                                    (df['MACD_Gold_Cross_Pro'] | df['MACD_Near_Zero'])
+
+        # ==========================================
+        # 🥷 [精髓：跌不動與縮量洗盤特徵 (平台埋伏)]
+        # ==========================================
+        df['MA5'] = df['Close'].rolling(5).mean()
+        df['Volume_Dry_Up'] = df['Volume'].rolling(5).mean() < (df['Volume'].rolling(60).mean() * 0.5)
+        
+        df['Low_Recent_10'] = df['Low'].rolling(window=10).min()
+        df['Low_Prev_10'] = df['Low'].shift(10).rolling(window=10).min()
+        df['No_New_Lows'] = df['Low_Recent_10'] >= df['Low_Prev_10']
+        
+        big_green_candle = (df['Close'] / df['Open'] > 1.04) & (df['Volume'] > df['Volume'].rolling(20).mean() * 1.5)
+        df['Has_Recent_Action'] = big_green_candle.rolling(window=20).max() == 1
+        
+        df['Ambush_Setup'] = df['No_New_Lows'] & df['Has_Recent_Action'] & df['Volume_Dry_Up'] & (df['Close'] > df['MA5'])
+
+        # === 🎬 修改點 2：動態尋找首板關鍵支撐位 ===
+        df['Limit_Up_Support'] = np.nan
+        df['Limit_Up_Type'] = "NONE"
+
+        for i in range(20, len(df)):
+            sub_df = df.iloc[i-20:i+1]
+            limit_up_days = sub_df[sub_df['Is_Limit_Up']]
+            
+            if not limit_up_days.empty:
+                first_lu_idx = limit_up_days.index[0]
+                first_lu_row = df.loc[first_lu_idx]
+                total_lu = len(limit_up_days)
+                
+                if total_lu == 1:
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Open']
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "SINGLE"
+                elif total_lu in [2, 3]:
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['High']
+                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "MULTI"
+                    
+        df['Limit_Up_Support'] = df['Limit_Up_Support'].ffill()
+        df['Limit_Up_Type'] = df['Limit_Up_Type'].ffill()
+
+        # === 🎬 修改點 3：漲停回檔低吸訊號組合 ===
+        df['Support_Held'] = (
+            (df['Low'] <= df['Limit_Up_Support'] * 1.03) &
+            (df['Close'] >= df['Limit_Up_Support'] * 0.98)
+        )
+        df['DC_Volume_Dry'] = (
+            df['Volume'].rolling(3).mean() < df['Volume'].rolling(20).mean() * 0.85
+        )
+        df['Pullback_Volume_Dry'] = df['DC_Volume_Dry'].rolling(window=3).max() == 1
+        df['Volume_Turnaround'] = (
+            (df['Close'] > df['Open']) &
+            (df['Close'] > df['Close'].shift(1)) &
+            (df['Volume'] > df['Volume'].rolling(window=5).mean() * 1.1)
+        )
+        
+         # ==========================================
+        # 🎯 [核心邏輯補回]：計算 Independent_Alpha
+        # ==========================================
+        df['RS_Line'] = df['Close'] / df['Close_Mkt']
+        df['RS_Slope'] = df['RS_Line'].pct_change(5) 
+        stock_ma20_up = df['MA20'] > df['MA20'].shift(1)
+        
+        df['Independent_Alpha'] = (
+            (~df['Market_OK']) & 
+            (df['Close'] > df['MA20']) & 
+            (stock_ma20_up) & 
+            (df['RS_Slope'] > 0)
+        )
+
+        df['Limit_Up_Pullback_Buy'] = df['Has_Limit_Up_Gene'] & \
+                                      df['Good_LimitUp_Context'] & \
+                                      (~df['Bad_LimitUp_Context']) & \
+                                      df['Support_Held'] & \
+                                      df['Pullback_Volume_Dry'] & \
+                                      df['Volume_Turnaround'] & \
+                                      (~df['Is_Limit_Up']) & \
+                                      (df['Market_OK'] | df['Independent_Alpha']) # 👈 避開系統性崩盤，且只接受良性漲停背景
+        # ==========================================
+        # 🚨 [精髓：快漲完了 (逃頂/避險特徵)]
+        # ==========================================
+        high_vol_warning = df['Volume'] > (df['Volume'].rolling(20).mean() * 2)
+        price_stagnant = df['Close'].pct_change() <= 0.01 
+        high_level = df['Close'] > (df['MA20'] * 1.10)
+        df['Top_Divergence'] = high_vol_warning & price_stagnant & high_level
+        
+        df['Overextended_MA5'] = (df['Close'] - df['MA5']) / df['MA5'] > 0.08
+        
+        upper_shadow = df['High'] - df[['Open', 'Close']].max(axis=1)
+        candle_body = df[['Open', 'Close']].max(axis=1) - df[['Open', 'Close']].min(axis=1)
+        hit_resistance = (df['High'] >= df['High'].rolling(60).max().shift(1)) & (upper_shadow > candle_body * 2)
+
+        # ==========================================
+        # 🛡️ [強化：主力洗盤與假跌破偵測]
+        # ==========================================
+        df['Lowest_5'] = df['Low'].rolling(window=5).min()
+        df['Fake_Break'] = (df['Close'] > df['MA20']) & (df['Lowest_5'] < df['MA20']) & (df['Volume'] < df['Volume'].rolling(20).mean() * 1.2)
+
+        # 前高縮量假突破風險：接近前高但沒有補量，容易引發套牢盤與短線獲利盤同時賣出
+        df['False_Breakout_Risk'] = (
+            df['Near_Resistance'] &
+            (df['Close'] > df['High_60'] * 0.98) &
+            (df['Vol_Ratio_20'] < 1.2) &
+            (df['Close'] / df['MA20'] > 1.08)
+        )
+        
+        # ==========================================
+        # ⚡ [強化：沉寂多時與即將噴發偵測]
+        # ==========================================
+        # 40日震幅小於 10%
+        df['Price_Max_40'] = df['High'].rolling(window=40).max()
+        df['Price_Min_40'] = df['Low'].rolling(window=40).min()
+        df['Long_Quiet'] = (df['Price_Max_40'] - df['Price_Min_40']) / df['Price_Min_40'] < 0.10
+        
+        # 沉寂後的成交量異動 (量增 1.5 倍)
+        df['Quiet_Momentum'] = df['Long_Quiet'].shift(1) & (df['Volume'] > df['Volume'].rolling(20).mean() * 1.5) & (df['Close'] > df['Open'])
+
+        # ==========================================
+        # 🧠 [七大短線法則強化]：趨勢、K線結構、新鮮度與逆向訊號
+        # ==========================================
+        # 法則二：連續小陽 / 小陰，觀察主力墊高或轉弱
+        df['Candle_Body_Pct'] = (df['Close'] - df['Open']).abs() / (df['Open'] + 1e-5)
+        df['Small_Red'] = (df['Close'] > df['Open']) & (df['Candle_Body_Pct'] <= 0.025)
+        df['Small_Green'] = (df['Close'] < df['Open']) & (df['Candle_Body_Pct'] <= 0.025)
+        df['Consecutive_Small_Red_3'] = df['Small_Red'].rolling(3).sum() >= 3
+        df['Consecutive_Small_Green_3'] = df['Small_Green'].rolling(3).sum() >= 3
+        df['Pre_Big_Red_Setup'] = (
+            df['Consecutive_Small_Red_3'] &
+            (df['Close'] > df['MA20']) &
+            (df['Volume'].rolling(3).mean() < df['Volume'].rolling(20).mean() * 1.2)
+        )
+
+        # 法則三：紅肥綠瘦，強勢股上漲陽線較大、回檔陰線較小
+        df['Red_Candle'] = df['Close'] > df['Open']
+        df['Green_Candle'] = df['Close'] < df['Open']
+        df['Red_Count_10'] = df['Red_Candle'].rolling(10).sum()
+        df['Green_Count_10'] = df['Green_Candle'].rolling(10).sum()
+        df['Red_Body'] = np.where(df['Red_Candle'], df['Close'] - df['Open'], 0)
+        df['Green_Body'] = np.where(df['Green_Candle'], df['Open'] - df['Close'], 0)
+        df['Red_Body_Avg_10'] = pd.Series(df['Red_Body'], index=df.index).rolling(10).mean()
+        df['Green_Body_Avg_10'] = pd.Series(df['Green_Body'], index=df.index).rolling(10).mean()
+        df['Strong_Candle_Structure'] = (
+            (df['Red_Count_10'] >= df['Green_Count_10']) &
+            (df['Red_Body_Avg_10'] > df['Green_Body_Avg_10'] * 1.5) &
+            (df['Close'] > df['MA20'])
+        )
+
+        # 法則四：短線不恐高，但要區分強勢高位與過熱追高
+        df['Hot_Overcrowded_Risk'] = (
+            (df['Close'].pct_change(5) >= 0.25) &
+            (df['Volume'] > df['Volume'].rolling(20).mean() * 2.5) &
+            (df['Close'] > df['MA20'] * 1.15)
+        )
+        df['High_Position_Strong'] = (
+            (df['Close'] > df['MA20'] * 1.05) &
+            (df['Close'] <= df['MA20'] * 1.15) &
+            df['Strong_Candle_Structure'] &
+            df['Has_Limit_Up_Gene']
+        )
+        df['High_Position_Overheat'] = (
+            (df['Close'] > df['MA20'] * 1.18) |
+            df['Hot_Overcrowded_Risk']
+        )
+
+        # 法則五：只做上升趨勢，避免下跌趨勢中的誘多反彈
+        df['MA10'] = df['Close'].rolling(10).mean()
+        df['Trend_Up_Strong'] = (
+            (df['MA5'] > df['MA10']) &
+            (df['MA10'] > df['MA20']) &
+            (df['MA20'] > df['MA20'].shift(5)) &
+            (df['Close'] > df['MA20'])
+        )
+
+        # 法則六：短線追求新，偵測新高、新量與剛站上月線
+        df['Just_Crossed_MA20'] = (df['Close'] > df['MA20']) & (df['Close'].shift(1) <= df['MA20'].shift(1))
+        df['Fresh_60D_High'] = df['Close'] >= df['Close'].rolling(60).max()
+        df['Fresh_Volume_Breakout'] = df['Volume'] >= df['Volume'].rolling(60).max()
+        df['Fresh_Theme_Score'] = 0
+        df.loc[df['Fresh_60D_High'], 'Fresh_Theme_Score'] += 10
+        df.loc[df['Fresh_Volume_Breakout'], 'Fresh_Theme_Score'] += 10
+        df.loc[df['Just_Crossed_MA20'], 'Fresh_Theme_Score'] += 5
+
+        # 法則七：短線優先關注近期有漲停、新高或新量的股票
+        df['Short_Term_Eligible'] = (
+            df['Has_Limit_Up_Gene'] |
+            df['Fresh_60D_High'] |
+            df['Fresh_Volume_Breakout']
+        )
+
+        # 法則一：逆向思維，大跌後不再破底且收紅，才列為恐慌反轉觀察
+        df['Panic_Drop_3D'] = df['Close'].pct_change(3) <= -0.10
+        df['Panic_Reversal'] = (
+            df['Panic_Drop_3D'] &
+            (df['Close'] > df['Open']) &
+            (df['Close'] > df['Close'].shift(1)) &
+            (df['Volume'] < df['Volume'].rolling(20).mean() * 1.5)
+        )
+
+        # 龍頭股例外：大型龍頭不一定會頻繁漲停，仍允許走趨勢與價值回檔邏輯
+        is_blue_chip = ticker in BLUE_CHIP_LIST
+
+        # ==========================================
+        # ⚖️ [評分邏輯強化]
+        # ==========================================
+        df['Raw_Score'] = 0
+        df.loc[df['Close'] > df['MA20'], 'Raw_Score'] += 25
+        df.loc[df['MACD'] > df['Signal'], 'Raw_Score'] += 25
+        df.loc[df['K'] > df['D'], 'Raw_Score'] += 10
+        df.loc[df['Inst_Consecutive'], 'Raw_Score'] += 20
+        
+        df.loc[df['Price_Breakout'] & df['Volume_Surge'], 'Raw_Score'] += 15
+        df.loc[df['Price_Breakout'] & df['Volume_Surge'] & df['MA_Squeeze'].shift(1), 'Raw_Score'] += 10
+        df.loc[df['Early_Start'], 'Raw_Score'] += 5
+        
+        # 專業級起漲與洗盤埋伏加分 (具備決定性權重)
+        df.loc[df['Pro_Bottom_Breakout'], 'Raw_Score'] += 35
+        df.loc[df['Ambush_Setup'], 'Raw_Score'] += 25
+
+        # 🎯 漲停結構加減分：依「位置 + 量能」判斷漲停品質
+        df.loc[df['Low_Shrink_LimitUp'], 'Raw_Score'] += 30          # 低位縮量漲停：籌碼鎖定
+        df.loc[df['Resistance_HighVol_LimitUp'], 'Raw_Score'] += 25  # 前高放量漲停：有效突破
+        df.loc[df['Low_HighVol_LimitUp'], 'Raw_Score'] += 5          # 低位放量漲停：可能先洗盤
+        df.loc[df['Resistance_Shrink_LimitUp'], 'Raw_Score'] -= 35   # 前高縮量漲停：假突破風險
+        df.loc[df['False_Breakout_Risk'], 'Raw_Score'] -= 20         # 前高縮量假突破額外扣分
+
+        df.loc[df['Limit_Up_Pullback_Buy'], 'Raw_Score'] += 35
+
+        # 🧠 七大短線法則加減分
+        df.loc[df['Pre_Big_Red_Setup'], 'Raw_Score'] += 10             # 連續小陽墊高，可能醞釀大陽
+        df.loc[df['Consecutive_Small_Green_3'], 'Raw_Score'] -= 10     # 連續小陰，短線轉弱
+        df.loc[df['Strong_Candle_Structure'], 'Raw_Score'] += 20       # 紅肥綠瘦，強勢股結構
+        df.loc[df['Trend_Up_Strong'], 'Raw_Score'] += 20               # MA5 > MA10 > MA20 且月線上彎
+        df.loc[~df['Trend_Up_Strong'], 'Raw_Score'] -= 10              # 非上升趨勢，降低誘多風險
+        df.loc[df['Fresh_Theme_Score'] >= 15, 'Raw_Score'] += 15       # 新高 / 新量 / 新發動
+        df.loc[df['Panic_Reversal'], 'Raw_Score'] += 10                # 恐慌後止跌反轉
+        df.loc[df['High_Position_Strong'], 'Raw_Score'] += 10          # 強勢高位，不因高位直接排除
+        df.loc[df['High_Position_Overheat'], 'Raw_Score'] -= 25        # 高位過熱，防止失控追高
+
+        df['Score'] = df['Raw_Score']
+        df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] 
+        df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
+        
+        # ==========================================
+        # 買賣訊號與部位計算
+        # ==========================================
+        # 短線股必須具備近期漲停 / 新高 / 新量資格；大型龍頭則保留例外。
+        # 同時要求上升趨勢、漲停低吸或獨立強勢，避免下跌趨勢中的誘多。
+        df['Buy_Signal'] = (
+            (df['Score'] >= 60) &
+            (df['Short_Term_Eligible'] | is_blue_chip) &
+            (
+                df['Trend_Up_Strong'] |
+                df['Limit_Up_Pullback_Buy'] |
+                df['Independent_Alpha'] |
+                df['Panic_Reversal']
+            )
+        )
+        
+        macd_death_cross = (
+            (df['MACD'] < df['Signal']) & 
+            (df['MACD'].shift(1) >= df['Signal'].shift(1))
+        )
+
+        break_ma20 = df['Close'] < (df['MA20'] * 0.98)
+        
+        # 判定今日與昨日是否都收盤跌破漲停支撐 2%
+        break_limit_up_support_raw = (
+            df['Close'] < df['Limit_Up_Support'] * 0.98
+        )
+
+        break_limit_up_support = (
+            break_limit_up_support_raw & 
+            break_limit_up_support_raw.shift(1).fillna(False)
+        )
+        
+        df['Sell_Signal'] = (
+            macd_death_cross |
+            break_ma20 |
+            df['Top_Divergence'] |
+            df['Overextended_MA5'] |
+            hit_resistance |
+            break_limit_up_support |
+            df['False_Breakout_Risk']
+        )
+
+        # ✅ 關鍵修正：
+        # 若當天分數仍達買進門檻，代表趨勢尚未完全轉弱，
+        # 不允許同一天被 Sell_Signal 覆蓋成賣出。
+        # 這樣可避免「評分 60 以上卻強制賣出」的矛盾。
+        df.loc[df['Buy_Signal'], 'Sell_Signal'] = False
+
+        df['Position'] = np.nan
+        df.loc[df['Buy_Signal'], 'Position'] = 1
+        df.loc[df['Sell_Signal'], 'Position'] = 0
+
+        df['Position'] = df['Position'].ffill().fillna(0)
+        
+        df['Trade_Action'] = df['Position'].diff()
+        df['Returns'] = df['Close'].pct_change()
+        df['Strategy_Returns'] = df['Position'].shift(1) * df['Returns']
+        
+        # 🌟 新增：判斷今日是否「剛」站上月線 (今日收盤 > 月線 且 昨日收盤 <= 昨日月線)
+        df['Just_Crossed_MA20'] = (df['Close'] > df['MA20']) & (df['Close'].shift(1) <= df['MA20'].shift(1))
+        
+        return df
+
+    def run_analysis(self):
+        self.fetch_market_data()
+        results_summary, daily_alerts, trade_logs = {}, {}, {}
+        
+        for ticker in self.tickers:
+            df = self.process_stock(ticker)
+            if df is None: continue
+                
+            trades = df[df['Strategy_Returns'] != 0]['Strategy_Returns']
+            win_rate = (trades > 0).sum() / len(trades) if len(trades) > 0 else 0
+            
+            actions = df[df['Trade_Action'] != 0].dropna(subset=['Trade_Action'])
+            trade_logs[ticker] = [
+                f"{date.strftime('%Y-%m-%d')} | {'🟢 買進' if row['Trade_Action'] == 1 else '🔴 賣出'} | 價格: {row['Close']:.2f} | 觸發評分: {int(row['Score'])}"
+                for date, row in actions.iterrows()
+            ]
+
+            results_summary[ticker] = {
+                "總交易天數": len(trades),
+                "勝率 (%)": round(win_rate * 100, 2),
+                "策略累積報酬 (%)": round(((1 + df['Strategy_Returns']).prod() - 1) * 100, 2)
+            }
+            
+            last_day = df.iloc[-1]
+            daily_alerts[ticker] = {
+                "日期": df.index[-1].strftime("%Y-%m-%d"),
+                "收盤價": round(float(last_day['Close']), 2),
+                "月線價": round(float(last_day['MA20']), 2),
+                "今日漲幅": round(float(last_day['Returns']) * 100, 2) if not pd.isna(last_day['Returns']) else 0,
+                "剛過月線": bool(last_day.get('Just_Crossed_MA20', False)),
+                "大盤安全": bool(last_day['Market_OK']),
+                "今日評分": int(last_day['Score']),
+                "個股原始評分": int(last_day['Raw_Score']),
+                "是否觸發賣出": bool(last_day['Sell_Signal']),
+                "獨立行情": bool(last_day['Independent_Alpha']),
+                "RS斜率": round(float(last_day['RS_Slope']), 4),
+                "沉寂發動": bool(last_day.get('Quiet_Momentum', False)),
+                "沉寂多時": bool(last_day.get('Long_Quiet', False)),
+                "假跌破": bool(last_day.get('Fake_Break', False)),
+                "專業起漲": bool(last_day.get('Pro_Bottom_Breakout', False)),
+                "縮量埋伏": bool(last_day.get('Ambush_Setup', False)),
+                "高檔背離": bool(last_day.get('Top_Divergence', False)),
+                "乖離過大": bool(last_day.get('Overextended_MA5', False)),
+                "漲停低吸": bool(last_day.get('Limit_Up_Pullback_Buy', False)),
+                "漲停基因": bool(last_day.get('Has_Limit_Up_Gene', False)),
+                "近期漲停數": int(last_day.get('Limit_Up_Count_20', 0)) if not pd.isna(last_day.get('Limit_Up_Count_20', np.nan)) else 0,
+                "漲停支撐價": round(float(last_day.get('Limit_Up_Support', 0)), 2) if not pd.isna(last_day.get('Limit_Up_Support', np.nan)) else 0,
+                "漲停型態": str(last_day.get('Limit_Up_Type', 'NONE')),
+                "低位縮量漲停": bool(last_day.get('Low_Shrink_LimitUp', False)),
+                "低位放量漲停": bool(last_day.get('Low_HighVol_LimitUp', False)),
+                "前高放量漲停": bool(last_day.get('Resistance_HighVol_LimitUp', False)),
+                "前高縮量漲停": bool(last_day.get('Resistance_Shrink_LimitUp', False)),
+                "假突破風險": bool(last_day.get('False_Breakout_Risk', False)),
+                "量能倍率": round(float(last_day.get('Vol_Ratio_20', 0)), 2) if not pd.isna(last_day.get('Vol_Ratio_20', np.nan)) else 0,
+                "區間位置": round(float(last_day.get('Price_Position_60', 0)), 2) if not pd.isna(last_day.get('Price_Position_60', np.nan)) else 0,
+                "上升趨勢": bool(last_day.get('Trend_Up_Strong', False)),
+                "紅肥綠瘦": bool(last_day.get('Strong_Candle_Structure', False)),
+                "連續小陽": bool(last_day.get('Pre_Big_Red_Setup', False)),
+                "連續小陰": bool(last_day.get('Consecutive_Small_Green_3', False)),
+                "短線資格": bool(last_day.get('Short_Term_Eligible', False)),
+                "新高": bool(last_day.get('Fresh_60D_High', False)),
+                "新量": bool(last_day.get('Fresh_Volume_Breakout', False)),
+                "新鮮度分數": int(last_day.get('Fresh_Theme_Score', 0)) if not pd.isna(last_day.get('Fresh_Theme_Score', np.nan)) else 0,
+                "恐慌反轉": bool(last_day.get('Panic_Reversal', False)),
+                "強勢高位": bool(last_day.get('High_Position_Strong', False)),
+                "高位過熱": bool(last_day.get('High_Position_Overheat', False)),
+                # 🌟 新增：傳出 MACD (10, 20, 8) 的數值與訊號線
+                "MACD_數值": float(last_day.get('MACD_Custom', 0.0)),
+                "MACD_訊號": float(last_day.get('Signal_Custom', 0.0))
+            }
+            
+        return results_summary, daily_alerts, trade_logs
+
+# ==========================================
+# 1️⃣ 完整掃描模組 (整合原本的自動化邏輯)
+# ==========================================
+import datetime
+import re
+
+def run_test(scanner):# 顯示策略回測結果 (簡版)
+    console.print("\n[bold green]🚀 啟動回測分析...[/bold green]")
+
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間 (台北): {now_str} ---")
+
+    # 1. 讀取目前的長期監控清單
+    watchlist = load_watchlist()
+    watchlist_updated = False
+
+    # 2. 整合所有需要掃描的標的 (熱門 + 固定 + 監控中)
+#    hot_stocks = scanner.scan()
+#    DYNAMIC_MAP = {f"{item['code']}.TW": item['name'] for item in hot_stocks}
+    STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
+    # 關鍵：強制將 watchlist 內的標的加入掃描，解決「現價抓不到」的問題
+    WATCHLIST_MAP = {k: v.get("名稱", "") for k, v in watchlist.items()}
+    
+    COMBINED_MAP = {**STATIC_YF_MAP, **WATCHLIST_MAP}
+
+    # 3. 執行回測分析 (涵蓋所有相關標的)
+    system = TaiwanStockTradingSystem(
+        tickers=list(COMBINED_MAP.keys()),
+        start_date="2025-09-01"
+    )
+    summary, alerts, logs = system.run_analysis()
+
+    print("\n" + "="*60)
+    print("📋 【個股歷史進出點交易明細】")
+    print("="*60)
+
+    for stock, trade_list in logs.items():
+        if not trade_list:
+            continue
+        print(f"📂 標的: {stock} ({COMBINED_MAP.get(stock, '')})")
+        for trade in trade_list[-5:]:
+            print(f"   -> {trade}")
+        print("-" * 30)
+
+    print("\n" + "="*60)
+    print("📈 【策略回測結果摘要】")
+    print("="*60)
+    for stock, data in summary.items():
+        if stock in STATIC_YF_MAP:
+            print(f"🔹 {stock} {COMBINED_MAP.get(stock, ''):<4} | 勝率: {data['勝率 (%)']:>5}% | 總報酬: {data['策略累積報酬 (%)']:>6}%")
+    console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
+    console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
+
+def run_full_scan_gui(scanner):
+    console.print("\n[bold green]🚀 啟動全自動策略掃描 (核心同步強化版)...[/bold green]")
+
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now_str = datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"--- 系統啟動時間 (台北): {now_str} ---")
+
+    watchlist = load_watchlist()
+    watchlist_updated = False
+
+    # 1. 執行掃描 (scanner.scan 內部已設定 scan_limit=30)
+    hot_stocks = scanner.scan()
+    DYNAMIC_MAP = {f"{item['code']}.TW": item['name'] for item in hot_stocks}
+    STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
+    WATCHLIST_MAP = {k: v.get("名稱", "") for k, v in watchlist.items()}
+    
+    COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **WATCHLIST_MAP}
+
+    # 2. 執行回測分析
+    system = TaiwanStockTradingSystem(
+        tickers=list(COMBINED_MAP.keys()),
+        start_date="2025-09-01"
+    )
+    summary, alerts, logs = system.run_analysis()
+
+    # 🌟 第一段 LINE 訊息陣列 (只放今日交易提示)
+    line_message_1 = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
+
+    # 🚨 【策略一】股災雷達：大跌時佈局寬基 ETF
+    try:
+        mkt_close = system.market_data['Close'].iloc[-1]
+        # 計算大盤半年線 (120日均線)
+        mkt_ma120 = system.market_data['Close'].rolling(window=120).mean().iloc[-1]
+        # 計算乖離率
+        mkt_bias = ((mkt_close - mkt_ma120) / mkt_ma120) * 100
+        
+        # 當大盤跌破半年線且負乖離超過 8%，視為極度恐慌 (股災級別)
+        if mkt_bias <= -8.0: 
+            line_message_1.append(f"🚨【史詩級大跌浮現】大盤半年線乖離率達 {mkt_bias:.2f}%！")
+            line_message_1.append(f"💡 策略提示：市場極度恐慌，建議立刻啟動寬基 ETF (如 0050, 006208) 分批危機入市！\n")
+    except Exception:
+        pass
+
+    # 3. 自動清理邏輯
+    for stock in list(watchlist.keys()):
+        stock_trade_history = logs.get(stock, [])
+        if stock_trade_history:
+            last_action = stock_trade_history[-1]
+            if "🔴 賣出" in last_action or "🔴 停損" in last_action:
+                print(f"♻️ [自動清理] 偵測到 {stock} 已於歷史回測結案，移出監控清單。")
+                del watchlist[stock]
+                watchlist_updated = True
+
+    print("\n" + "="*60)
+    print("📈 【策略回測結果摘要】")
+    print("="*60)
+    for stock, data in summary.items():
+        if stock in DYNAMIC_MAP or stock in STATIC_YF_MAP:
+            print(f"🔹 {stock} {COMBINED_MAP.get(stock, ''):<4} | 勝率: {data['勝率 (%)']:>5}% | 總報酬: {data['策略累積報酬 (%)']:>6}%")
+
+    print("\n" + "="*60)
+    print("🔔 【今日交易提示】")
+    print("="*60)
+    line_message_1.append("🔔 【今日交易提示】")
+    
+    # 4. 核心輸出與判斷迴圈
+    for stock, alert in alerts.items():
+        stock_name = COMBINED_MAP.get(stock, "")
+        is_in_watchlist = stock in watchlist
+        
+        # 🌟 漲幅過濾：若非庫存且漲幅 < 3%，則不顯示 (保持清爽)
+        if stock in DYNAMIC_MAP and not is_in_watchlist and alert.get('今日漲幅', 0) < 3.0:
+            continue
+
+        tag = "[熱門]" if stock in DYNAMIC_MAP else "[固定]"
+        
+        # 🌟 指標標籤
+        crossed_ma20_tag = " 🌟[bold yellow]【剛站上月線】[/bold yellow]" if alert.get('剛過月線') else ""
+        crossed_ma20_line_msg = " 🌟【剛站上月線】" if alert.get('剛過月線') else ""
+        
+        score = alert['今日評分']
+        raw_score = alert['個股原始評分']
+        market_ok = alert['大盤安全']
+        
+        last_trade_msg = logs[stock][-1] if stock in logs and logs[stock] else "無近期紀錄"
+        display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
+
+        # ... (前面保留) ...
+        is_rebel = (not market_ok and raw_score >= 75)
+        
+        # 提取新訊號
+        pro_bottom_breakout = alert.get('專業起漲', False)
+        ambush_setup = alert.get('縮量埋伏', False)
+        is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+        fake_break = alert.get('假跌破', False)
+        dc_pullback = alert.get('漲停低吸', False)
+        
+        # 🌟 取得專用的 MACD (10, 20, 8) 數值
+        macd_val = alert.get('MACD_數值', 0.0)
+        macd_sig = alert.get('MACD_訊號', 0.0)
+        
+        # 🌟 判斷是否符合「水上」或「水下黃金交叉」
+        macd_pass = (macd_val > 0) or (macd_val > macd_sig)
+
+        # 🧠 七大短線法則濾網：短線股要有近期漲停 / 新高 / 新量，且趨勢不能太弱
+        strategy_buy_filter = (
+            (alert.get('短線資格', False) or stock in BLUE_CHIP_LIST) and
+            (alert.get('上升趨勢', False) or dc_pullback or is_rebel or alert.get('恐慌反轉', False))
+        )
+
+        # ==========================================
+        # 🛠️ 修正點：在這裡預先給定變數初始值，防止報錯
+        final_entry_date = ""
+        final_entry_price = 0.0
+        # ==========================================
+
+        if alert["是否觸發賣出"]:
+            if is_top_divergent:
+                status = "🚨 【高檔警報：獲利了結】"
+                raw_advice = "🚨 【建議賣出】 (快漲完了，短線風險極高)"
+            else:
+                status = "🔴 【強制賣出/停損訊號】"
+                raw_advice = "🔴 【建議賣出】 (指標轉弱或破線)"
+            
+            if stock in watchlist:
+                del watchlist[stock]
+                watchlist_updated = True
+                
+        elif ((score >= 65 and strategy_buy_filter) or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback or alert.get('恐慌反轉', False)):
+            
+            # 🛑 核心邏輯：實作「降級判定」與「嚴格把關」
+            if fake_break and not macd_pass:
+                status = "🟡 【列入觀察/少量試單】"
+                raw_advice = "🟡 【降級判定】 觸發假跌破，但 MACD(10,20,8) 仍在水下，動能未確認"
+            elif alert.get('恐慌反轉', False):
+                status = "🟣 【恐慌後止跌反轉】"
+                raw_advice = "🟣 【逆向觀察】 連跌後收紅止跌，僅適合小部位試單並嚴守停損"
+            elif dc_pullback:
+                status = "🎯 【DC 漲停回檔低吸】"
+                raw_advice = "🔥 【強勢股第二波低吸】 漲停後縮量回測支撐，今日放量止跌反彈"
+            elif fake_break and macd_pass:
+                status = "🟢 【強力買進】 (假跌破 + 動能確認)"
+                raw_advice = "🔥 【綠燈放行】 假跌破真拉抬，且 MACD(10,20,8) 已翻轉，可強力試單"
+                
+            # 下方為原有其他訊號邏輯
+            elif ambush_setup:
+                status = "🥷 【縮量黃金：右側埋伏】"
+                raw_advice = "🔥 【絕佳試單點】 (主力洗盤接近尾聲)"
+            elif pro_bottom_breakout:
+                status = "🌊 【VCP 波動收斂突破】"
+                raw_advice = "🔥 【強力買進】 MACD 零軸啟動，建議建立核心部位"
+            elif is_rebel:
+                status = "⚡ 【無視大盤：獨立強勢】"
+                raw_advice = "🔥 【建議進場/續抱】 (個股展現獨立特質)"
+            else:
+                status = "🟢 【強力買進】"
+                raw_advice = "🟢 【可進場試單】 (量價與籌碼共振)"
+            
+            # 🌟 防追高警示濾網：強勢高位不直接否定，但高位過熱必須降級
+            if alert.get('高位過熱', False):
+                 raw_advice = "⚠️ 【高位過熱】(漲幅、量能或乖離已偏熱，避免失控追高，等量縮回檔)"
+            elif alert.get('今日漲幅', 0) >= 7.0 and not alert.get('強勢高位', False):
+                 raw_advice = "⚠️ 【切勿追高】(今日已大漲表態，請耐心等待量縮回檔再佈局)"
+
+            # 從回測紀錄抓取真實進場點
+            final_entry_date = alert["日期"]
+            final_entry_price = alert["收盤價"]
+
+            if stock in logs and logs[stock]:
+                for log_entry in reversed(logs[stock]):
+                    if "🟢 買進" in log_entry:
+                        parts = log_entry.split('|')
+                        final_entry_date = parts[0].strip()
+                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                        if p_match:
+                            final_entry_price = float(p_match.group(1))
+                        break
+                    elif "🔴 賣出" in log_entry:
+                        break
+
+            # 更新本機 Watchlist
+            if stock not in watchlist or watchlist[stock].get("加入日期") != final_entry_date:
+                watchlist[stock] = {"名稱": stock_name, "加入日期": final_entry_date, "加入價格": final_entry_price}
+                watchlist_updated = True
+
+            # 原本的顯示訊息處理 (預設值)
+            display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日觸發進場 | 價格: {final_entry_price}" if final_entry_date == alert["日期"] else f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
+        else:
+            status = f"⚪ 【觀望】 (評分: {score}分)"
+            raw_advice = f"⚪ 【建議觀望】 (評分 {raw_score} 分)"
+            display_log_msg = f"🕒 最後紀錄: {last_trade_msg}"
+        
+        # ==========================================
+        # 🧠 智能推播語氣與策略整合引擎 (奧地利學派風險控管版)
+        # ==========================================
+        first_day_term_tag = ""
+        first_day_line_tag = ""
+        position_advice = ""  # 🌟 新增：資金控管建議
+        
+        is_first_day = (alert.get("日期") == final_entry_date)
+        cost_price = watchlist.get(stock, {}).get("加入價格", "無紀錄")
+        is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
+        
+        if not alert.get("是否觸發賣出") and (((score >= 65 and strategy_buy_filter) or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback or alert.get('恐慌反轉', False))):
+            # 💎【策略三】龍頭好公司的價值投資
+            if stock in BLUE_CHIP_LIST and alert.get('今日漲幅', 0) <= -3.0:
+                first_day_term_tag = " 💎[bold cyan]【龍頭打折專區】[/bold cyan]"
+                first_day_line_tag = " 💎【龍頭打折專區】"
+                position_advice = "🛡️ 資金策略: 價值浮現，建議採【倒金字塔分批建倉】，首批最多 10% 資金。"
+                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 龍頭罕見重挫，長線價值浮現 | 價格: {final_entry_price}"
+                
+            elif dc_pullback:
+                first_day_term_tag = " 🎯[bold magenta]【DC漲停回檔低吸】[/bold magenta]"
+                first_day_line_tag = " 🎯【DC漲停回檔低吸】"
+                position_advice = "🛡️ 資金策略: 強勢股第二波低吸，建議小部位 5%-10% 試單；跌破漲停支撐 2% 停損。"
+                display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 DC 回檔低吸觸發 | 價格: {final_entry_price}"
+
+            # 🔄【策略二】專注少數標的做波段 (降成本)
+            elif stock in watchlist:
+                if alert.get('高檔背離') or alert.get('乖離過大') or is_chasing_high:
+                    first_day_term_tag = " ✂️[bold yellow]【波段減碼提示】[/bold yellow]"
+                    first_day_line_tag = " ✂️【波段減碼提示】"
+                    position_advice = "🛡️ 資金策略: 市場狂熱具不確定性，建議【收回本金或減碼 30%-50%】鎖定利潤。"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🔴 漲多正乖離大，可適度減碼收割 (原始成本: {cost_price})"
+                elif alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
+                    first_day_term_tag = " 🔄[bold green]【波段降成本】[/bold green]"
+                    first_day_line_tag = " 🔄【波段降成本】"
+                    position_advice = "🛡️ 資金策略: 趁量縮恐慌，建議【僅使用已獲利之資金】逢低買回試單。"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 | 🟢 縮量回測支撐，考慮用獲利資金買回"
+                else:
+                    first_day_term_tag = " 📊[bold blue]【波段持股續抱】[/bold blue]"
+                    first_day_line_tag = " 📊【波段持股續抱】"
+                    position_advice = "🛡️ 資金策略: 趨勢未變，維持既有部位，嚴守移動停利紀律。"
+                    display_log_msg = f"🕒 動作紀錄: 持股續抱中 (原入場日: {final_entry_date} | 成本: {final_entry_price})"
+                    
+            # 🏹【原系統戰術】短線型態突破與右側埋伏
+            elif is_first_day:
+                if alert.get('縮量埋伏') or alert.get('今日漲幅', 0) < 0:
+                    first_day_term_tag = " 🥷[bold green]【悄悄埋伏佈局】[/bold green]"
+                    first_day_line_tag = " 🥷【悄悄埋伏佈局】"
+                    position_advice = "🛡️ 資金策略: 左側摸底不確定性極高，建議【嚴格控制在總資金 5%】試單。"
+                    display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日逢低建倉 (切勿追高) | 價格: {final_entry_price}"
+                else:
+                    first_day_term_tag = " 🚨[bold white on red]【🔥第一天發動🔥】[/bold white on red]"
+                    first_day_line_tag = " 🚨【🔥第一天發動🔥】"
+                    position_advice = "🛡️ 資金策略: 右側動能確認，建議【標準部位 10%-20%】，跌破發動紅K低點即停損。"
+                    display_log_msg = f"🕒 動作紀錄: {final_entry_date} | 🟢 今日強勢突破 | 價格: {final_entry_price}"
+# 輸出到終端機
+        print(f"{tag} {stock:<7} {stock_name:<4} | 漲幅: {alert.get('今日漲幅', 0):>5.1f}% | 收盤: {alert['收盤價']:>6.1f} | 月線: {alert['月線價']:>6.1f} | 評分: {score:>3}分{crossed_ma20_tag}{first_day_term_tag}")
+        print(display_log_msg)
+        print(f"👉 系統判定: {status}")
+        print(f"💡 建議提示: {raw_advice}\n")
+        
+        # 加入第一段 LINE 訊息
+        line_prefix = "🔥" if "獨立" in status else tag
+        
+        # 🌟 恢復顯示：只要是「固定清單」、庫存，或是今天有特殊動作，就顯示在 LINE 報告中讓您安心
+        if tag == "[固定]" or stock in watchlist or is_first_day or alert.get("是否觸發賣出"):
+            line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
+            line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
+            line_message_1.append(f"短線資格: {'是' if alert.get('短線資格') else '否'} | 上升趨勢: {'是' if alert.get('上升趨勢') else '否'} | 紅肥綠瘦: {'是' if alert.get('紅肥綠瘦') else '否'}")
+            if alert.get('新高') or alert.get('新量') or alert.get('連續小陽') or alert.get('恐慌反轉') or alert.get('高位過熱'):
+                law_tags = []
+                if alert.get('新高'): law_tags.append('新高')
+                if alert.get('新量'): law_tags.append('新量')
+                if alert.get('連續小陽'): law_tags.append('連續小陽')
+                if alert.get('恐慌反轉'): law_tags.append('恐慌反轉')
+                if alert.get('高位過熱'): law_tags.append('高位過熱')
+                line_message_1.append('七法則標籤: ' + ' / '.join(law_tags))
+            if alert.get('漲停低吸'):
+                line_message_1.append(f"🎯 DC支撐: {alert.get('漲停支撐價')} | 型態: {alert.get('漲停型態')} | 20日漲停數: {alert.get('近期漲停數')}")
+
+            if alert.get('低位縮量漲停'):
+                line_message_1.append(f"🟢 漲停結構: 低位縮量漲停 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}")
+            elif alert.get('前高放量漲停'):
+                line_message_1.append(f"🔥 漲停結構: 前高放量突破 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}")
+            elif alert.get('低位放量漲停'):
+                line_message_1.append(f"🟡 漲停結構: 低位放量漲停，分歧較大，等待洗盤後回測 | 量能倍率: {alert.get('量能倍率')}")
+            elif alert.get('前高縮量漲停') or alert.get('假突破風險'):
+                line_message_1.append(f"🔴 漲停結構: 前高縮量漲停 / 假突破風險，不宜追高 | 量能倍率: {alert.get('量能倍率')}")
+
+            line_message_1.append(display_log_msg)
+            if position_advice:  # 若有資金策略，也加進去
+                line_message_1.append(position_advice)
+            line_message_1.append(f"👉 {status}")
+            if not market_ok: line_message_1.append(f"💡 獨立建議: {raw_advice}")
+            line_message_1.append("")
+        
+    if watchlist_updated:
+        save_watchlist(watchlist)
+
+    # 🚀 推播第一段：交易提示
+    if len(line_message_1) > 2:
+        print("\n[系統] 準備發送第一段 LINE 推播 (今日交易提示)...")
+        send_line_message("\n".join(line_message_1))
+        time.sleep(1.5)
+    else:
+        print("\n[系統] 今日無符合條件的熱門股提示。")
+
+    # 🌟 第二段 LINE 訊息陣列 (只放監控清單)
+    line_message_2 = []
+    print("\n" + "="*60)
+    print("📌 【目前長期監控清單 - 狀態同步版】")
+    print("="*60)
+    line_message_2.append("📌 【長期監控清單】")
+
+    if not watchlist:
+        print("目前無持股標的")
+        line_message_2.append("目前無持股標的")
+    else:
+        for stock, data in watchlist.items():
+            join_price = data.get("加入價格", 0)
+            join_date = data.get("加入日期", "未知")
+            stock_name = data.get("名稱", "")
+            
+            # 同步最新成本
+            if stock in logs and logs[stock]:
+                for log_entry in reversed(logs[stock]):
+                    if "🟢 買進" in log_entry:
+                        parts = log_entry.split('|')
+                        join_date = parts[0].strip()
+                        p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                        if p_match: join_price = float(p_match.group(1))
+                        break
+                    elif "🔴 賣出" in log_entry: break 
+            
+            current_price = alerts.get(stock, {}).get('收盤價', 0)
+            if current_price == 0: current_price = join_price
+            roi = round((current_price - join_price) / join_price * 100, 2) if join_price > 0 else 0
+            emoji = "🔥" if roi >= 0 else "📉"
+
+            print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
+            
+            line_message_2.append(f"{stock_name} ({stock.replace('.TW', '')})")
+            line_message_2.append(f"📅 買入日期: {join_date}")
+            line_message_2.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
+            line_message_2.append(f"{emoji} 報酬率: {roi}%")
+            line_message_2.append("") 
+            
+    if watchlist_updated:
+        save_watchlist(watchlist)
+
+    # 🚀 推播第二段：監控清單
+    if len(line_message_2) > 1:
+        print("[系統] 準備發送第二段 LINE 推播 (長期監控清單)...")
+        send_line_message("\n".join(line_message_2))
+
+    console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
+    if os.environ.get('GITHUB_ACTIONS') == 'true': return 
+    console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
+    
+# ==========================================
+# 2️⃣ 單股查詢模組 (獨立呼叫回測系統)
+# ==========================================
+# ==========================================
+# 2️⃣ 單股查詢模組 (整合 GOD_SYSTEM_V2 AI 診斷)
+# ==========================================
+# ==========================================
+# 2️⃣ 單股查詢模組 (整合 AI 診斷 + 名稱辨識 + 連續查詢)
+# ==========================================
+# ==========================================
+# 2️⃣ 單股查詢模組 (整合 AI 診斷 + 市場狀態文字說明)
+# ==========================================
+# ==========================================
+# 2️⃣ 單股查詢模組 (修正名稱識別與代碼轉換)
+# ==========================================
+def run_single_query_mode_gui():
+    # GMM 狀態說明
+    REGIME_DESC = {
+        0: "🟢 0 [bold green]低波動穩定期[/bold green] (多頭特徵，價格緩步推升)",
+        1: "🔴 1 [bold red]高波動混亂期[/bold red] (空頭或洗盤，價格起伏巨大)",
+        2: "🟡 2 [bold yellow]轉折過渡期[/bold yellow] (動能改變中，趨勢尚未明確)"
+    }
+
+    while True:
+        console.print("\n" + "="*60)
+        console.print("[bold yellow]🔎 進入 AI 深度診斷模式 (Meta-Labeling v3.0)[/bold yellow]")
+        console.print("[dim]提示：輸入「2884」、「玉山金」或美股代碼「AAPL」皆可；輸入 'q' 返回[/dim]")
+        user_input = console.input("👉 [bold cyan]請輸入股票代碼或名稱:[/bold cyan] ").strip()
+        
+        if not user_input or user_input.lower() == 'q':
+            break
+            
+        ticker = ""
+        stock_name = ""
+        mkt_ticker = "^TWII" # 預設台股大盤
+
+        # --- 1. 強化版代碼與市場自動辨識 (加入美股支援) ---
+        user_upper = user_input.upper()
+        if re.match(r'^[A-Z]+$', user_upper):  # 判斷為純英文字母 (美股代碼)
+            ticker = user_upper
+            stock_name = ticker
+            mkt_ticker = "^GSPC"  # 美股對標 S&P 500 大盤
+        else:
+            try:
+                import twstock
+                if user_input.isdigit():
+                    if user_input in twstock.codes:
+                        stock_info = twstock.codes[user_input]
+                        suffix = ".TW" if "上市" in stock_info.market else ".TWO"
+                        ticker = f"{user_input}{suffix}"
+                        stock_name = stock_info.name
+                    else:
+                        ticker = f"{user_input}.TW"
+                        stock_name = user_input
+                else:
+                    found = False
+                    for code, info in twstock.codes.items():
+                        if user_input == info.name:
+                            suffix = ".TW" if "上市" in info.market else ".TWO"
+                            ticker = f"{code}{suffix}"
+                            stock_name = info.name
+                            found = True
+                            break
+                    if not found:
+                        for k, v in STOCK_MAP.items():
+                            if user_input in v:
+                                ticker = k
+                                stock_name = v
+                                found = True
+                                break
+                    if not found:
+                        console.print(f"[bold red]❌ 錯誤：無法辨識「{user_input}」。[/bold red]")
+                        continue
+            except Exception as e:
+                ticker = f"{user_input}.TW" if user_input.isdigit() else user_input
+                console.print(f"[dim red]注意：twstock 運作異常，採用預設模式...[/dim red]")
+
+        console.print(f"\n[bold green]✅ 已識別：{stock_name} ({ticker})[/bold green]")
+
+        # --- 2. 執行分析 ---
+        try:
+            with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
+                system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                system.market_ticker = mkt_ticker  # 動態切換對標大盤
+                system.fetch_market_data() 
+                
+                # 獲取大盤具體數值
+                mkt_close = float(system.market_data['Close'].iloc[-1])
+                mkt_ma20 = float(system.market_data['Market_MA20'].iloc[-1])
+                
+                summary, alerts, logs = system.run_analysis()
+                
+                if ticker not in alerts:
+                    console.print(f"[bold red]❌ Yahoo Finance 無法取得 {ticker} 的歷史資料。[/bold red]")
+                    continue
+
+                ai_engine = AdvancedQuantEngine(ticker=ticker)
+                meta_prob, regime_idx, ai_success = 0.0, None, False
+
+                if ai_engine.fetch_data(period="2y"):
+                    ai_engine.detect_market_regime()
+                    ai_engine.apply_triple_barrier()
+                    if ai_engine.train_meta_labeling_model():
+                        latest_ai = ai_engine.data.iloc[-1]
+                        regime_idx = int(latest_ai['Regime'])
+                        feat = latest_ai[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
+                        meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
+                        ai_success = True
+
+            # --- 3. 提取所有訊號與狀態 ---
+            alert = alerts[ticker]
+            score = alert['今日評分']
+            raw_score = alert['個股原始評分']
+            market_ok = alert['大盤安全']
+            today_return = alert.get('今日漲幅', 0.0)
+            
+            is_rebel = (not market_ok and raw_score >= 75)
+            pro_bottom_breakout = alert.get('專業起漲', False)
+            ambush_setup = alert.get('縮量埋伏', False)
+            is_top_divergent = alert.get('高檔背離', False) or alert.get('乖離過大', False)
+            fake_break = alert.get('假跌破', False)
+            dc_pullback = alert.get('漲停低吸', False)
+            
+            macd_val = alert.get('MACD_數值', 0.0)
+            macd_sig = alert.get('MACD_訊號', 0.0)
+            is_water_above = (macd_val > 0)
+            macd_golden_cross = (macd_val > macd_sig)
+
+            # --- 4. 顯示結果面板 ---
+            console.print(f"\n📊 [bold white on blue] {ticker} ({stock_name}) 深度診斷報告 [/bold white on blue]")
+          
+            diag_table = Table(show_header=False, box=None)
+            diag_table.add_row("[bold]最新收盤價[/bold]", f"{alert['收盤價']} (個股月線: {alert['月線價']})")
+            
+            mkt_status = "✅ 站上月線" if market_ok else "❌ 跌破月線"
+            mkt_color = "green" if market_ok else "red"
+            
+            # 根據大盤代碼顯示對應名稱
+            mkt_name = "標普500" if mkt_ticker == "^GSPC" else "加權指數"
+            diag_table.add_row(
+                f"[bold]{mkt_name}狀態[/bold]", 
+                f"[{mkt_color}]{mkt_status}[/{mkt_color}] (指數: [bold]{mkt_close:.0f}[/bold] | 月線: {mkt_ma20:.0f})"
+            )
+            
+            diag_table.add_row("[bold]技術籌碼評分[/bold]", f"{score} 分")
+            
+            macd_str = "🟢 水上" if is_water_above else "🔴 水下"
+            macd_cross_str = "金叉" if macd_golden_cross else "死叉"
+            diag_table.add_row("[bold]MACD(10,20,8)[/bold]", f"{macd_str} ({macd_cross_str})")
+
+            # ==== 🌟 這裡新增：DC 戰術專屬技術看板 (大約在第 403 行位置) ====
+            if alert.get('漲停基因'):
+                support_price = alert.get('漲停支撐價', 0)
+                lu_type_str = "單板底部" if alert.get('漲停型態') == "SINGLE" else "首板最高點"
+                diag_table.add_row(
+                    "[bold]🏹 DC 戰術看板[/bold]", 
+                    f"[bold magenta]符合基因[/bold magenta] (近20日漲停: [cyan]{alert.get('近期漲停數')}[/cyan] 次) | 關鍵支撐: [yellow]{support_price:.2f}[/yellow] ({lu_type_str})"
+                )
+            else:
+                diag_table.add_row("[bold]🏹 DC 戰術看板[/bold]", "[dim]近期無漲停基因，未觸發低吸追蹤[/dim]")
+
+            if alert.get('低位縮量漲停'):
+                limitup_context_text = f"🟢 低位縮量漲停，籌碼鎖定佳 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}"
+            elif alert.get('前高放量漲停'):
+                limitup_context_text = f"🔥 前高放量突破，突破品質較佳 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}"
+            elif alert.get('低位放量漲停'):
+                limitup_context_text = f"🟡 低位放量漲停，分歧較大，等待洗盤後回測 | 量能倍率: {alert.get('量能倍率')}"
+            elif alert.get('前高縮量漲停') or alert.get('假突破風險'):
+                limitup_context_text = f"🔴 前高縮量漲停 / 假突破風險，不宜追高 | 量能倍率: {alert.get('量能倍率')}"
+            else:
+                limitup_context_text = f"[dim]今日未出現明確漲停量價結構 | 量能倍率: {alert.get('量能倍率')} | 區間位置: {alert.get('區間位置')}[/dim]"
+            diag_table.add_row("[bold]漲停量價結構[/bold]", limitup_context_text)
+
+            law_tags = []
+            if alert.get('短線資格'): law_tags.append('短線合格')
+            if alert.get('上升趨勢'): law_tags.append('上升趨勢')
+            if alert.get('紅肥綠瘦'): law_tags.append('紅肥綠瘦')
+            if alert.get('連續小陽'): law_tags.append('連續小陽')
+            if alert.get('新高'): law_tags.append('新高')
+            if alert.get('新量'): law_tags.append('新量')
+            if alert.get('恐慌反轉'): law_tags.append('恐慌反轉')
+            if alert.get('強勢高位'): law_tags.append('強勢高位')
+            if alert.get('高位過熱'): law_tags.append('高位過熱警戒')
+            diag_table.add_row(
+                "[bold]七法則看板[/bold]",
+                " / ".join(law_tags) if law_tags else "[dim]暫無明確七法則標籤[/dim]"
+            )
+            # ==========================================================
+
+            if ai_success:
+                regime_text = REGIME_DESC.get(regime_idx, f"狀態 {regime_idx}")
+                diag_table.add_row("[bold]GMM 市場狀態[/bold]", regime_text)
+                # 🌟 修正措辭：強調這是「歷史回測勝率」，而非未來預言
+                diag_table.add_row("[bold]AI 歷史回測勝率[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
+            
+            console.print(diag_table)
+            
+            # 🌟 新增：風險與不確定性免責聲明
+            if ai_success and meta_prob >= 0.6:
+                console.print("[dim italic]💡 註：此勝率代表在「過去類似的歷史條件下」，後續上漲機率較高。但人類市場沒有物理常數，歷史不會完美重演，請務必搭配資金控管。[/dim italic]")
+            console.print("-" * 40)
+
+            # ==========================================
+            # 🌟 5. 核心判定邏輯
+            # ==========================================
+            is_chasing_high = today_return >= 7.0
+            add_to_watchlist_flag = False
+
+            if alert.get("是否觸發賣出", False):
+                if is_top_divergent:
+                    console.print("👉 最終判定: [bold red]🚨 【高檔警報：獲利了結】[/bold red] (快漲完了，短線風險極高)")
+                else:
+                    console.print("👉 最終判定: [bold red]🔴 【強制賣出/停損訊號】[/bold red] (指標轉弱或破線)")
+            
+            elif score >= 65 or is_rebel or pro_bottom_breakout or ambush_setup or fake_break or dc_pullback:
+                
+                if dc_pullback: base_status = "🎯 【DC 漲停回檔低吸】"
+                elif ambush_setup: base_status = "🥷 【縮量黃金：右側埋伏】"
+                elif pro_bottom_breakout: base_status = "🌊 【VCP 波動收斂突破】"
+                elif fake_break: base_status = "🟢 【假跌破真拉抬】 (洗盤結束)"
+                elif is_rebel: base_status = "⚡ 【無視大盤：獨立強勢】"
+                else: base_status = "🟢 【強力買進】"
+
+                if is_water_above or macd_golden_cross:
+                    if not ai_success or meta_prob >= 0.6:
+                        if is_chasing_high:
+                            console.print(f"👉 最終判定: [bold yellow]⚠️ 【切勿追高】[/bold yellow] (今日大漲 {today_return:.2f}%, 請耐心等待量縮回檔)")
+                        else:
+                            console.print(f"👉 最終判定: [bold green]{base_status}[/bold green] (型態與 MACD 雙重確認)")
+                            add_to_watchlist_flag = True
+                    else:
+                        if is_chasing_high:
+                            console.print("👉 最終判定: [bold yellow]🟡 【建議觀望 / ⚠️ 切勿追高】[/bold yellow] (漲幅大且 AI 勝率過低，慎防假突破)")
+                        else:
+                            console.print(f"👉 最終判定: [bold yellow]🟡 【建議觀望】[/bold yellow] (技術達標，但 AI 勝率僅 {meta_prob*100:.1f}%)")
+                else:
+                    console.print(f"👉 最終判定: [bold yellow]🟡 【降級觀望】[/bold yellow] 型態為 {base_status}，但 MACD 水下且未金叉，動能不足。")
+            else:
+                console.print("👉 最終判定: [bold white]⚪ 【建議觀望】[/bold white] (綜合評分與動能不足，且無特殊洗盤型態)")
+                
+            # --- 6. 自動收錄至長期監控清單 ---
+            if add_to_watchlist_flag:
+                watchlist = load_watchlist()
+                entry_date = alert["日期"]
+                entry_price = alert["收盤價"]
+                
+                if ticker in logs and logs[ticker]:
+                    for log_entry in reversed(logs[ticker]):
+                        if "🟢 買進" in log_entry:
+                            parts = log_entry.split('|')
+                            entry_date = parts[0].strip()
+                            p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                            if p_match:
+                                entry_price = float(p_match.group(1))
+                            break 
+                        elif "🔴 賣出" in log_entry:
+                            break
+                
+                if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
+                    watchlist[ticker] = {
+                        "名稱": stock_name,
+                        "加入日期": entry_date,
+                        "加入價格": entry_price
+                    }
+                    save_watchlist(watchlist)
+                    console.print(f"🌟 [bold cyan]【自動收錄】已將 {stock_name} ({ticker}) 納入長期監控清單！(紀錄成本: {entry_price})[/bold cyan]")
+
+            if logs.get(ticker):
+                console.print("\n📋 [dim]最近交易紀錄:[/dim]")
+                for log in logs[ticker][-3:]:
+                    console.print(f"   {log}")
+        except Exception as e:
+            console.print(f"[bold red]執行分析時發生錯誤: {e}[/bold red]")
+    
+    console.print("\n[bold red]已離開查詢模式。[/bold red]")
+
+# ==========================================
+# 📊 大盤現況診斷模組 (新增)
+# ==========================================
+def run_market_health_check_gui():
+    console.print("\n[bold magenta]🌐 正在診斷台股大盤 (加權指數 ^TWII) 現況...[/bold magenta]")
+    
+    # 下載最近 40 天數據確保均線計算準確
+    market_ticker = "^TWII"
+    try:
+        df = yf.download(market_ticker, period="3mo", progress=False, auto_adjust=True)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        
+        # 計算指標
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['MA5'] = df['Close'].rolling(window=5).mean()
+        
+        last_close = float(df['Close'].iloc[-1])
+        ma20 = float(df['MA20'].iloc[-1])
+        ma5 = float(df['MA5'].iloc[-1])
+        prev_close = float(df['Close'].iloc[-2])
+        
+        change = last_close - prev_close
+        pct_change = (change / prev_close) * 100
+        dist_to_ma20 = ((last_close - ma20) / ma20) * 100
+        
+        # 狀態判斷
+        is_above_ma20 = last_close > ma20
+        is_up_trend = ma20 > df['MA20'].iloc[-5] # 月線是否上揚
+        
+        status_text = ""
+        if is_above_ma20 and is_up_trend:
+            status_text = "[bold green]🔥 多頭強勢 (站上月線且月線標高)[/bold green]"
+        elif is_above_ma20 and not is_up_trend:
+            status_text = "[bold yellow]⚖️ 高檔震盪 (站上月線但均線走平)[/bold yellow]"
+        elif not is_above_ma20 and is_up_trend:
+            status_text = "[bold cyan]🛡️ 支撐測試 (跌破月線但均線仍上揚)[/bold cyan]"
+        else:
+            status_text = "[bold red]❄️ 空頭架構 (跌破月線且均線下彎)[/bold red]"
+
+        # 顯示面板
+        market_panel = Panel(
+            f"📍 [bold]目前指數:[/bold] {last_close:.2f} ({'+' if change>0 else ''}{change:.2f} / {pct_change:.2f}%)\n"
+            f"📈 [bold]月線位置 (MA20):[/bold] {ma20:.2f} (乖離率: {dist_to_ma20:.2f}%)\n"
+            f"📏 [bold]週線位置 (MA5) :[/bold] {ma5:.2f}\n"
+            f"------------------------------------------\n"
+            f"🛡️ [bold]大盤體質判定:[/bold] {status_text}\n"
+            f"💡 [bold]操作建議:[/bold] {'適度加碼精選個股' if is_above_ma20 else '嚴控倉位，保留現金'}",
+            title="🇹🇼 台股大盤即時診斷",
+            border_style="magenta"
+        )
+        console.print(market_panel)
+        
+    except Exception as e:
+        console.print(f"[bold red]❌ 無法獲取大盤數據: {e}[/bold red]")
+    
+    console.input("\n[dim]按 Enter 鍵返回主選單...[/dim]")
+
+warnings.filterwarnings('ignore')
+console = Console()
+
+# ==========================================\
+# 📊 核心量化引擎：現代量化交易系統
+# ==========================================\
+class AdvancedQuantEngine:
+    def __init__(self, ticker="2330.TW", target_vol=0.15):
+        self.ticker = ticker
+        self.target_vol = target_vol  # 目標年化波動率 15%
+        self.data = pd.DataFrame()
+        self.gmm_model = None
+        self.meta_classifier = None
+        
+    def fetch_data(self, period="3y"):
+        """取得歷史資料並計算基礎特徵"""
+        console.print(f"[dim]📥 正在獲取 {self.ticker} 的市場數據...[/dim]")
+        df = yf.download(self.ticker, period=period, progress=False)
+        if df.empty:
+            return False
+            
+        # 如果 yfinance 回傳 MultiIndex 欄位 (新版 yfinance 行為)，進行展平處理
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            
+        df['Return'] = df['Close'].pct_change()
+        df['Log_Return'] = np.log(df['Close'] / df['Close'].shift(1))
+        # 滾動波動率 (20日)
+        df['Volatility_20'] = df['Return'].rolling(window=20).std() * np.sqrt(252)
+        # 滾動波動率 (50日)
+        df['Volatility_50'] = df['Return'].rolling(window=50).std() * np.sqrt(252)
+        # 動能特徵
+        df['Momentum_10'] = df['Close'] / df['Close'].shift(10) - 1
+        df['Momentum_20'] = df['Close'] / df['Close'].shift(20) - 1
+        
+        self.data = df.dropna().copy()
+        return True
+
+    def detect_market_regime(self):
+        """1. 市場狀態識別 (高斯混合模型 GMM)"""
+        if len(self.data) < 100:
+            return
+            
+        # 使用報酬率與波動率作為觀察特徵
+        features = self.data[['Return', 'Volatility_20']].dropna()
+        
+        # 假設市場有 3 種狀態 (穩態、高波動、極端風險)
+        self.gmm_model = GaussianMixture(n_components=3, covariance_type="full", random_state=42)
+        self.gmm_model.fit(features)
+        
+        # 預測每日狀態
+        self.data['Regime'] = self.gmm_model.predict(features)
+        
+    def apply_triple_barrier(self, pt_multiplier=1.5, sl_multiplier=1.0, t_max=10):
+        """2. 三重屏障法 (Triple Barrier Method) - 生成動態標籤"""
+        df = self.data.copy()
+        events = []
+        
+        # 迭代每一天 (實務上應向量化或使用 CUSUM 過濾，此為簡化版)
+        for i in range(len(df) - t_max):
+            start_price = df['Close'].iloc[i]
+            daily_vol = df['Volatility_20'].iloc[i] / np.sqrt(252)  # 日波動率
+            
+            if pd.isna(daily_vol) or daily_vol == 0:
+                continue
+                
+            # 計算上下屏障
+            upper_barrier = start_price * (1 + pt_multiplier * daily_vol * np.sqrt(t_max))
+            lower_barrier = start_price * (1 - sl_multiplier * daily_vol * np.sqrt(t_max))
+            
+            hit_upper = False
+            hit_lower = False
+            
+            # 尋找未來 t_max 天內最先觸及哪一個屏障
+            for j in range(1, t_max + 1):
+                future_price = df['Close'].iloc[i + j]
+                
+                if future_price >= upper_barrier:
+                    hit_upper = True
+                    events.append({'date': df.index[i], 'label': 1, 'end_date': df.index[i+j]})  # 獲利標籤
+                    break
+                elif future_price <= lower_barrier:
+                    hit_lower = True
+                    events.append({'date': df.index[i], 'label': 0, 'end_date': df.index[i+j]})  # 虧損標籤
+                    break
+                    
+            if not hit_upper and not hit_lower:
+                # 觸及時間屏障
+                final_price = df['Close'].iloc[i + t_max]
+                label = 1 if final_price > start_price else 0
+                events.append({'date': df.index[i], 'label': label, 'end_date': df.index[i+t_max]})
+                
+        events_df = pd.DataFrame(events).set_index('date')
+        self.data = self.data.join(events_df['label'], how='left')
+        self.data['label'] = self.data['label'].fillna(0) # 未知部分先填0
+        
+    def train_meta_labeling_model(self):
+        """3. 元標籤技術：解耦架構中的次階分類器"""
+        # 初階模型：簡單的均線突破 (假設)
+        self.data['SMA_20'] = self.data['Close'].rolling(window=20).mean()
+        self.data['Primary_Signal'] = np.where(self.data['Close'] > self.data['SMA_20'], 1, -1)
+        
+        # 僅提取初階模型發出做多訊號的日子進行訓練
+        trade_days = self.data[self.data['Primary_Signal'] == 1].dropna()
+        
+        if len(trade_days) < 50:
+            console.print("[yellow]⚠️ 訊號樣本數過少，跳過元模型訓練。[/yellow]")
+            return False
+            
+        # 特徵矩陣 X (市場特徵) 與標籤 y (三重屏障標籤)
+        features = ['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']
+        X = trade_days[features]
+        y = trade_days['label']
+        
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+        
+        # 次階分類器：隨機森林 (決定是否要過濾掉該筆交易)
+        self.meta_classifier = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+        self.meta_classifier.fit(X_train, y_train)
+        
+        return True
+        
+    def calculate_position_size(self, current_vol):
+        """4. 動態部位規模調整 (Volatility-Based Position Sizing)"""
+        # W_t = min(sigma_target / sigma_t, W_max)
+        if pd.isna(current_vol) or current_vol == 0:
+            return 0.0
+        
+        w_max = 1.0 # 最大資金權重 100%
+        weight = min(self.target_vol / current_vol, w_max)
+        return round(weight, 4)
+
+    def simulate_twse_frictions(self, price, qty, action="BUY", is_day_trade=False):
+        """5. 台股微觀摩擦成本計算 (證交稅 0.3% / 當沖 0.15% + 手續費)"""
+        nominal_value = price * qty
+        # 假設券商手續費 0.1425%，折扣 5 折
+        fee_rate = 0.001425 * 0.5 
+        fee = nominal_value * fee_rate
+        
+        tax = 0.0
+        if action == "SELL":
+            tax_rate = 0.0015 if is_day_trade else 0.003
+            tax = nominal_value * tax_rate
+            
+        total_friction = fee + tax
+        return total_friction
+
+# ==========================================\
+# 🛠️ 實盤 API 整合框架 (Mock Shioaji)
+# ==========================================\
+class ShioajiMockAPI:
+    def __init__(self):
+        self.connected = False
+        
+    def connect(self):
+        console.print("[dim]🔄 正在與券商伺服器 (Shioaji) 建立加密連線...[/dim]")
+        self.connected = True
+        return True
+        
+    def place_order(self, ticker, action, price, qty, order_type="LMT"):
+        """實盤非同步下單框架"""
+        if not self.connected:
+            console.print("[red]❌ 尚未連線至券商 API。[/red]")
+            return
+            
+        console.print(f"[bold green]✅ 訂單已送出:[/bold green] {action} {ticker} | 數量: {qty} | 價格: {price} | 類型: {order_type}")
+        console.print("[dim]   > 狀態: [Submitted] 正在等待交易所撮合...[/dim]")
+
+# ==========================================\
+# 🏠 主程式入口
+# ==========================================\
+def run_analysis(ticker):
+    console.print(f"\\n[bold cyan]🔍 啟動高階量化深度分析：{ticker}[/bold cyan]")
+    
+    engine = AdvancedQuantEngine(ticker=ticker)
+    if not engine.fetch_data(period="2y"):
+        console.print("[red]❌ 無法獲取資料。[/red]")
+        return
+        
+    # 執行量化管道
+    with console.status("[bold green]正在執行市場狀態識別 (GMM)...[/bold green]"):
+        engine.detect_market_regime()
+        
+    with console.status("[bold green]正在運算三重屏障動態標籤 (TBM)...[/bold green]"):
+        engine.apply_triple_barrier()
+        
+    with console.status("[bold green]正在訓練元標籤次階分類器 (Meta-Labeling)...[/bold green]"):
+        model_trained = engine.train_meta_labeling_model()
+        
+    # 取得最新一天的狀態
+    latest_data = engine.data.iloc[-1]
+    prev_data = engine.data.iloc[-2]
+    
+    # 判斷今日初階訊號
+    current_price = latest_data['Close']
+    sma_20 = latest_data['SMA_20']
+    primary_signal = 1 if current_price > sma_20 else -1
+    
+    # 元標籤過濾
+    meta_prob = 0.0
+    execute_trade = False
+    
+    if primary_signal == 1 and model_trained:
+        features = latest_data[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
+        # 次階分類器預測是否會獲利 (機率)
+        meta_prob = engine.meta_classifier.predict_proba(features)[0][1] 
+        execute_trade = meta_prob > 0.6  # 信心度大於 60% 才執行
+        
+    # 計算動態部位規模
+    volatility = latest_data['Volatility_20']
+    target_weight = engine.calculate_position_size(volatility)
+    
+    # 計算摩擦成本範例 (假設買入 1000 股)
+    friction = engine.simulate_twse_frictions(current_price, 1000, "BUY")
+    
+    # 輸出分析結果
+    console.print("\\n[bold white on blue] 📊 系統診斷報告 [/bold white on blue]")
+    
+    table = Table(show_header=False, box=None)
+    table.add_row("[bold]最新收盤價[/bold]", f"{current_price:.2f}")
+    table.add_row("[bold]GMM 市場狀態[/bold]", f"狀態 {int(latest_data['Regime'])} (可反映動能或波動特徵)")
+    table.add_row("[bold]20日年化波動率[/bold]", f"{volatility*100:.2f}%")
+    table.add_row("[bold]初階策略訊號[/bold]", "[green]做多 (均線之上)[/green]" if primary_signal == 1 else "[red]觀望 (均線之下)[/red]")
+    
+    if primary_signal == 1:
+        # 🌟 修正點 1：更名為「歷史回測勝率」，避免預測未來的錯覺
+        table.add_row("[bold]次階 AI 歷史回測勝率[/bold]", f"{meta_prob*100:.1f}%")
+        
+        # 🌟 修正點 2：加上資金控管提示
+        table.add_row("[bold]系統最終決策[/bold]", "[bold green]✅ 建議執行 (仍需控管資金)[/bold green]" if execute_trade else "[bold yellow]🚫 過濾偽陽性 (拒絕執行)[/bold yellow]")
+        
+        table.add_row("[bold]動態建議資金權重[/bold]", f"{target_weight*100:.1f}% (基於波動率目標)")
+        table.add_row("[bold]台股單筆預估摩擦成本[/bold]", f"{friction:.1f} TWD (以1000股計，含手續費)")
+    console.print(table)
+    
+    if execute_trade:
+        do_trade = console.input("\\n[bold cyan]❓ 是否將此訂單傳送至券商 API 進行實盤模擬? (y/n): [/bold cyan]")
+        if do_trade.lower() == 'y':
+            api = ShioajiMockAPI()
+            api.connect()
+            api.place_order(ticker, "BUY", current_price, 1000)
+
+import datetime
+from FinMind.data import DataLoader
+
+
+    # 建議修改方向
+def is_taiwan_stock_open():
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now = datetime.datetime.now(tw_tz)
+    
+    # A. 先判斷是否為週末
+    if now.weekday() >= 5: # 5 是週六, 6 是週日
+        return False
+        
+    # B. 檢查是否在 09:00 - 14:00 執行，此時 yf 可能還沒更新今日日期
+    # 如果你的 GitHub Action 是在晚上 19:00 跑，則原有的比對法通常有效
+    # 但若要更保險，可以改用以下邏輯：
+    try:
+        df = yf.download("^TWII", period="5d", progress=False)
+        if df.empty: return False
+        
+        # 只要「最後一個交易日」跟「今天」差距在 3 天內，且今天不是週末
+        # 基本上就可以視為交易日循環中
+        last_trade_date = df.index[-1].date()
+        delta = (now.date() - last_trade_date).days
+        
+        # 如果差距超過 3 天 (且排除週末)，通常代表遇到了長假
+        if delta > 3:
+            return False
+            
+        return True
+    except:
+        return now.weekday() < 5 # 發生錯誤時，預設週一至週五皆開市
+
+
+    # ... 原有的選單與執行邏輯 ...
+# ==========================================
+# 🏠 主程式入口
+# ==========================================
+# ==========================================
+# 🏠 主程式入口
+# ==========================================
+def main():
+    tw_tz = datetime.timezone(datetime.timedelta(hours=8))
+    rprint(f"\n🚀 啟動【台股獵手 - 專業終端版】 {datetime.datetime.now(tw_tz).strftime('%Y-%m-%d %H:%M')}")
+    
+    scanner = YahooMarketScanner()
+
+    # 🌟 關鍵：雲端環境執行完直接 return，絕對不能讓它往下走進 while True
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print("偵測到 GitHub Actions 自動化環境，跳過開市驗證，直接執行...")
+        print("✅ 強制執行策略掃描與推播。")
+        run_full_scan_gui(scanner)  # 自動執行選項 1 的功能
+        return                      # 🛑 執行完畢直接跳出，程式安全結束 (Exit Code 0)
+
+    # --- 以下只有你在自己電腦上手動執行時，才會碰到 ---
+    while True:
+        os.system('cls' if os.name == 'nt' else 'clear')
+        
+        menu = Panel(
+            "1. 🚀 [bold cyan]執行完整策略掃描[/bold cyan] (大盤監控 + 庫存更新 + LINE推播)\n"
+            "2. 🔎 [bold yellow]單股深度診斷[/bold yellow] (即時回測與技術籌碼評分)\n"
+            "3. 🔎 [bold yellow]回測[/bold yellow] (回測)\n"
+            "5. 📊 [bold magenta]檢查大盤現況[/bold magenta] (加權指數體質與均線分析)\n" # 新增這一行
+            "q. [bold red]退出系統[/bold red]",
+            title="🎯 台股獵手 v2.0 - GUI Terminal",
+            border_style="bright_blue"
+        )
+        console.print(menu)
+        
+        choice = console.input("\n[bold]請選擇功能: [/bold]").strip().lower()
+        
+        if choice == '1':
+            run_full_scan_gui(scanner)
+        elif choice == '2':
+            run_single_query_mode_gui()
+        elif choice == '3':
+            run_test(scanner)
+        elif choice == '5': # 新增這一行
+            run_market_health_check_gui()
+        elif choice == 'q':
+            console.print("\n[bold red]👋 系統已退出，祝您投資順利！[/bold red]\n")
+            break
+        else:
+            console.print("[bold red]❌ 無效的選擇，請重新輸入。[/bold red]")
+            time.sleep(1)
+
+if __name__ == "__main__":
+    main()
