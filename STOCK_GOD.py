@@ -604,6 +604,9 @@ class TaiwanStockTradingSystem:
         # ==========================================
         # ⚖️ [評分邏輯強化]
         # ==========================================
+        # 2026-06-11 調整：分數判斷回到 STOCK_GOD_0530.py 的原始結構。
+        # STOCK_GOD(4).py 新增的特殊型態與提示仍保留在 daily_alerts / LINE / 診斷看板，
+        # 但不再額外影響 Raw_Score 或 Buy_Signal，避免分數被新版提示邏輯過度放大或扣減。
         df['Raw_Score'] = 0
         df.loc[df['Close'] > df['MA20'], 'Raw_Score'] += 25
         df.loc[df['MACD'] > df['Signal'], 'Raw_Score'] += 25
@@ -614,30 +617,11 @@ class TaiwanStockTradingSystem:
         df.loc[df['Price_Breakout'] & df['Volume_Surge'] & df['MA_Squeeze'].shift(1), 'Raw_Score'] += 10
         df.loc[df['Early_Start'], 'Raw_Score'] += 5
         
-        # 專業級起漲與洗盤埋伏加分 (具備決定性權重)
+        # 專業級起漲與洗盤埋伏加分 (維持 0530 權重)
         df.loc[df['Pro_Bottom_Breakout'], 'Raw_Score'] += 35
         df.loc[df['Ambush_Setup'], 'Raw_Score'] += 25
 
-        # 🎯 漲停結構加減分：依「位置 + 量能」判斷漲停品質
-        df.loc[df['Low_Shrink_LimitUp'], 'Raw_Score'] += 30          # 低位縮量漲停：籌碼鎖定
-        df.loc[df['Resistance_HighVol_LimitUp'], 'Raw_Score'] += 25  # 前高放量漲停：有效突破
-        df.loc[df['Low_HighVol_LimitUp'], 'Raw_Score'] += 5          # 低位放量漲停：可能先洗盤
-        df.loc[df['Resistance_Shrink_LimitUp'], 'Raw_Score'] -= 35   # 前高縮量漲停：假突破風險
-        df.loc[df['False_Breakout_Risk'], 'Raw_Score'] -= 20         # 前高縮量假突破額外扣分
-
         df.loc[df['Limit_Up_Pullback_Buy'], 'Raw_Score'] += 35
-
-        # 🧠 七大短線法則加減分
-        df.loc[df['Pre_Big_Red_Setup'], 'Raw_Score'] += 10             # 連續小陽墊高，可能醞釀大陽
-        df.loc[df['Consecutive_Small_Green_3'], 'Raw_Score'] -= 10     # 連續小陰，短線轉弱
-        df.loc[df['Strong_Candle_Structure'], 'Raw_Score'] += 20       # 紅肥綠瘦，強勢股結構
-        df.loc[df['Trend_Up_Strong'], 'Raw_Score'] += 20               # MA5 > MA10 > MA20 且月線上彎
-        df.loc[~df['Trend_Up_Strong'], 'Raw_Score'] -= 10              # 非上升趨勢，降低誘多風險
-        df.loc[df['Fresh_Theme_Score'] >= 15, 'Raw_Score'] += 15       # 新高 / 新量 / 新發動
-        df.loc[df['Panic_Reversal'], 'Raw_Score'] += 10                # 恐慌後止跌反轉
-        df.loc[df['High_Position_Strong'], 'Raw_Score'] += 10          # 強勢高位，不因高位直接排除
-        df.loc[df['High_Position_Overheat'], 'Raw_Score'] -= 25        # 高位過熱，防止失控追高
-
         df['Score'] = df['Raw_Score']
         df.loc[df['Independent_Alpha'], 'Score'] = df['Raw_Score'] 
         df.loc[(~df['Market_OK']) & (~df['Independent_Alpha']), 'Score'] = df['Raw_Score'] * 0.6
@@ -645,18 +629,7 @@ class TaiwanStockTradingSystem:
         # ==========================================
         # 買賣訊號與部位計算
         # ==========================================
-        # 短線股必須具備近期漲停 / 新高 / 新量資格；大型龍頭則保留例外。
-        # 同時要求上升趨勢、漲停低吸或獨立強勢，避免下跌趨勢中的誘多。
-        df['Buy_Signal'] = (
-            (df['Score'] >= 60) &
-            (df['Short_Term_Eligible'] | is_blue_chip) &
-            (
-                df['Trend_Up_Strong'] |
-                df['Limit_Up_Pullback_Buy'] |
-                df['Independent_Alpha'] |
-                df['Panic_Reversal']
-            )
-        )
+        df['Buy_Signal'] = (df['Score'] >= 60)
         
         macd_death_cross = (
             (df['MACD'] < df['Signal']) & 
@@ -937,11 +910,8 @@ def run_full_scan_gui(scanner):
         # 🌟 判斷是否符合「水上」或「水下黃金交叉」
         macd_pass = (macd_val > 0) or (macd_val > macd_sig)
 
-        # 🧠 七大短線法則濾網：短線股要有近期漲停 / 新高 / 新量，且趨勢不能太弱
-        strategy_buy_filter = (
-            (alert.get('短線資格', False) or stock in BLUE_CHIP_LIST) and
-            (alert.get('上升趨勢', False) or dc_pullback or is_rebel or alert.get('恐慌反轉', False))
-        )
+        # 2026-06-11 調整：一般買進判斷以 0530 分數為主；特殊條件只作提示，不作硬性濾網。
+        strategy_buy_filter = True
 
         # ==========================================
         # 🛠️ 修正點：在這裡預先給定變數初始值，防止報錯
