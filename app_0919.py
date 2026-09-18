@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import datetime
 import yfinance as yf
 import twstock
@@ -24,7 +23,7 @@ except ImportError:
 # ==========================================
 # 🎨 網頁基本設定與 CSS 樣式
 # ==========================================
-st.set_page_config(page_title="台股獵手 v2.1 - TD/RL 專業版", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="台股獵手 v2.0 - 專業版", page_icon="🎯", layout="wide")
 
 # 自定義 CSS 強化視覺提醒
 st.markdown("""
@@ -37,311 +36,6 @@ st.markdown("""
 # --- 🚀 優化點：初始化大盤快取狀態 (升級為字典支援多市場) ---
 if 'market_cache' not in st.session_state:
     st.session_state.market_cache = {}
-if 'tdrl_cache' not in st.session_state:
-    st.session_state.tdrl_cache = {}
-
-
-# ==========================================
-# 🧠 TD(0) + Q-Learning 決策引擎
-#    若 STOCK_GOD 已經輸出 RL 欄位就直接使用；若尚未升級，
-#    app.py 會呼叫 system.process_stock() 補算，因此可向下相容舊版核心。
-# ==========================================
-class TDRLDecisionEngine:
-    ACTIONS = ("HOLD", "BUY", "SELL")
-    HOLD, BUY, SELL = 0, 1, 2
-
-    def __init__(self, alpha=0.12, gamma=0.90, epochs=18, min_rows=120,
-                 buy_cost_pct=0.08, sell_cost_pct=0.38):
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epochs = epochs
-        self.min_rows = min_rows
-        self.buy_cost_pct = buy_cost_pct
-        self.sell_cost_pct = sell_cost_pct
-        self.v_table = {}
-        self.v_visits = {}
-        self.q_table = {}
-        self.q_visits = {}
-
-    @staticmethod
-    def _safe_bool(value):
-        try:
-            if pd.isna(value):
-                return False
-        except Exception:
-            pass
-        return bool(value)
-
-    @staticmethod
-    def _score_bin(score):
-        try:
-            score = float(score)
-        except Exception:
-            score = 0.0
-        if score < 40:
-            return 0
-        if score < 60:
-            return 1
-        if score < 80:
-            return 2
-        return 3
-
-    def _market_state(self, row):
-        close = float(row.get("Close", 0) or 0)
-        ma20 = float(row.get("MA20", 0) or 0)
-        trend = self._safe_bool(row.get("Trend_Up_Strong", False)) or (ma20 > 0 and close > ma20)
-        momentum = float(row.get("MACD", 0) or 0) > float(row.get("Signal", 0) or 0)
-        market_ok = self._safe_bool(row.get("Market_OK", False))
-        risk = any([
-            self._safe_bool(row.get("Top_Divergence", False)),
-            self._safe_bool(row.get("Overextended_MA5", False)),
-            self._safe_bool(row.get("False_Breakout_Risk", False)),
-            self._safe_bool(row.get("High_Position_Overheat", False)),
-        ])
-        return (self._score_bin(row.get("Score", 0)), int(trend), int(momentum), int(market_ok), int(risk))
-
-    def _q_state(self, row, position):
-        return self._market_state(row) + (int(position),)
-
-    @staticmethod
-    def _valid_actions(position):
-        return (TDRLDecisionEngine.HOLD, TDRLDecisionEngine.BUY) if position == 0 else (TDRLDecisionEngine.HOLD, TDRLDecisionEngine.SELL)
-
-    @staticmethod
-    def _next_position(position, action):
-        if action == TDRLDecisionEngine.BUY:
-            return 1
-        if action == TDRLDecisionEngine.SELL:
-            return 0
-        return position
-
-    def _reward_pct(self, position, action, next_return_pct):
-        next_return_pct = float(np.clip(next_return_pct, -12.0, 12.0))
-        if position == 0:
-            return next_return_pct - self.buy_cost_pct if action == self.BUY else 0.0
-        return -self.sell_cost_pct if action == self.SELL else next_return_pct
-
-    @staticmethod
-    def _state_distance(a, b):
-        return abs(a[0] - b[0]) * 1.25 + sum(int(x != y) for x, y in zip(a[1:], b[1:]))
-
-    def _lookup_v(self, market_state):
-        if market_state in self.v_table:
-            return float(self.v_table[market_state]), int(self.v_visits.get(market_state, 0))
-        candidates = []
-        for state, value in self.v_table.items():
-            dist = self._state_distance(market_state, state)
-            weight = 1.0 / (1.0 + dist)
-            candidates.append((dist, weight, float(value), int(self.v_visits.get(state, 0))))
-        if not candidates:
-            return 0.0, 0
-        candidates.sort(key=lambda x: x[0])
-        nearest = candidates[:6]
-        denom = sum(x[1] for x in nearest) or 1.0
-        return (
-            float(sum(x[1] * x[2] for x in nearest) / denom),
-            int(sum(x[3] for x in nearest) / max(1, len(nearest))),
-        )
-
-    def _lookup_q(self, q_state):
-        if q_state in self.q_table:
-            return self.q_table[q_state].copy(), int(self.q_visits.get(q_state, 0))
-        position = q_state[-1]
-        candidates = []
-        for state, q_values in self.q_table.items():
-            if state[-1] != position:
-                continue
-            dist = self._state_distance(q_state[:-1], state[:-1])
-            weight = 1.0 / (1.0 + dist)
-            candidates.append((dist, weight, q_values, int(self.q_visits.get(state, 0))))
-        if not candidates:
-            return np.zeros(3, dtype=float), 0
-        candidates.sort(key=lambda x: x[0])
-        nearest = candidates[:8]
-        denom = sum(x[1] for x in nearest) or 1.0
-        q_values = sum(x[1] * x[2] for x in nearest) / denom
-        support = int(sum(x[3] for x in nearest) / max(1, len(nearest)))
-        return np.asarray(q_values, dtype=float), support
-
-    @staticmethod
-    def _confidence_from_q(q_values, valid_actions, support):
-        ranked = sorted([float(q_values[a]) for a in valid_actions], reverse=True)
-        gap = (ranked[0] - ranked[1]) if len(ranked) >= 2 else 0.0
-        gap_component = np.tanh(max(0.0, gap) / 1.5)
-        support_component = min(1.0, np.sqrt(max(0, support) / 20.0))
-        return round(float(np.clip(50.0 + 48.0 * gap_component * support_component, 50.0, 98.0)), 1)
-
-    def fit_predict(self, df):
-        work = df.dropna(subset=["Close"]).copy()
-        if len(work) < self.min_rows:
-            return {
-                "available": False, "td_expected_pct": 0.0, "td_support": 0,
-                "flat_action": "HOLD", "held_action": "HOLD",
-                "flat_confidence": 50.0, "held_confidence": 50.0,
-                "q_buy_flat": 0.0, "q_hold_flat": 0.0,
-                "q_sell_held": 0.0, "q_hold_held": 0.0,
-            }
-
-        next_returns = work["Close"].pct_change().shift(-1) * 100.0
-
-        for _ in range(self.epochs):
-            for i in range(len(work) - 1):
-                reward = next_returns.iloc[i]
-                if pd.isna(reward):
-                    continue
-                s = self._market_state(work.iloc[i])
-                s2 = self._market_state(work.iloc[i + 1])
-                self.v_table.setdefault(s, 0.0)
-                self.v_table.setdefault(s2, 0.0)
-                td_target = float(np.clip(reward, -12.0, 12.0)) + self.gamma * self.v_table[s2]
-                self.v_table[s] += self.alpha * (td_target - self.v_table[s])
-                self.v_visits[s] = self.v_visits.get(s, 0) + 1
-
-        for _ in range(self.epochs):
-            for i in range(len(work) - 1):
-                reward_ret = next_returns.iloc[i]
-                if pd.isna(reward_ret):
-                    continue
-                row, next_row = work.iloc[i], work.iloc[i + 1]
-                for position in (0, 1):
-                    s = self._q_state(row, position)
-                    self.q_table.setdefault(s, np.zeros(3, dtype=float))
-                    self.q_visits[s] = self.q_visits.get(s, 0) + 1
-                    for action in self._valid_actions(position):
-                        next_position = self._next_position(position, action)
-                        s2 = self._q_state(next_row, next_position)
-                        self.q_table.setdefault(s2, np.zeros(3, dtype=float))
-                        future_best = max(float(self.q_table[s2][a]) for a in self._valid_actions(next_position))
-                        reward = self._reward_pct(position, action, reward_ret)
-                        target = reward + self.gamma * future_best
-                        self.q_table[s][action] += self.alpha * (target - self.q_table[s][action])
-
-        latest = work.iloc[-1]
-        td_expected, td_support = self._lookup_v(self._market_state(latest))
-        q_flat, flat_support = self._lookup_q(self._q_state(latest, 0))
-        q_held, held_support = self._lookup_q(self._q_state(latest, 1))
-        flat_valid, held_valid = self._valid_actions(0), self._valid_actions(1)
-        flat_best = max(flat_valid, key=lambda a: q_flat[a])
-        held_best = max(held_valid, key=lambda a: q_held[a])
-
-        return {
-            "available": True,
-            "td_expected_pct": round(float(np.clip(td_expected, -20.0, 20.0)), 2),
-            "td_support": int(td_support),
-            "flat_action": self.ACTIONS[flat_best],
-            "held_action": self.ACTIONS[held_best],
-            "flat_confidence": self._confidence_from_q(q_flat, flat_valid, flat_support),
-            "held_confidence": self._confidence_from_q(q_held, held_valid, held_support),
-            "q_buy_flat": round(float(q_flat[self.BUY]), 3),
-            "q_hold_flat": round(float(q_flat[self.HOLD]), 3),
-            "q_sell_held": round(float(q_held[self.SELL]), 3),
-            "q_hold_held": round(float(q_held[self.HOLD]), 3),
-        }
-
-
-def _apply_tdrl_result(alert, result):
-    alert.update({
-        "RL可用": bool(result.get("available", False)),
-        "TD期待值": round(float(result.get("td_expected_pct", 0.0)), 2),
-        "TD樣本支持": int(result.get("td_support", 0)),
-        "RL空手策略": str(result.get("flat_action", "HOLD")),
-        "RL持有策略": str(result.get("held_action", "HOLD")),
-        "RL空手信心": round(float(result.get("flat_confidence", 50.0)), 1),
-        "RL持有信心": round(float(result.get("held_confidence", 50.0)), 1),
-        "Q買入": round(float(result.get("q_buy_flat", 0.0)), 3),
-        "Q空手等待": round(float(result.get("q_hold_flat", 0.0)), 3),
-        "Q賣出": round(float(result.get("q_sell_held", 0.0)), 3),
-        "Q續抱": round(float(result.get("q_hold_held", 0.0)), 3),
-    })
-    return alert
-
-
-def ensure_tdrl_alert(system, ticker, alert):
-    """確保 alert 具備 TD/RL 欄位；新版 STOCK_GOD 已有時不重算。"""
-    if "RL可用" in alert and "TD期待值" in alert:
-        return alert
-
-    cache_key = f"{ticker}|{alert.get('日期', '')}"
-    if cache_key in st.session_state.tdrl_cache:
-        return _apply_tdrl_result(alert, st.session_state.tdrl_cache[cache_key])
-
-    try:
-        df = system.process_stock(ticker)
-        result = TDRLDecisionEngine().fit_predict(df)
-        st.session_state.tdrl_cache[cache_key] = result
-        return _apply_tdrl_result(alert, result)
-    except Exception as e:
-        result = {
-            "available": False, "td_expected_pct": 0.0, "td_support": 0,
-            "flat_action": "HOLD", "held_action": "HOLD",
-            "flat_confidence": 50.0, "held_confidence": 50.0,
-            "q_buy_flat": 0.0, "q_hold_flat": 0.0,
-            "q_sell_held": 0.0, "q_hold_held": 0.0,
-        }
-        alert["TD_RL錯誤"] = str(e)
-        return _apply_tdrl_result(alert, result)
-
-
-def resolve_td_rl_strategy(alert, is_held=False):
-    """輸出 BUY / SELL / WATCH / IGNORE；硬性風控優先於 RL。"""
-    available = bool(alert.get("RL可用", False))
-    score = float(alert.get("今日評分", 0) or 0)
-    td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
-    special_setup = any([
-        alert.get("專業起漲", False), alert.get("縮量埋伏", False),
-        alert.get("假跌破", False), alert.get("漲停低吸", False),
-        alert.get("恐慌反轉", False), alert.get("獨立行情", False),
-    ])
-    risk_high = any([
-        alert.get("高檔背離", False), alert.get("乖離過大", False),
-        alert.get("高位過熱", False), alert.get("假突破風險", False),
-    ])
-
-    if not available:
-        if is_held and alert.get("是否觸發賣出", False):
-            return "SELL", "TD/RL 樣本不足，沿用原系統硬性賣出風控。", {"confidence": 50.0}
-        if (not is_held) and (score >= 65 or special_setup) and not risk_high:
-            return "BUY", "TD/RL 樣本不足，暫由原策略達標訊號接管。", {"confidence": 50.0}
-        if score >= 50 or special_setup:
-            return "WATCH", "TD/RL 樣本不足，目前只列入關注期待。", {"confidence": 50.0}
-        return "IGNORE", "TD/RL 樣本不足，且現有訊號不足。", {"confidence": 50.0}
-
-    if is_held:
-        policy = str(alert.get("RL持有策略", "HOLD"))
-        confidence = float(alert.get("RL持有信心", 50.0) or 50.0)
-        if alert.get("是否觸發賣出", False):
-            return "SELL", f"原系統硬性賣出風控已觸發；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
-        if policy == "SELL" and td_expected <= 0.0 and confidence >= 55.0:
-            return "SELL", f"Q-Learning 偏向退出，且 TD期待 {td_expected:+.2f}% 不佳。", {"confidence": confidence}
-        if risk_high and td_expected < 0.5:
-            return "WATCH", f"仍可續抱觀察，但高檔/乖離風險上升；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
-        return "WATCH", f"Q-Learning 偏向續抱；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
-
-    policy = str(alert.get("RL空手策略", "HOLD"))
-    confidence = float(alert.get("RL空手信心", 50.0) or 50.0)
-    if alert.get("是否觸發賣出", False):
-        return "IGNORE", "空手狀態且原系統出現賣出/避險訊號，不介入。", {"confidence": confidence}
-    if risk_high:
-        if td_expected >= 0.8 and (score >= 60 or special_setup):
-            return "WATCH", f"TD期待仍為 {td_expected:+.2f}%，但高位風險偏高，先等待回檔確認。", {"confidence": confidence}
-        return "IGNORE", f"高位風險偏高，TD期待僅 {td_expected:+.2f}%，目前不介入。", {"confidence": confidence}
-    if policy == "BUY":
-        if td_expected >= 0.35 and confidence >= 52.0 and (score >= 55 or special_setup):
-            return "BUY", f"Q-Learning 偏向買入，TD期待 {td_expected:+.2f}%，且原策略條件具支撐。", {"confidence": confidence}
-        if td_expected > 0.0:
-            return "WATCH", f"RL 有買入傾向，但信心/評分尚未完全達標；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
-    if td_expected >= 0.45 and (score >= 50 or special_setup):
-        return "WATCH", f"TD期待 {td_expected:+.2f}% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。", {"confidence": confidence}
-    return "IGNORE", f"TD期待 {td_expected:+.2f}% 與 RL 進場優勢不足，暫不耗用注意力與資金。", {"confidence": confidence}
-
-
-def tdrl_label(decision, is_held=False):
-    return {
-        "BUY": "🟢 買入",
-        "SELL": "🔴 賣出",
-        "WATCH": "🟡 關注期待／續抱" if is_held else "🟡 關注期待",
-        "IGNORE": "⚪ 不理會",
-    }.get(decision, decision)
 
 
 # ==========================================
@@ -444,7 +138,7 @@ def is_frontend_watchlist_candidate(alert, ticker):
 # ==========================================
 # 🗂️ 側邊欄選單
 # ==========================================
-st.sidebar.title("🎯 台股獵手 v2.1 TD/RL")
+st.sidebar.title("🎯 台股獵手 v2.0")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio(
     "請選擇功能:",
@@ -488,46 +182,27 @@ if menu == "1. 🚀 執行完整策略掃描":
                 
             summary, alerts, logs = system.run_analysis()
             
-            st.subheader("🔔 今日交易提示｜TD + 強化學習仲裁")
+            st.subheader("🔔 今日交易提示")
             alert_data = []
             for stock, alert in alerts.items():
                 name = COMBINED_MAP.get(stock, "")
-                alert = ensure_tdrl_alert(system, stock, alert)
-                alerts[stock] = alert
-                is_held = stock in watchlist
-                rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_held)
-                rl_policy = alert.get('RL持有策略' if is_held else 'RL空手策略', 'HOLD')
-                rl_confidence = float(rl_meta.get('confidence', 50.0))
-
+                status = get_frontend_status(alert)
+                
                 alert_data.append({
                     "代碼": stock.replace('.TW', '').replace('.TWO', ''),
                     "名稱": name,
-                    "持有": "✅" if is_held else "—",
                     "收盤價": alert['收盤價'],
                     "漲幅%": alert.get('今日漲幅', 0),
                     "今日評分": alert['今日評分'],
-                    "TD期待%": alert.get('TD期待值', 0),
-                    "RL動作": rl_policy,
-                    "RL信心%": rl_confidence,
-                    "Q值": (
-                        f"SELL {alert.get('Q賣出', 0):.3f} / HOLD {alert.get('Q續抱', 0):.3f}"
-                        if is_held else
-                        f"BUY {alert.get('Q買入', 0):.3f} / CASH {alert.get('Q空手等待', 0):.3f}"
-                    ),
-                    "策略": tdrl_label(rl_decision, is_held),
-                    "判斷理由": rl_reason,
                     "量能倍率": alert.get('量能倍率', 0),
+                    "區間位置": alert.get('區間位置', 0),
                     "漲停量價結構": get_limitup_structure(alert),
                     "七法則標籤": get_rule7_tags(alert),
+                    "系統判定": status
                 })
             
             if alert_data:
-                scan_df = pd.DataFrame(alert_data)
-                decision_order = {"🟢 買入": 0, "🟡 關注期待／續抱": 1, "🟡 關注期待": 2, "🔴 賣出": 3, "⚪ 不理會": 4}
-                scan_df["_排序"] = scan_df["策略"].map(decision_order).fillna(9)
-                scan_df = scan_df.sort_values(["_排序", "TD期待%"], ascending=[True, False]).drop(columns=["_排序"])
-                st.dataframe(scan_df, use_container_width=True, hide_index=True)
-                st.caption("TD期待% 是歷史相似狀態經 TD(0) 折現後的期待值，不是保證報酬；RL信心表示 Q 值差距與樣本支持度。")
+                st.dataframe(pd.DataFrame(alert_data), use_container_width=True)
             else:
                 st.info("今日無特別訊號。")
 
@@ -641,14 +316,8 @@ elif menu == "2. 🔎 單股深度診斷":
                     dividend_yield, book_value, pb_ratio = 0, 0, 0
 
                 # --- 4. 提取進階訊號 ---
-                alert = ensure_tdrl_alert(system, ticker, alerts[ticker])
-                alerts[ticker] = alert
+                alert = alerts[ticker]
                 stock_logs = logs.get(ticker, [])
-                watchlist = load_watchlist()
-                is_held = ticker in watchlist
-                rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_held)
-                rl_confidence = float(rl_meta.get('confidence', 50.0))
-                rl_policy = alert.get('RL持有策略' if is_held else 'RL空手策略', 'HOLD')
                 score = alert['今日評分']
                 raw_score = alert['個股原始評分']
                 market_ok = alert['大盤安全']
@@ -742,61 +411,59 @@ elif menu == "2. 🔎 單股深度診斷":
                 else:
                     st.write("- **AI 統計**: 歷史樣本不足，無法計算可靠機率")
 
-                st.markdown("#### 🧠 TD(0) + Q-Learning 決策層")
-                rl_c1, rl_c2, rl_c3, rl_c4 = st.columns(4)
-                rl_c1.metric("TD 折現期待", f"{alert.get('TD期待值', 0):+.2f}%", f"樣本支持 {alert.get('TD樣本支持', 0)}", delta_color="off")
-                rl_c2.metric("RL 原始動作", rl_policy, "持有模型" if is_held else "空手模型", delta_color="off")
-                rl_c3.metric("RL 信心", f"{rl_confidence:.1f}%")
-                rl_c4.metric("目前部位", "已在監控/持有" if is_held else "空手")
-                if is_held:
-                    st.write(f"- **Q值比較**: SELL = **{alert.get('Q賣出', 0):.3f}** ｜ HOLD = **{alert.get('Q續抱', 0):.3f}**")
-                else:
-                    st.write(f"- **Q值比較**: BUY = **{alert.get('Q買入', 0):.3f}** ｜ CASH/HOLD = **{alert.get('Q空手等待', 0):.3f}**")
-                st.write(f"- **TD/RL 仲裁理由**: {rl_reason}")
-                if alert.get('TD_RL錯誤'):
-                    st.caption(f"⚠️ TD/RL 補算失敗，已安全回退原策略：{alert.get('TD_RL錯誤')}")
-
                 st.markdown("---")
 
-                # --- 6. 核心判定：TD/RL 為最終仲裁，原技術面保留為硬性風控與狀態特徵 ---
-                st.markdown("### 🎯 最終系統判定｜TD/RL 仲裁")
-                add_to_watchlist_flag = (rl_decision == "BUY")
+                # --- 6. 核心判定與濾網邏輯 ---
+                st.markdown("### 🎯 最終系統判定")
+                add_to_watchlist_flag = False
+                is_chasing_high = alert.get('今日漲幅', 0) >= 7.0
 
-                if rl_decision == "BUY":
-                    st.success(f"👉 最終判定: 🟢 **【買入】**  {rl_reason}")
-                elif rl_decision == "SELL":
-                    st.error(f"👉 最終判定: 🔴 **【賣出】**  {rl_reason}")
-                elif rl_decision == "WATCH":
-                    hold_text = "／續抱" if is_held else ""
-                    st.warning(f"👉 最終判定: 🟡 **【關注期待{hold_text}】**  {rl_reason}")
+                frontend_status = get_frontend_status(alert)
+                add_to_watchlist_flag = is_frontend_watchlist_candidate(alert, ticker)
+
+                if alert.get("是否觸發賣出"):
+                    st.error("👉 最終判定: 🔴 **【建議賣出/停損】**")
+                elif false_breakout_risk:
+                    st.error("👉 最終判定: 🚨 **【假突破風險】**：前高縮量或量價結構不健康，先觀望，不自動收錄。")
+                    add_to_watchlist_flag = False
+                elif high_position_overheat:
+                    st.warning("👉 最終判定: 🚨 **【高位過熱】**：短線可能仍強，但不適合追高，等待量縮回測。")
+                    add_to_watchlist_flag = False
+                elif score >= 60:
+                    if ai_success and meta_prob < 0.6:
+                        st.warning("👉 最終判定: 🟡 **【建議觀望】**：技術面達標，但 AI 歷史樣本勝率偏低。")
+                        add_to_watchlist_flag = False
+                    elif is_chasing_high and not high_position_strong:
+                        st.warning(f"👉 最終判定: ⚠️ **【切勿追高】**：今日漲幅達 {alert.get('今日漲幅', 0)}%，但尚未通過強勢高位濾網。")
+                        add_to_watchlist_flag = False
+                    elif add_to_watchlist_flag:
+                        st.success(f"👉 最終判定: 🟢 **【{frontend_status.replace('🟢 ', '').replace('🔥 ', '').replace('🎯 ', '')}】**")
+                    else:
+                        st.warning(f"👉 最終判定: 🟡 **【{frontend_status.replace('🟡 ', '')}】**：分數達標，但短線資格、趨勢或風險濾網尚未完全通過。")
                 else:
-                    st.info(f"👉 最終判定: ⚪ **【不理會】**  {rl_reason}")
+                    st.info("👉 最終判定: ⚪ **【建議觀望】** (綜合評分與動能不足)")
 
-                # Meta-Labeling 保留為交叉驗證提示，不覆蓋 TD/RL 最終策略
-                if ai_success and meta_prob < 0.6 and rl_decision == "BUY":
-                    st.caption(f"⚠️ 交叉提醒：Meta-Labeling 歷史勝率僅 {meta_prob*100:.1f}%，雖 TD/RL 判為買入，仍建議降低初始部位。")
-
-                # --- 7. TD/RL 控制長期監控清單 ---
-                watchlist = load_watchlist()
-                if rl_decision == "BUY":
+                # --- 7. 自動收錄至長期監控清單 ---
+                if add_to_watchlist_flag:
+                    watchlist = load_watchlist()
                     entry_date = alert["日期"]
                     entry_price = alert["收盤價"]
+                    
+                    if stock_logs:
+                        for log_entry in reversed(stock_logs):
+                            if "🟢 買進" in log_entry:
+                                parts = log_entry.split('|')
+                                entry_date = parts[0].strip()
+                                p_match = re.search(r"價格:\s*([\d\.]+)", parts[2])
+                                if p_match: entry_price = float(p_match.group(1))
+                                break
+                            elif "🔴 賣出" in log_entry: break
+                    
                     if ticker not in watchlist or watchlist[ticker].get("加入日期") != entry_date:
-                        watchlist[ticker] = {
-                            "名稱": stock_name,
-                            "加入日期": entry_date,
-                            "加入價格": entry_price,
-                            "來源": "TD_RL",
-                            "TD期待值": alert.get('TD期待值', 0),
-                        }
+                        watchlist[ticker] = {"名稱": stock_name, "加入日期": entry_date, "加入價格": entry_price}
                         save_watchlist(watchlist)
-                        st.balloons()
-                        st.success(f"📌 **TD/RL 已將 {stock_name} ({ticker}) 納入監控清單** (訊號價: {entry_price})")
-                elif rl_decision == "SELL" and ticker in watchlist:
-                    old_entry = watchlist.get(ticker, {})
-                    del watchlist[ticker]
-                    save_watchlist(watchlist)
-                    st.warning(f"📤 **TD/RL 已將 {stock_name} ({ticker}) 移出監控清單**；原監控成本: {old_entry.get('加入價格', 'N/A')}")
+                        st.balloons() # 加入慶祝特效
+                        st.success(f"📌 **已自動將 {stock_name} ({ticker}) 納入長期監控清單！** (紀錄成本: {entry_price})")
 
                 st.markdown("---")
 
