@@ -52,8 +52,10 @@ def save_watchlist(watchlist):
 # ==========================================
 def send_line_message(text_content):
     # 🔐 安全性：LINE 憑證改由環境變數讀取，避免 Token / User ID 寫死在程式碼
-    line_access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
-    line_user_id = os.environ.get("LINE_USER_ID", "").strip()
+    #line_access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
+    #line_user_id = os.environ.get("LINE_USER_ID", "").strip()
+    line_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
+    line_user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
     if not line_access_token or not line_user_id:
         print("⚠️ [系統提示] 未設定 LINE_CHANNEL_ACCESS_TOKEN 或 LINE_USER_ID，略過 LINE 推播。")
         return
