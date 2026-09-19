@@ -433,6 +433,113 @@ def resolve_td_rl_strategy(alert, is_held=False):
     return "IGNORE", f"TD期待 {td_expected:+.2f}% 與 RL 進場優勢不足，暫不耗用注意力與資金。", {"confidence": confidence}
 
 
+def should_push_line_focus(alert, rl_decision, is_held=False, rl_confidence=50.0):
+    """
+    LINE 只挑「值得現在看、可能需要介入」的股票。
+
+    注意：這只是 LINE 推播過濾器，不改變原本 TD/RL 決策、watchlist、
+    終端機輸出或個股診斷內容。只要股票通過此過濾，原本詳細資訊全部保留。
+
+    推播原則：
+    1. BUY：已達介入條件，必推。
+    2. SELL：持股需要退出/減碼處理，必推。
+    3. WATCH：只有「接近買點」或「持股風險/加減碼機會」才推。
+    4. IGNORE / 純續抱：不推，避免 LINE 被例行資訊淹沒。
+    """
+    score = float(alert.get("今日評分", 0) or 0)
+    td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
+    rl_confidence = float(rl_confidence or 50.0)
+
+    special_setup = any([
+        alert.get("專業起漲", False),
+        alert.get("縮量埋伏", False),
+        alert.get("假跌破", False),
+        alert.get("漲停低吸", False),
+        alert.get("恐慌反轉", False),
+        alert.get("獨立行情", False),
+    ])
+    risk_high = any([
+        alert.get("高檔背離", False),
+        alert.get("乖離過大", False),
+        alert.get("高位過熱", False),
+        alert.get("假突破風險", False),
+    ])
+    fresh_momentum = any([
+        alert.get("剛過月線", False),
+        alert.get("新高", False),
+        alert.get("新量", False),
+        alert.get("連續小陽", False),
+    ])
+
+    # 已經需要採取明確動作：最高優先
+    if rl_decision == "BUY":
+        return True, "已達 TD/RL 買入條件，屬於可介入標的"
+
+    if rl_decision == "SELL":
+        if is_held or alert.get("是否觸發賣出", False):
+            return True, "持股出現賣出/風控條件，需要處置"
+        return False, "空手賣出訊號，無需介入"
+
+    if rl_decision != "WATCH":
+        return False, "目前沒有需要介入的優勢"
+
+    if is_held:
+        held_policy = str(alert.get("RL持有策略", "HOLD"))
+
+        # 持股只有出現「需要動作」的 WATCH 才推，純續抱不推。
+        if risk_high:
+            return True, "持股仍可觀察，但高檔/乖離風險上升，需留意減碼或停利"
+        if held_policy == "SELL" and td_expected <= 0.5:
+            return True, "Q-Learning 已偏向退出，尚未達硬性賣出但需密切關注"
+        if alert.get("漲停低吸", False) or alert.get("縮量埋伏", False) or alert.get("假跌破", False):
+            return True, "持股出現可考慮加減碼的關鍵型態"
+        if td_expected <= -0.50:
+            return True, f"持股 TD期待降至 {td_expected:+.2f}%，需要重新檢視部位"
+        return False, "只是正常續抱，暫無新增介入需求"
+
+    # 空手 WATCH：只保留「接近買點」的高品質候選。
+    flat_policy = str(alert.get("RL空手策略", "HOLD"))
+    q_buy = float(alert.get("Q買入", 0.0) or 0.0)
+    q_cash = float(alert.get("Q空手等待", 0.0) or 0.0)
+    q_advantage = q_buy - q_cash
+
+    near_buy = (
+        flat_policy == "BUY"
+        and td_expected >= 0.25
+        and rl_confidence >= 55.0
+        and (score >= 55 or special_setup)
+    )
+    strong_setup_wait = (
+        special_setup
+        and td_expected >= 0.35
+        and rl_confidence >= 52.0
+        and score >= 50
+    )
+    momentum_wait = (
+        alert.get("上升趨勢", False)
+        and fresh_momentum
+        and td_expected >= 0.60
+        and score >= 55
+    )
+    q_near_cross = (
+        q_advantage >= -0.20
+        and td_expected >= 0.50
+        and rl_confidence >= 55.0
+        and (score >= 60 or special_setup)
+    )
+
+    if near_buy:
+        return True, "接近正式買點：RL 已偏 BUY，等待最後確認"
+    if strong_setup_wait:
+        return True, "特殊起漲/回檔型態成立，已進入可介入觀察區"
+    if momentum_wait:
+        return True, "趨勢與新高/新量共振，屬於重點候選"
+    if q_near_cross:
+        return True, "Q值接近翻多且 TD期待為正，值得提前關注"
+
+    return False, "一般 WATCH，尚未接近需要介入的程度"
+
+
 # ==========================================
 # 🕷️ 爬蟲模組：擷取當日強勢股與外資籌碼
 # ==========================================
@@ -1174,6 +1281,8 @@ def run_full_scan_gui(scanner):
 
     # 🌟 第一段 LINE 訊息陣列 (只放今日交易提示)
     line_message_1 = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
+    line_focus_stocks = set()
+    line_focus_reasons = {}
 
     # 🚨 【策略一】股災雷達：大跌時佈局寬基 ETF
     try:
@@ -1204,7 +1313,7 @@ def run_full_scan_gui(scanner):
     print("\n" + "="*60)
     print("🔔 【今日交易提示】")
     print("="*60)
-    line_message_1.append("🔔 【今日交易提示】")
+    line_message_1.append("🎯 【今日重點介入 / 關注提示】")
     
     # 4. 核心輸出與判斷迴圈
     for stock, alert in alerts.items():
@@ -1376,9 +1485,16 @@ def run_full_scan_gui(scanner):
         # 加入第一段 LINE 訊息
         line_prefix = "🔥" if "獨立" in status else tag
         
-        # 🌟 恢復顯示：只要是「固定清單」、庫存，或是今天有特殊動作，就顯示在 LINE 報告中讓您安心
-        if tag == "[固定]" or stock in watchlist or is_first_day or alert.get("是否觸發賣出"):
+        # 🎯 LINE 聚焦過濾：只挑真正值得現在關注、可能需要介入的股票。
+        # 注意：只過濾「股票」，不刪除入選股票原本的任何詳細資訊。
+        line_focus, line_focus_reason = should_push_line_focus(
+            alert, rl_decision, is_held=is_in_watchlist, rl_confidence=rl_confidence
+        )
+        if line_focus:
+            line_focus_stocks.add(stock)
+            line_focus_reasons[stock] = line_focus_reason
             line_message_1.append(f"{line_prefix} {stock_name} ({stock.replace('.TW', '')}){crossed_ma20_line_msg}{first_day_line_tag}")
+            line_message_1.append(f"🎯 重點原因: {line_focus_reason}")
             line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
             line_message_1.append(
                 f"🧠 TD/RL: {rl_decision} | TD期待: {td_expected:+.2f}% | "
@@ -1421,18 +1537,18 @@ def run_full_scan_gui(scanner):
         send_line_message("\n".join(line_message_1))
         time.sleep(1.5)
     else:
-        print("\n[系統] 今日無符合條件的熱門股提示。")
+        print("\n[系統] 今日沒有達到『值得介入/重點關注』門檻的股票，LINE 不推播個股。")
 
     # 🌟 第二段 LINE 訊息陣列 (只放監控清單)
     line_message_2 = []
     print("\n" + "="*60)
     print("📌 【目前長期監控清單 - 狀態同步版】")
     print("="*60)
-    line_message_2.append("📌 【長期監控清單】")
+    line_message_2.append("📌 【需要重點介入的持股】")
 
     if not watchlist:
         print("目前無持股標的")
-        line_message_2.append("目前無持股標的")
+        # LINE 不需要推播空清單；終端機提示即可。
     else:
         for stock, data in watchlist.items():
             join_price = data.get("加入價格", 0)
@@ -1449,25 +1565,28 @@ def run_full_scan_gui(scanner):
 
             print(f"📂 {stock:<7} {stock_name:<4} | 買入日期: {join_date} | 成本: {join_price:>7.1f} | 現價: {current_price:>7.1f} | 報酬: {roi:>6}%")
             
-            line_message_2.append(f"{stock_name} ({stock.replace('.TW', '')})")
-            line_message_2.append(f"📅 買入日期: {join_date}")
-            line_message_2.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
-            line_message_2.append(f"{emoji} 報酬率: {roi}%")
-            held_alert = alerts.get(stock, {})
-            if held_alert:
-                held_decision, held_reason, held_meta = resolve_td_rl_strategy(held_alert, is_held=True)
-                line_message_2.append(
-                    f"🧠 TD/RL: {held_decision} | TD期待: {held_alert.get('TD期待值', 0):+.2f}% | "
-                    f"信心: {float(held_meta.get('confidence', 50.0)):.1f}%"
-                )
-            line_message_2.append("") 
+            # 終端機仍顯示全部監控清單；LINE 第二段只顯示本次真正需要關注介入的持股。
+            if stock in line_focus_stocks:
+                line_message_2.append(f"{stock_name} ({stock.replace('.TW', '')})")
+                line_message_2.append(f"🎯 重點原因: {line_focus_reasons.get(stock, '需要關注介入')}")
+                line_message_2.append(f"📅 買入日期: {join_date}")
+                line_message_2.append(f"💰 成本: {join_price} ➔ 現價: {current_price}")
+                line_message_2.append(f"{emoji} 報酬率: {roi}%")
+                held_alert = alerts.get(stock, {})
+                if held_alert:
+                    held_decision, held_reason, held_meta = resolve_td_rl_strategy(held_alert, is_held=True)
+                    line_message_2.append(
+                        f"🧠 TD/RL: {held_decision} | TD期待: {held_alert.get('TD期待值', 0):+.2f}% | "
+                        f"信心: {float(held_meta.get('confidence', 50.0)):.1f}%"
+                    )
+                line_message_2.append("") 
             
     if watchlist_updated:
         save_watchlist(watchlist)
 
     # 🚀 推播第二段：監控清單
     if len(line_message_2) > 1:
-        print("[系統] 準備發送第二段 LINE 推播 (長期監控清單)...")
+        print("[系統] 準備發送第二段 LINE 推播 (需要重點介入的持股)...")
         send_line_message("\n".join(line_message_2))
 
     console.print("\n[bold cyan]✅ 掃描與狀態同步完成[/bold cyan]")
