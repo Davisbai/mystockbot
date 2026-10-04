@@ -9,3 +9,4 @@ TWSTOCK
 tqdm
 beautifulsoup4
 pytz
+streamlit>=1.32,<2
