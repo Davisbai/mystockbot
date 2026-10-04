@@ -34,6 +34,8 @@ jobs:
     - name: 4. 執行盤後策略掃描 (自動輸入 1)
       env:
         TZ: Asia/Taipei
+        LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
       run: |
         echo "--- 正在啟動 19:00 自動掃描 ---"
         # 使用 -u 確保輸出即時顯示在 GitHub Log

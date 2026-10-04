@@ -7,3 +7,5 @@ FinMind
 requests
 TWSTOCK
 tqdm
+beautifulsoup4
+pytz
