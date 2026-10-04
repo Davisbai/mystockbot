@@ -14,8 +14,8 @@ from bs4 import BeautifulSoup
 from io import StringIO
 from sklearn.mixture import GaussianMixture
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from strategy_performance import backtest_signals, watchlist_risk
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score
 
 # 引入 rich 套件以支援終端機 UI
 from rich.console import Console
@@ -40,7 +40,18 @@ WATCHLIST_FILE = "long_term_watchlist.json"
 def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
         with open(WATCHLIST_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            watchlist = json.load(f)
+        if os.path.exists("line_push_log.txt"):
+            from analyze_push_history import analyze
+            with open("line_push_log.txt", encoding="utf-8") as log_file:
+                history = analyze(log_file.read(), watchlist)
+            for episode in history['episodes']:
+                if episode['status'] == 'current_watchlist':
+                    for ticker, record in watchlist.items():
+                        if ticker.split('.')[0] == episode['code']:
+                            observed_peak = episode['observed_peak_price']
+                            record['觀察最高價'] = max(float(record.get('觀察最高價', record['加入價格'])), observed_peak)
+        return watchlist
     return {}
 
 def save_watchlist(watchlist):
@@ -52,10 +63,8 @@ def save_watchlist(watchlist):
 # ==========================================
 def send_line_message(text_content):
     # 🔐 安全性：LINE 憑證改由環境變數讀取，避免 Token / User ID 寫死在程式碼
-    #line_access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
-    #line_user_id = os.environ.get("LINE_USER_ID", "").strip()
-    line_access_token = '/2ubptsBfLObWol5cufqQGqplAv1aNCg/1fsfhKgTf3DZZzyqrjyPh2qhc1C9IGbGxMbUUe0RX3epQsAlcew7sqCrtFGedCpL3UK3FGtsjjxkgKXtT/PuPQWr0hRyP3h6uc4VmmoX5p3jWzWKl4Z3wdB04t89/1O/w1cDnyilFU='
-    line_user_id = 'U98822ea2b4b6b353b3dade3ea64b5360'
+    line_access_token = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
+    line_user_id = os.environ.get("LINE_USER_ID", "").strip()
     if not line_access_token or not line_user_id:
         print("⚠️ [系統提示] 未設定 LINE_CHANNEL_ACCESS_TOKEN 或 LINE_USER_ID，略過 LINE 推播。")
         return
@@ -88,8 +97,9 @@ def send_line_message(text_content):
             ]
         }
         
+        response = None
         try:
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, timeout=20)
             response.raise_for_status() # 檢查 HTTP 錯誤
             
             if len(chunks) > 1:
@@ -288,6 +298,8 @@ class TDRLDecisionEngine:
         return round(float(np.clip(confidence, 50.0, 98.0)), 1)
 
     def fit_predict(self, df):
+        # 每次 fit 為獨立學習；epochs 不會增加獨立歷史樣本數。
+        self.v_table, self.v_visits, self.q_table, self.q_visits = {}, {}, {}, {}
         work = df.dropna(subset=["Close"]).copy()
 
         if len(work) < self.min_rows:
@@ -303,7 +315,7 @@ class TDRLDecisionEngine:
         next_returns = work["Close"].pct_change().shift(-1) * 100.0
 
         # TD(0)：V(s) <- V(s) + alpha * [r + gamma*V(s') - V(s)]
-        for _ in range(self.epochs):
+        for epoch in range(self.epochs):
             for i in range(len(work) - 1):
                 reward = next_returns.iloc[i]
                 if pd.isna(reward):
@@ -314,10 +326,11 @@ class TDRLDecisionEngine:
                 self.v_table.setdefault(s2, 0.0)
                 td_target = float(np.clip(reward, -12.0, 12.0)) + self.gamma * self.v_table[s2]
                 self.v_table[s] += self.alpha * (td_target - self.v_table[s])
-                self.v_visits[s] = self.v_visits.get(s, 0) + 1
+                if epoch == 0:
+                    self.v_visits[s] = self.v_visits.get(s, 0) + 1
 
         # 離線 Q-learning / Bellman backup
-        for _ in range(self.epochs):
+        for epoch in range(self.epochs):
             for i in range(len(work) - 1):
                 reward_ret = next_returns.iloc[i]
                 if pd.isna(reward_ret):
@@ -328,7 +341,8 @@ class TDRLDecisionEngine:
                 for position in (0, 1):
                     s = self._q_state(row, position)
                     self.q_table.setdefault(s, np.zeros(3, dtype=float))
-                    self.q_visits[s] = self.q_visits.get(s, 0) + 1
+                    if epoch == 0:
+                        self.q_visits[s] = self.q_visits.get(s, 0) + 1
 
                     for action in self._valid_actions(position):
                         next_position = self._next_position(position, action)
@@ -368,8 +382,19 @@ class TDRLDecisionEngine:
         }
 
 
-def resolve_td_rl_strategy(alert, is_held=False):
+def resolve_td_rl_strategy(alert, is_held=False, holding=None):
     """整合 TD、Q-Learning 與原有硬性風控，輸出 BUY / SELL / WATCH / IGNORE。"""
+    # Optional reference-price risk layer. Defaults remain observation-only until validated.
+    if is_held and holding and os.environ.get("STOCK_ENABLE_REFERENCE_STOPS") == "1":
+        reason = watchlist_risk(
+            float(alert.get("收盤價", 0)), float(holding.get("加入價格", 0)),
+            float(holding.get("觀察最高價", holding.get("加入價格", 0))),
+            stop_loss=float(os.environ.get("STOCK_STOP_LOSS", "0.08")),
+            trailing=float(os.environ.get("STOCK_TRAILING_STOP", "0.12")),
+            activation=float(os.environ.get("STOCK_TRAILING_ACTIVATION", "0.15")),
+        )
+        if reason:
+            return "SELL", f"參考價風控觸發：{reason}（非實際成交）。", {"confidence": 50.0}
     available = bool(alert.get("RL可用", False))
     score = float(alert.get("今日評分", 0) or 0)
     td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
@@ -392,6 +417,8 @@ def resolve_td_rl_strategy(alert, is_held=False):
     if not available:
         if is_held and alert.get("是否觸發賣出", False):
             return "SELL", "TD/RL 樣本不足，沿用原系統硬性賣出風控。", {"confidence": 50.0}
+        if not is_held and alert.get("是否觸發賣出", False):
+            return "IGNORE", "硬性避險訊號優先於高評分，不介入。", {"confidence": 50.0}
         if (not is_held) and (score >= 65 or special_setup) and not risk_high:
             return "BUY", "TD/RL 樣本不足，暫由原策略達標訊號接管。", {"confidence": 50.0}
         if score >= 50 or special_setup:
@@ -523,7 +550,7 @@ class TaiwanStockTradingSystem:
         
     def fetch_market_data(self):
         print(f"\n正在獲取大盤({self.market_ticker})數據...")
-        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=False)
+        self.market_data = yf.download(self.market_ticker, start=self.start_date, progress=False, auto_adjust=True)
         if isinstance(self.market_data.columns, pd.MultiIndex):
             self.market_data.columns = self.market_data.columns.get_level_values(0)
             
@@ -605,7 +632,7 @@ class TaiwanStockTradingSystem:
         tw_tz = datetime.timezone(datetime.timedelta(hours=8))
         tomorrow = (datetime.datetime.now(tw_tz) + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         
-        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=False)
+        df = yf.download(ticker, start=self.start_date, end=tomorrow, progress=False, auto_adjust=True)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -957,22 +984,10 @@ class TaiwanStockTradingSystem:
             df['False_Breakout_Risk']
         )
 
-        # ✅ 關鍵修正：
-        # 若當天分數仍達買進門檻，代表趨勢尚未完全轉弱，
-        # 不允許同一天被 Sell_Signal 覆蓋成賣出。
-        # 這樣可避免「評分 60 以上卻強制賣出」的矛盾。
-        df.loc[df['Buy_Signal'], 'Sell_Signal'] = False
+        # 風控優先；收盤訊號於下一交易日開盤執行，並扣除成本。
+        df.loc[df['Sell_Signal'], 'Buy_Signal'] = False
+        df = backtest_signals(df)
 
-        df['Position'] = np.nan
-        df.loc[df['Buy_Signal'], 'Position'] = 1
-        df.loc[df['Sell_Signal'], 'Position'] = 0
-
-        df['Position'] = df['Position'].ffill().fillna(0)
-        
-        df['Trade_Action'] = df['Position'].diff()
-        df['Returns'] = df['Close'].pct_change()
-        df['Strategy_Returns'] = df['Position'].shift(1) * df['Returns']
-        
         # 🌟 新增：判斷今日是否「剛」站上月線 (今日收盤 > 月線 且 昨日收盤 <= 昨日月線)
         df['Just_Crossed_MA20'] = (df['Close'] > df['MA20']) & (df['Close'].shift(1) <= df['MA20'].shift(1))
 
@@ -1016,21 +1031,13 @@ class TaiwanStockTradingSystem:
             df = self.process_stock(ticker)
             if df is None: continue
                 
-            trades = df[df['Strategy_Returns'] != 0]['Strategy_Returns']
-            win_rate = (trades > 0).sum() / len(trades) if len(trades) > 0 else 0
-            
-            actions = df[df['Trade_Action'] != 0].dropna(subset=['Trade_Action'])
+            actions = df[df['Trade_Action'] != 0]
             trade_logs[ticker] = [
-                f"{date.strftime('%Y-%m-%d')} | {'🟢 買進' if row['Trade_Action'] == 1 else '🔴 賣出'} | 價格: {row['Close']:.2f} | 觸發評分: {int(row['Score'])}"
+                f"{date.strftime('%Y-%m-%d')} | {'🟢 買進' if row['Trade_Action'] == 1 else '🔴 賣出'} | 開盤成交假設: {row['Fill_Price']:.2f} | 前日觸發評分: {int(df['Score'].shift(1).loc[date])}"
                 for date, row in actions.iterrows()
             ]
+            results_summary[ticker] = df.attrs['performance']
 
-            results_summary[ticker] = {
-                "總交易天數": len(trades),
-                "勝率 (%)": round(win_rate * 100, 2),
-                "策略累積報酬 (%)": round(((1 + df['Strategy_Returns']).prod() - 1) * 100, 2)
-            }
-            
             last_day = df.iloc[-1]
             daily_alerts[ticker] = {
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
@@ -1210,6 +1217,10 @@ def run_full_scan_gui(scanner):
     for stock, alert in alerts.items():
         stock_name = COMBINED_MAP.get(stock, "")
         is_in_watchlist = stock in watchlist
+        if is_in_watchlist:
+            record = watchlist[stock]
+            record['觀察最高價'] = max(float(record.get('觀察最高價', record['加入價格'])), float(alert['收盤價']))
+            watchlist_updated = True
         
         # 🌟 漲幅過濾：若非庫存且漲幅 < 3%，則不顯示 (保持清爽)
         if stock in DYNAMIC_MAP and not is_in_watchlist and alert.get('今日漲幅', 0) < 3.0:
@@ -1257,7 +1268,7 @@ def run_full_scan_gui(scanner):
         # ==========================================
         # 🧠 TD / Q-Learning 最終策略仲裁
         # ==========================================
-        rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_in_watchlist)
+        rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_in_watchlist, holding=watchlist.get(stock))
         rl_confidence = float(rl_meta.get("confidence", 50.0))
         td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
         rl_policy = alert.get("RL持有策略" if is_in_watchlist else "RL空手策略", "HOLD")
@@ -1455,7 +1466,7 @@ def run_full_scan_gui(scanner):
             line_message_2.append(f"{emoji} 報酬率: {roi}%")
             held_alert = alerts.get(stock, {})
             if held_alert:
-                held_decision, held_reason, held_meta = resolve_td_rl_strategy(held_alert, is_held=True)
+                held_decision, held_reason, held_meta = resolve_td_rl_strategy(held_alert, is_held=True, holding=data)
                 line_message_2.append(
                     f"🧠 TD/RL: {held_decision} | TD期待: {held_alert.get('TD期待值', 0):+.2f}% | "
                     f"信心: {float(held_meta.get('confidence', 50.0)):.1f}%"
@@ -1605,7 +1616,7 @@ def run_single_query_mode_gui():
             # 🧠 依「是否已在監控清單」切換 Q-Learning 的空手 / 持有策略
             single_watchlist = load_watchlist()
             is_held = ticker in single_watchlist
-            rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_held)
+            rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_held, holding=single_watchlist.get(ticker))
             rl_confidence = float(rl_meta.get("confidence", 50.0))
             td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
             rl_policy = alert.get("RL持有策略" if is_held else "RL空手策略", "HOLD")
@@ -1675,7 +1686,7 @@ def run_single_query_mode_gui():
                 regime_text = REGIME_DESC.get(regime_idx, f"狀態 {regime_idx}")
                 diag_table.add_row("[bold]GMM 市場狀態[/bold]", regime_text)
                 # 🌟 修正措辭：強調這是「歷史回測勝率」，而非未來預言
-                diag_table.add_row("[bold]AI 歷史回測勝率[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
+                diag_table.add_row("[bold]AI 模型正類機率（非交易勝率）[/bold]", f"[bold cyan]{meta_prob*100:.1f}%[/bold cyan]")
             
             decision_label = {
                 "BUY": "🟢 買入",
@@ -1706,7 +1717,7 @@ def run_single_query_mode_gui():
             
             # 🌟 新增：風險與不確定性免責聲明
             if ai_success and meta_prob >= 0.6:
-                console.print("[dim italic]💡 註：此勝率代表在「過去類似的歷史條件下」，後續上漲機率較高。但人類市場沒有物理常數，歷史不會完美重演，請務必搭配資金控管。[/dim italic]")
+                console.print("[dim italic]💡 註：此數值為模型輸出機率，未經機率校準；驗證結果另列，不能視為交易勝率。但人類市場沒有物理常數，歷史不會完美重演，請務必搭配資金控管。[/dim italic]")
             console.print("-" * 40)
 
             # ==========================================
@@ -1826,6 +1837,8 @@ class AdvancedQuantEngine:
         self.data = pd.DataFrame()
         self.gmm_model = None
         self.meta_classifier = None
+        self.validation_metrics = {}
+        self.validation_start = None
         
     def fetch_data(self, period="3y"):
         """取得歷史資料並計算基礎特徵"""
@@ -1861,7 +1874,8 @@ class AdvancedQuantEngine:
         
         # 假設市場有 3 種狀態 (穩態、高波動、極端風險)
         self.gmm_model = GaussianMixture(n_components=3, covariance_type="full", random_state=42)
-        self.gmm_model.fit(features)
+        self.validation_start = self.data.index[int(len(self.data) * 0.8)]
+        self.gmm_model.fit(features.loc[features.index < self.validation_start])
         
         # 預測每日狀態
         self.data['Regime'] = self.gmm_model.predict(features)
@@ -1905,9 +1919,9 @@ class AdvancedQuantEngine:
                 label = 1 if final_price > start_price else 0
                 events.append({'date': df.index[i], 'label': label, 'end_date': df.index[i+t_max]})
                 
-        events_df = pd.DataFrame(events).set_index('date')
-        self.data = self.data.join(events_df['label'], how='left')
-        self.data['label'] = self.data['label'].fillna(0) # 未知部分先填0
+        events_df = pd.DataFrame(events, columns=['date', 'label', 'end_date']).set_index('date')
+        self.data = self.data.drop(columns=['label', 'end_date'], errors='ignore').join(events_df, how='left')
+        # 最後 t_max 天的結果尚未成熟，保留 NaN，禁止當作虧損樣本。
         
     def train_meta_labeling_model(self):
         """3. 元標籤技術：解耦架構中的次階分類器"""
@@ -1927,14 +1941,32 @@ class AdvancedQuantEngine:
         X = trade_days[features]
         y = trade_days['label']
         
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-        
-        # 次階分類器：隨機森林 (決定是否要過濾掉該筆交易)
+        if self.validation_start is None:
+            return False
+        # Purge: 訓練標籤的結束日必須早於驗證起日，避免跨界未來資訊。
+        train_mask = (trade_days.index < self.validation_start) & (trade_days['end_date'] < self.validation_start)
+        test_mask = trade_days.index >= self.validation_start
+        X_train, y_train = X.loc[train_mask], y.loc[train_mask]
+        X_test, y_test = X.loc[test_mask], y.loc[test_mask]
+        self.meta_classifier = None
+        self.validation_metrics = {}
+        if len(X_train) < 40 or y_train.nunique() < 2 or len(X_test) < 10:
+            console.print("[yellow]⚠️ 時序切割後樣本不足或訓練只有單一類別，跳過元模型。[/yellow]")
+            return False
         self.meta_classifier = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
         self.meta_classifier.fit(X_train, y_train)
-        
+        prediction = self.meta_classifier.predict(X_test)
+        self.validation_metrics = {
+            'train_samples': len(X_train), 'test_samples': len(X_test),
+            'accuracy': float(accuracy_score(y_test, prediction)),
+            'balanced_accuracy': float(balanced_accuracy_score(y_test, prediction)),
+            'precision': float(precision_score(y_test, prediction, zero_division=0)),
+            'always_positive_accuracy': float(y_test.mean()),
+            'validation_start': str(self.validation_start.date()),
+        }
+        console.print(f"[dim]AI 時序留出驗證: {self.validation_metrics}[/dim]")
         return True
-        
+
     def calculate_position_size(self, current_vol):
         """4. 動態部位規模調整 (Volatility-Based Position Sizing)"""
         # W_t = min(sigma_target / sigma_t, W_max)
@@ -2039,7 +2071,7 @@ def run_analysis(ticker):
     
     if primary_signal == 1:
         # 🌟 修正點 1：更名為「歷史回測勝率」，避免預測未來的錯覺
-        table.add_row("[bold]次階 AI 歷史回測勝率[/bold]", f"{meta_prob*100:.1f}%")
+        table.add_row("[bold]次階 AI 模型正類機率（非交易勝率）[/bold]", f"{meta_prob*100:.1f}%")
         
         # 🌟 修正點 2：加上資金控管提示
         table.add_row("[bold]系統最終決策[/bold]", "[bold green]✅ 建議執行 (仍需控管資金)[/bold green]" if execute_trade else "[bold yellow]🚫 過濾偽陽性 (拒絕執行)[/bold yellow]")
