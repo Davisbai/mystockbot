@@ -104,7 +104,8 @@ class PerformanceTests(unittest.TestCase):
                     'flat_confidence': 82.2, 'held_confidence': 88.7,
                     'q_buy_flat': 3.634, 'q_hold_flat': 2.417,
                     'q_sell_held': 2.042, 'q_hold_held': 3.714}
-        self.assertEqual(TDRLDecisionEngine().fit_predict(data), expected)
+        result = TDRLDecisionEngine().fit_predict(data)
+        self.assertEqual({key: result[key] for key in expected}, expected)
 
     def test_immature_labels_and_purged_validation(self):
         rng = np.random.RandomState(8)

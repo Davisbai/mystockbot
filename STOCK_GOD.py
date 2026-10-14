@@ -15,6 +15,10 @@ from io import StringIO
 from sklearn.mixture import GaussianMixture
 from sklearn.ensemble import RandomForestClassifier
 from strategy_performance import backtest_signals, watchlist_risk
+from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_MODE
+from institutional_data import parse_institutional_flows
+from market_clock import daily_bar_closed
+from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score
 
 # 引入 rich 套件以支援終端機 UI
@@ -67,7 +71,7 @@ def send_line_message(text_content):
     line_user_id = os.environ.get("LINE_USER_ID", "").strip()
     if not line_access_token or not line_user_id:
         print("⚠️ [系統提示] 未設定 LINE_CHANNEL_ACCESS_TOKEN 或 LINE_USER_ID，略過 LINE 推播。")
-        return
+        return False
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Content-Type": "application/json",
@@ -131,6 +135,7 @@ def send_line_message(text_content):
         except Exception as log_e:
             print(f"⚠️ [系統提示] 寫入 log 檔案失敗: {log_e}")
     # ===================================================
+    return bool(chunks) and success_count == len(chunks)
 
     
 # 全域的股票代碼對應表
@@ -310,6 +315,7 @@ class TDRLDecisionEngine:
                 "flat_confidence": 50.0, "held_confidence": 50.0,
                 "q_buy_flat": 0.0, "q_hold_flat": 0.0,
                 "q_sell_held": 0.0, "q_hold_held": 0.0,
+                "flat_support": 0, "held_support": 0, "support_kind": "unavailable",
             }
 
         next_returns = work["Close"].pct_change().shift(-1) * 100.0
@@ -380,10 +386,12 @@ class TDRLDecisionEngine:
             "q_hold_flat": round(float(q_flat[self.HOLD]), 3),
             "q_sell_held": round(float(q_held[self.SELL]), 3),
             "q_hold_held": round(float(q_held[self.HOLD]), 3),
+            "flat_support": int(flat_support), "held_support": int(held_support),
+            "support_kind": "exact" if self.v_visits.get(market_state, 0) else "nearest_or_unseen",
         }
 
 
-def resolve_td_rl_strategy(alert, is_held=False, holding=None):
+def _resolve_td_rl_strategy(alert, is_held=False, holding=None):
     """整合 TD、Q-Learning 與原有硬性風控，輸出 BUY / SELL / WATCH / IGNORE。"""
     # Optional reference-price risk layer. Defaults remain observation-only until validated.
     if is_held and holding and os.environ.get("STOCK_ENABLE_REFERENCE_STOPS") == "1":
@@ -417,7 +425,7 @@ def resolve_td_rl_strategy(alert, is_held=False, holding=None):
 
     if not available:
         if is_held and alert.get("是否觸發賣出", False):
-            return "SELL", "TD/RL 樣本不足，沿用原系統硬性賣出風控。", {"confidence": 50.0}
+            return "SELL", "TD/RL 樣本不足，沿用既有退出風控。", {"confidence": 50.0}
         if not is_held and alert.get("是否觸發賣出", False):
             return "IGNORE", "硬性避險訊號優先於高評分，不介入。", {"confidence": 50.0}
         if (not is_held) and (score >= 65 or special_setup) and not risk_high:
@@ -431,12 +439,14 @@ def resolve_td_rl_strategy(alert, is_held=False, holding=None):
         confidence = float(alert.get("RL持有信心", 50.0) or 50.0)
 
         if alert.get("是否觸發賣出", False):
-            return "SELL", f"原系統硬性賣出風控已觸發；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
+            return "SELL", f"既有退出風控已觸發；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
         if policy == "SELL" and td_expected <= 0.0 and confidence >= 55.0:
             return "SELL", f"Q-Learning 偏向退出，且 TD期待 {td_expected:+.2f}% 不佳。", {"confidence": confidence}
         if risk_high and td_expected < 0.5:
             return "WATCH", f"仍可續抱觀察，但高檔/乖離風險上升；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
-        return "WATCH", f"Q-Learning 偏向續抱；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
+        if policy == "SELL":
+            return "WATCH", f"Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
+        return "WATCH", f"Q-Learning 原判 {policy}，仲裁續抱觀察；TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
 
     policy = str(alert.get("RL空手策略", "HOLD"))
     confidence = float(alert.get("RL空手信心", 50.0) or 50.0)
@@ -445,9 +455,11 @@ def resolve_td_rl_strategy(alert, is_held=False, holding=None):
         return "IGNORE", "空手狀態且原系統出現賣出/避險訊號，不介入。", {"confidence": confidence}
 
     if risk_high:
+        if alert.get('價格延伸退出政策') == 'warning' and (score >= 50 or special_setup or td_expected > 0):
+            return "WATCH", f"價格延伸／過熱警示，暫不追價，等待回檔或結構確認；RL原判 {policy}，TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
         if td_expected >= 0.8 and (score >= 60 or special_setup):
-            return "WATCH", f"TD期待仍為 {td_expected:+.2f}%，但高位風險偏高，先等待回檔確認。", {"confidence": confidence}
-        return "IGNORE", f"高位風險偏高，TD期待僅 {td_expected:+.2f}%，目前不介入。", {"confidence": confidence}
+            return "WATCH", f"TD期待仍為 {td_expected:+.2f}%，但價格延伸風險偏高，等待回檔確認；RL原判 {policy}。", {"confidence": confidence}
+        return "IGNORE", f"風險警示且進場條件不足；RL原判 {policy}，TD期待 {td_expected:+.2f}%。", {"confidence": confidence}
 
     if policy == "BUY":
         if td_expected >= 0.35 and confidence >= 52.0 and (score >= 55 or special_setup):
@@ -459,6 +471,40 @@ def resolve_td_rl_strategy(alert, is_held=False, holding=None):
         return "WATCH", f"TD期待 {td_expected:+.2f}% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。", {"confidence": confidence}
 
     return "IGNORE", f"TD期待 {td_expected:+.2f}% 與 RL 進場優勢不足，暫不耗用注意力與資金。", {"confidence": confidence}
+
+
+def resolve_td_rl_strategy(alert, is_held=False, holding=None):
+    """Keep model output distinct from execution filters and explain overrides."""
+    action, reason, meta = _resolve_td_rl_strategy(alert, is_held, holding)
+    if action == 'BUY' and not is_held:
+        if not alert.get('RL可用'):
+            action, reason = 'WATCH', '規則達標但模型樣本不足，保留預警，尚未確認進場。'
+        elif '籌碼資料狀態' in alert and alert['籌碼資料狀態'] not in ('available', 'not_applicable'):
+            action, reason = 'WATCH', '模型偏買但法人資料缺失或不完整，等待資料確認再評估進場。'
+    if action == 'BUY' and not is_held and alert.get('日線已收盤') is False:
+        action, reason = 'WATCH', '日線尚未完成，保留轉強預警，等待收盤確認進場條件。'
+    hard_reasons = alert.get('硬性風控原因', [])
+    if alert.get('是否觸發賣出') and hard_reasons:
+        reason += ' 觸發條件：' + '、'.join(hard_reasons) + '。'
+    raw = str(alert.get('RL持有策略' if is_held else 'RL空手策略', 'HOLD')) if alert.get('RL可用') else 'UNAVAILABLE'
+    expected = {'HOLD': 'WATCH', 'BUY': 'BUY', 'SELL': 'SELL'}.get(raw)
+    meta.update({
+        'raw_action': raw, 'final_action': action,
+        'overridden': expected is not None and expected != action,
+        'override_reason': reason if expected is not None and expected != action else '',
+        'confidence_is_probability': False,
+        'model_version': alert.get('模型版本', MODEL_VERSION),
+        'training_start': alert.get('訓練起日', TRAINING_START_DATE),
+        'chip_status': alert.get('籌碼資料狀態', 'unavailable'),
+        'hard_risk': bool(alert.get('硬性風控', alert.get('是否觸發賣出', False))),
+        'exit_filter': bool(alert.get('是否觸發賣出', False)),
+        'extension_exit_policy': alert.get('價格延伸退出政策', EXTENSION_EXIT_MODE),
+        'hard_risk_reasons': hard_reasons,
+        'extension_warning': bool(alert.get('乖離過大') or alert.get('高位過熱')),
+        'state_support': alert.get('RL持有樣本' if is_held else 'RL空手樣本', 0),
+        'support_kind': alert.get('RL樣本類型', 'unavailable'),
+    })
+    return action, reason, meta
 
 
 # ==========================================
@@ -543,9 +589,12 @@ class YahooMarketScanner:
 # 📈 策略回測與訊號分析模組 (最終整合版)
 # ==========================================
 class TaiwanStockTradingSystem:
-    def __init__(self, tickers, start_date="2023-01-01"):
+    def __init__(self, tickers, start_date=TRAINING_START_DATE, extension_exit_mode=EXTENSION_EXIT_MODE):
+        if extension_exit_mode not in ('legacy_exit', 'warning'):
+            raise ValueError('Unknown extension exit policy')
         self.tickers = tickers
         self.start_date = start_date
+        self.extension_exit_mode = extension_exit_mode
         self.market_ticker = "^TWII"
         self.market_data = None
         
@@ -562,40 +611,27 @@ class TaiwanStockTradingSystem:
         self.market_data['Market_OK'] = self.market_data['Close'] > self.market_data['Market_MA20']
 
     def fetch_real_chip_data(self, df, ticker):
-        code = ticker.replace('.TW', '').replace('.TWO', '')
-        start_date_str = df.index[0].strftime('%Y-%m-%d')
-        
-        df['Foreign_Buy'] = 0.0
-        df['Trust_Buy'] = 0.0
-        df['Margin_Balance'] = 0.0
-        
-        try:
-            url_inst = f"https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestorsBuySell&data_id={code}&start_date={start_date_str}"
-            res_inst = requests.get(url_inst, timeout=10).json()
-            
-            if res_inst.get('msg') == 'success' and res_inst.get('data'):
-                df_inst = pd.DataFrame(res_inst['data'])
-                
-                is_foreign = df_inst['name'].str.contains('外資', na=False)
-                df_foreign = df_inst[is_foreign]
-                if not df_foreign.empty:
-                    foreign_buy = df_foreign.groupby('date').apply(lambda x: x['buy'].sum() - x['sell'].sum())
-                    foreign_buy.index = pd.to_datetime(foreign_buy.index).normalize() # 確保籌碼時間也歸零
-                    df['Foreign_Buy'] = foreign_buy / 1000
-
-                is_trust = df_inst['name'] == '投信'
-                df_trust = df_inst[is_trust]
-                if not df_trust.empty:
-                    trust_buy = df_trust.groupby('date').apply(lambda x: x['buy'].sum() - x['sell'].sum())
-                    trust_buy.index = pd.to_datetime(trust_buy.index).normalize()
-                    df['Trust_Buy'] = trust_buy / 1000
-                    
-            time.sleep(0.5)
-        except Exception as e:
-            pass # 略過錯誤，直接使用預設值 0
-            
-        df['Foreign_Buy'] = df['Foreign_Buy'].fillna(0)
-        df['Trust_Buy'] = df['Trust_Buy'].fillna(0)
+        df = df.copy()
+        if not ticker.endswith(('.TW', '.TWO')):
+            flows = parse_institutional_flows({}, df.index)
+            flows['Chip_Data_Status'] = 'not_applicable'
+        else:
+            try:
+                code = ticker.split('.')[0]
+                response = requests.get('https://api.finmindtrade.com/api/v4/data', params={
+                    'dataset': 'TaiwanStockInstitutionalInvestorsBuySell',
+                    'data_id': code, 'start_date': df.index[0].strftime('%Y-%m-%d'),
+                    'end_date': df.index[-1].strftime('%Y-%m-%d'),
+                }, timeout=10)
+                flows = parse_institutional_flows(response.json(), df.index)
+            except (requests.RequestException, ValueError, TypeError, KeyError) as exc:
+                flows = parse_institutional_flows({}, df.index)
+                print(f"⚠️ [籌碼資料] {ticker} 讀取失敗（{type(exc).__name__}），資料標為缺失。")
+        for column in flows:
+            df[column] = flows[column]
+        df['Margin_Balance'] = np.nan
+        if len(df) and df['Chip_Data_Status'].iloc[-1] not in ('available', 'not_applicable'):
+            print(f"⚠️ [籌碼資料] {ticker} 最新狀態：{df['Chip_Data_Status'].iloc[-1]}，未將缺失視為真實零買賣超。")
         return df
 
     def calculate_indicators(self, df):
@@ -642,7 +678,8 @@ class TaiwanStockTradingSystem:
             
         df = self.fetch_real_chip_data(df, ticker)
         df = self.calculate_indicators(df)
-        df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt').ffill()
+        df = df.join(self.market_data[['Close', 'Market_OK']], how='left', rsuffix='_Mkt')
+        df[['Close_Mkt', 'Market_OK']] = df[['Close_Mkt', 'Market_OK']].ffill()
         df['Market_OK'] = df['Market_OK'].fillna(False)
 
         # ==========================================
@@ -974,19 +1011,30 @@ class TaiwanStockTradingSystem:
             break_limit_up_support_raw & 
             break_limit_up_support_raw.shift(1).fillna(False)
         )
+
+        df = df.copy()  # Consolidate indicator blocks before adding audit fields.
+        df['MACD_Death_Cross'] = macd_death_cross
+        df['MA20_Broken'] = break_ma20
+        df['Limit_Up_Support_Broken'] = break_limit_up_support
+        df['Resistance_Rejection'] = hit_resistance
         
-        df['Sell_Signal'] = (
+        df['Hard_Sell_Signal'] = (
             macd_death_cross |
             break_ma20 |
             df['Top_Divergence'] |
-            df['Overextended_MA5'] |
             hit_resistance |
             break_limit_up_support |
             df['False_Breakout_Risk']
         )
 
-        # 風控優先；收盤訊號於下一交易日開盤執行，並扣除成本。
+        # 保留既有退出政策；warning 僅供顯式研究比較。
+        df['Extension_Warning'] = df['Overextended_MA5'] | df['High_Position_Overheat']
+        df['Sell_Signal'] = df['Hard_Sell_Signal']
+        if self.extension_exit_mode == 'legacy_exit':
+            df['Sell_Signal'] |= df['Overextended_MA5']
         df.loc[df['Sell_Signal'], 'Buy_Signal'] = False
+        if self.extension_exit_mode == 'warning':
+            df.loc[df['Extension_Warning'], 'Buy_Signal'] = False
         df = backtest_signals(df)
 
         # 🌟 新增：判斷今日是否「剛」站上月線 (今日收盤 > 月線 且 昨日收盤 <= 昨日月線)
@@ -1001,6 +1049,7 @@ class TaiwanStockTradingSystem:
             'RL_Flat_Confidence': 50.0, 'RL_Held_Confidence': 50.0,
             'RL_Q_Buy_Flat': 0.0, 'RL_Q_Hold_Flat': 0.0,
             'RL_Q_Sell_Held': 0.0, 'RL_Q_Hold_Held': 0.0,
+            'RL_Flat_Support': 0, 'RL_Held_Support': 0, 'RL_Support_Kind': 'unavailable',
         }
         for col, default_value in rl_defaults.items():
             df[col] = default_value
@@ -1019,6 +1068,9 @@ class TaiwanStockTradingSystem:
             df.at[last_idx, 'RL_Q_Hold_Flat'] = float(tdrl_result.get('q_hold_flat', 0.0))
             df.at[last_idx, 'RL_Q_Sell_Held'] = float(tdrl_result.get('q_sell_held', 0.0))
             df.at[last_idx, 'RL_Q_Hold_Held'] = float(tdrl_result.get('q_hold_held', 0.0))
+            df.at[last_idx, 'RL_Flat_Support'] = int(tdrl_result.get('flat_support', 0))
+            df.at[last_idx, 'RL_Held_Support'] = int(tdrl_result.get('held_support', 0))
+            df.at[last_idx, 'RL_Support_Kind'] = str(tdrl_result.get('support_kind', 'unavailable'))
         except Exception as rl_e:
             print(f"⚠️ [TD/RL] {ticker} 學習失敗，沿用原策略：{rl_e}")
 
@@ -1042,6 +1094,19 @@ class TaiwanStockTradingSystem:
             last_day = df.iloc[-1]
             daily_alerts[ticker] = {
                 "日期": df.index[-1].strftime("%Y-%m-%d"),
+                "日線已收盤": daily_bar_closed(ticker, df.index[-1].strftime('%Y-%m-%d')),
+                "模型版本": MODEL_VERSION,
+                "訓練起日": self.start_date,
+                "籌碼資料狀態": str(last_day.get('Chip_Data_Status', 'unavailable')),
+                "籌碼資料可用": bool(last_day.get('Chip_Data_Available', False)),
+                "硬性風控": bool(last_day.get('Hard_Sell_Signal', last_day['Sell_Signal'])),
+                "硬性風控原因": [label for column, label in (
+                    ('MACD_Death_Cross', 'MACD死亡交叉'), ('MA20_Broken', '跌破月線2%'),
+                    ('Top_Divergence', '高檔量價背離'), ('Resistance_Rejection', '前高長上影'),
+                    ('Limit_Up_Support_Broken', '連續跌破漲停支撐'), ('False_Breakout_Risk', '假突破風險'),
+                ) if bool(last_day.get(column, False))],
+                "價格延伸警示": bool(last_day.get('Extension_Warning', False)),
+                "價格延伸退出政策": self.extension_exit_mode,
                 "收盤價": round(float(last_day['Close']), 2),
                 "月線價": round(float(last_day['MA20']), 2),
                 "今日漲幅": round(float(last_day['Returns']) * 100, 2) if not pd.isna(last_day['Returns']) else 0,
@@ -1089,6 +1154,9 @@ class TaiwanStockTradingSystem:
                 "RL可用": bool(last_day.get('TD_RL_Available', False)),
                 "TD期待值": round(float(last_day.get('TD_Expected_Pct', 0.0)), 2),
                 "TD樣本支持": int(last_day.get('TD_Support', 0)),
+                "RL空手樣本": int(last_day.get('RL_Flat_Support', 0)),
+                "RL持有樣本": int(last_day.get('RL_Held_Support', 0)),
+                "RL樣本類型": str(last_day.get('RL_Support_Kind', 'unavailable')),
                 "RL空手策略": str(last_day.get('RL_Flat_Action', 'HOLD')),
                 "RL持有策略": str(last_day.get('RL_Held_Action', 'HOLD')),
                 "RL空手信心": round(float(last_day.get('RL_Flat_Confidence', 50.0)), 1),
@@ -1098,6 +1166,8 @@ class TaiwanStockTradingSystem:
                 "Q賣出": round(float(last_day.get('RL_Q_Sell_Held', 0.0)), 3),
                 "Q續抱": round(float(last_day.get('RL_Q_Hold_Held', 0.0)), 3)
             }
+            if self.extension_exit_mode == 'legacy_exit' and bool(last_day.get('Overextended_MA5', False)):
+                daily_alerts[ticker]['硬性風控原因'].append('五日乖離超標（維持原退出政策）')
             
         return results_summary, daily_alerts, trade_logs
 
@@ -1130,7 +1200,7 @@ def run_test(scanner):# 顯示策略回測結果 (簡版)
     # 3. 執行回測分析 (涵蓋所有相關標的)
     system = TaiwanStockTradingSystem(
         tickers=list(COMBINED_MAP.keys()),
-        start_date="2025-09-01"
+        start_date=TRAINING_START_DATE
     )
     summary, alerts, logs = system.run_analysis()
 
@@ -1171,12 +1241,12 @@ def run_full_scan_gui(scanner):
     STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
     WATCHLIST_MAP = {k: v.get("名稱", "") for k, v in watchlist.items()}
     
-    COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **WATCHLIST_MAP}
+    COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **load_entry_candidates(), **WATCHLIST_MAP}
 
     # 2. 執行回測分析
     system = TaiwanStockTradingSystem(
         tickers=list(COMBINED_MAP.keys()),
-        start_date="2025-09-01"
+        start_date=TRAINING_START_DATE
     )
     summary, alerts, logs = system.run_analysis()
 
@@ -1215,6 +1285,12 @@ def run_full_scan_gui(scanner):
     line_message_1.append("🔔 【今日交易提示】")
     
     # 4. 核心輸出與判斷迴圈
+    signal_state, pending_notices = plan_entry_notices(
+        alerts, COMBINED_MAP, watchlist, load_signal_state(), resolve_td_rl_strategy)
+    save_signal_state(signal_state)
+    if pending_notices:
+        line_message_1.append('🎯 【優先進場訊號／轉強預警】')
+        line_message_1.extend(notice['message'] + '\n' for _, notice in pending_notices)
     for stock, alert in alerts.items():
         stock_name = COMBINED_MAP.get(stock, "")
         is_in_watchlist = stock in watchlist
@@ -1380,7 +1456,7 @@ def run_full_scan_gui(scanner):
         print(f"💡 建議提示: {raw_advice}\n")
         print(
             f"🧠 TD/RL 細節: TD期待 {td_expected:+.2f}% | "
-            f"RL原始策略: {rl_policy} | 信心: {rl_confidence:.1f}% | "
+            f"RL原始策略: {rl_policy} | Q偏好: {rl_confidence:.1f}/100 | "
             f"Q(BUY/CASH): {alert.get('Q買入', 0):.3f}/{alert.get('Q空手等待', 0):.3f} | "
             f"Q(SELL/HOLD): {alert.get('Q賣出', 0):.3f}/{alert.get('Q續抱', 0):.3f}\n"
         )
@@ -1394,8 +1470,10 @@ def run_full_scan_gui(scanner):
             line_message_1.append(f"漲幅: {alert.get('今日漲幅', 0)}% | 收盤: {alert['收盤價']} | 月線: {alert['月線價']}")
             line_message_1.append(
                 f"🧠 TD/RL: {rl_decision} | TD期待: {td_expected:+.2f}% | "
-                f"RL原始: {rl_policy} | 信心: {rl_confidence:.1f}%"
+                f"RL原始: {rl_policy} | Q偏好: {rl_confidence:.1f}/100"
             )
+            line_message_1.append(f"🔎 仲裁依據: {rl_reason}")
+            line_message_1.append(f"資料: {alert.get('籌碼資料狀態', 'unavailable')} | 模型: {MODEL_VERSION} | 訓練起日: {TRAINING_START_DATE}")
             line_message_1.append(f"短線資格: {'是' if alert.get('短線資格') else '否'} | 上升趨勢: {'是' if alert.get('上升趨勢') else '否'} | 紅肥綠瘦: {'是' if alert.get('紅肥綠瘦') else '否'}")
             if alert.get('新高') or alert.get('新量') or alert.get('連續小陽') or alert.get('恐慌反轉') or alert.get('高位過熱'):
                 law_tags = []
@@ -1430,7 +1508,7 @@ def run_full_scan_gui(scanner):
     # 🚀 推播第一段：交易提示
     if len(line_message_1) > 2:
         print("\n[系統] 準備發送第一段 LINE 推播 (今日交易提示)...")
-        send_line_message("\n".join(line_message_1))
+        deliver_entry_report("\n".join(line_message_1), signal_state, pending_notices, send_line_message)
         time.sleep(1.5)
     else:
         print("\n[系統] 今日無符合條件的熱門股提示。")
@@ -1470,7 +1548,7 @@ def run_full_scan_gui(scanner):
                 held_decision, held_reason, held_meta = resolve_td_rl_strategy(held_alert, is_held=True, holding=data)
                 line_message_2.append(
                     f"🧠 TD/RL: {held_decision} | TD期待: {held_alert.get('TD期待值', 0):+.2f}% | "
-                    f"信心: {float(held_meta.get('confidence', 50.0)):.1f}%"
+                    f"Q偏好: {float(held_meta.get('confidence', 50.0)):.1f}/100"
                 )
             line_message_2.append("") 
             
@@ -1568,7 +1646,7 @@ def run_single_query_mode_gui():
         # --- 2. 執行分析 ---
         try:
             with console.status(f"[bold green]正在下載 {stock_name} 數據並執行 AI 診斷...[/bold green]"):
-                system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                system = TaiwanStockTradingSystem(tickers=[ticker], start_date=TRAINING_START_DATE)
                 system.market_ticker = mkt_ticker  # 動態切換對標大盤
                 system.fetch_market_data() 
                 
@@ -1702,7 +1780,7 @@ def run_single_query_mode_gui():
             )
             diag_table.add_row(
                 "[bold]Q-Learning 原始策略[/bold]",
-                f"{rl_policy} | 信心 {rl_confidence:.1f}%"
+                f"{rl_policy} | Q偏好 {rl_confidence:.1f}/100"
             )
             diag_table.add_row(
                 "[bold]TD/RL 最終策略[/bold]",

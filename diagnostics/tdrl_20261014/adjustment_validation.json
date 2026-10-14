@@ -1,0 +1,3591 @@
+{
+  "period": [
+    "2026-09-01",
+    "2026-09-30"
+  ],
+  "baseline_commit": "6a9702f9c3c31cea420648f4c731e99cc934174a",
+  "model_version": "tdrl-20261014-chip-audit-v1-legacy_exit",
+  "training_start": "2023-01-01",
+  "core_sha256": "541f0601349b08936653de7f8251abebac83fc3e8aa7647b7bc18453e33c6d26",
+  "comparison": "Both variants use corrected data and identical entry data-quality gates; compare extension exit policies.",
+  "controls": [
+    "2330.TW",
+    "2303.TW",
+    "2603.TW",
+    "2884.TW",
+    "2014.TW",
+    "1216.TW"
+  ],
+  "cases": [
+    "1312.TW",
+    "1326.TW"
+  ],
+  "results": {
+    "1312.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 164,
+          "完成交易筆數": 24,
+          "勝率 (%)": 45.83,
+          "策略累積報酬 (%)": -11.07,
+          "最大回撤 (%)": -43.71,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 163,
+          "完成交易筆數": 23,
+          "勝率 (%)": 47.83,
+          "策略累積報酬 (%)": -12.73,
+          "最大回撤 (%)": -45.09,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 3,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -4.79,
+          "最大回撤 (%)": -4.79,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 3,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -4.79,
+          "最大回撤 (%)": -4.79,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.09,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.09,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.58,
+          "reason": "高位風險偏高，TD期待僅 -0.58%，目前不介入。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.58,
+          "reason": "價格延伸／過熱警示，暫不追價，等待回檔或結構確認；RL原判 HOLD，TD期待 -0.58%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.15,
+          "reason": "TD期待 +0.15% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.15,
+          "reason": "TD期待 +0.15% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.73,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.73%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.73,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.73%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.22,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.22%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.22,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.22%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.0,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.00%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.0,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.00%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.06,
+          "reason": "TD期待 +0.06% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.06,
+          "reason": "TD期待 +0.06% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.13,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.13%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.13,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.13%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.41%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.41%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.3,
+          "reason": "Q-Learning 偏向續抱；TD期待 -0.30%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.3,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 -0.30%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.71,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 -0.71%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.71,
+          "reason": "既有退出風控已觸發；TD期待 -0.71%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.1,
+          "reason": "TD期待 -0.10% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.1,
+          "reason": "TD期待 -0.10% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.17,
+          "reason": "TD期待 +0.17% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.17,
+          "reason": "TD期待 +0.17% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.08,
+          "reason": "TD期待 -0.08% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.08,
+          "reason": "TD期待 -0.08% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.18,
+          "reason": "TD期待 -0.18% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.18,
+          "reason": "TD期待 -0.18% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.08,
+          "reason": "TD期待 -0.08% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.08,
+          "reason": "TD期待 -0.08% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.86,
+          "reason": "TD期待 +0.86% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.86,
+          "reason": "TD期待 +0.86% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.85,
+          "reason": "TD期待 +0.85% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.85,
+          "reason": "TD期待 +0.85% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.71,
+          "reason": "TD期待 +0.71% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.71,
+          "reason": "TD期待 +0.71% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.04,
+          "reason": "TD期待 -0.04% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.04,
+          "reason": "TD期待 -0.04% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        }
+      ]
+    },
+    "1326.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 162,
+          "完成交易筆數": 30,
+          "勝率 (%)": 36.67,
+          "策略累積報酬 (%)": -6.1,
+          "最大回撤 (%)": -38.45,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 172,
+          "完成交易筆數": 26,
+          "勝率 (%)": 34.62,
+          "策略累積報酬 (%)": -2.52,
+          "最大回撤 (%)": -35.61,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 6,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -9.37,
+          "最大回撤 (%)": -9.44,
+          "未平倉": false,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 6,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -9.37,
+          "最大回撤 (%)": -9.44,
+          "未平倉": false,
+          "待執行部位": 1
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.38,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.38,
+          "reason": "價格延伸／過熱警示，暫不追價，等待回檔或結構確認；RL原判 BUY，TD期待 +3.38%。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.91,
+          "reason": "TD期待仍為 +2.91%，但高位風險偏高，先等待回檔確認。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.91,
+          "reason": "價格延伸／過熱警示，暫不追價，等待回檔或結構確認；RL原判 BUY，TD期待 +2.91%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.99,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.99,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.41,
+          "reason": "TD期待 -0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.41,
+          "reason": "TD期待 -0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.17,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.17%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.17,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.17%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.24,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.24%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.24,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.24%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.88,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.88%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.88,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.88%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.56%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.56%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.7,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.70%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.7,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.70%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.92,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.92%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.92,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +0.92%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.99,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 +1.99%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.99,
+          "reason": "既有退出風控已觸發；TD期待 +1.99%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.96,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.96%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.96,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.96%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "TD期待 +0.00% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "TD期待 +0.00% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.42,
+          "reason": "TD期待 -1.42% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.42,
+          "reason": "TD期待 -1.42% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.85,
+          "reason": "TD期待 -1.85% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.85,
+          "reason": "TD期待 -1.85% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.97,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.97,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.72,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.72,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.99,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.99,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.05,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.05,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.64,
+          "reason": "Q-Learning 偏向買入，TD期待 +2.64%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.64,
+          "reason": "Q-Learning 偏向買入，TD期待 +2.64%，且原策略條件具支撐。"
+        }
+      ]
+    },
+    "2330.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 175,
+          "完成交易筆數": 35,
+          "勝率 (%)": 42.86,
+          "策略累積報酬 (%)": 13.78,
+          "最大回撤 (%)": -15.56,
+          "未平倉": true,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 175,
+          "完成交易筆數": 35,
+          "勝率 (%)": 42.86,
+          "策略累積報酬 (%)": 13.78,
+          "最大回撤 (%)": -15.56,
+          "未平倉": true,
+          "待執行部位": 1
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 13,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -0.97,
+          "最大回撤 (%)": -3.64,
+          "未平倉": true,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 13,
+          "完成交易筆數": 1,
+          "勝率 (%)": 0.0,
+          "策略累積報酬 (%)": -0.97,
+          "最大回撤 (%)": -3.64,
+          "未平倉": true,
+          "待執行部位": 1
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.92,
+          "reason": "TD期待 +1.92% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.92,
+          "reason": "TD期待 +1.92% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "TD期待 +0.00% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "TD期待 +0.00% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.98,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.98,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.18,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.18%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.18,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.18%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.61,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.61%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.61,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.61%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.64,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.64%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.64,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.64%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.59,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.59%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.59,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.59%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.46,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.46%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.46,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.46%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.76,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.76%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.76,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.76%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.31,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 +3.31%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.31,
+          "reason": "既有退出風控已觸發；TD期待 +3.31%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.3,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +3.30%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.3,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +3.30%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.27,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +3.27%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.27,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +3.27%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.21,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.21%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.21,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.21%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.56,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.56%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.56,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.56%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.65,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.65%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.65,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.65%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.53,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.53%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.53,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.53%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.71,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.71%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.71,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.71%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.71,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.71%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.71,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.71%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.56,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.56%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.56,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.56%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.57,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.57%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 1.57,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.57%。"
+        }
+      ]
+    },
+    "2303.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 190,
+          "完成交易筆數": 26,
+          "勝率 (%)": 53.85,
+          "策略累積報酬 (%)": 64.54,
+          "最大回撤 (%)": -23.53,
+          "未平倉": true,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 182,
+          "完成交易筆數": 20,
+          "勝率 (%)": 45.0,
+          "策略累積報酬 (%)": 52.31,
+          "最大回撤 (%)": -23.53,
+          "未平倉": true,
+          "待執行部位": 1
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 17,
+          "完成交易筆數": 1,
+          "勝率 (%)": 100.0,
+          "策略累積報酬 (%)": 16.45,
+          "最大回撤 (%)": -5.02,
+          "未平倉": true,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 19,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 17.4,
+          "最大回撤 (%)": -5.02,
+          "未平倉": true,
+          "待執行部位": 1
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.5,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.50%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.5,
+          "reason": "Q-Learning 偏向買入，TD期待 +3.50%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.83,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.83%。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.83,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.83%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 2.07,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.07%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 2.07,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.07%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.57,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.57%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.57,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.57%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 8.02,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 +8.02%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 8.02,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +8.02%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 2.52,
+          "reason": "TD期待 +2.52% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 2.52,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.52%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.91,
+          "reason": "Q-Learning 偏向買入，TD期待 +2.91%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.91,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.91%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.96,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.96%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.96,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.96%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.74,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.74%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.74,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.74%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.69,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.69%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.69,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.69%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.69,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.69%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.69,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.69%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.38,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.38%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.38,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.38%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.73,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.73%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.73,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.73%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.42,
+          "reason": "Q-Learning 偏向續抱；TD期待 +3.42%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.42,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +3.42%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.46,
+          "reason": "Q-Learning 偏向續抱；TD期待 +3.46%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.46,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +3.46%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.32,
+          "reason": "Q-Learning 偏向續抱；TD期待 +4.32%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.32,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +4.32%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.26,
+          "reason": "Q-Learning 偏向續抱；TD期待 +4.26%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.26,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +4.26%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.72,
+          "reason": "Q-Learning 偏向續抱；TD期待 +3.72%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.72,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +3.72%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.63,
+          "reason": "Q-Learning 偏向續抱；TD期待 +3.63%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.63,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +3.63%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.66,
+          "reason": "Q-Learning 偏向續抱；TD期待 +3.66%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.66,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +3.66%。"
+        }
+      ]
+    },
+    "2603.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 196,
+          "完成交易筆數": 15,
+          "勝率 (%)": 46.67,
+          "策略累積報酬 (%)": 16.24,
+          "最大回撤 (%)": -19.54,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 198,
+          "完成交易筆數": 15,
+          "勝率 (%)": 46.67,
+          "策略累積報酬 (%)": 22.44,
+          "最大回撤 (%)": -19.54,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 8,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 1.19,
+          "最大回撤 (%)": -2.06,
+          "未平倉": true,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 8,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 1.19,
+          "最大回撤 (%)": -2.06,
+          "未平倉": true,
+          "待執行部位": 1
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.63,
+          "reason": "TD期待 +0.63% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.63,
+          "reason": "TD期待 +0.63% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.43,
+          "reason": "TD期待 +0.43% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.43,
+          "reason": "TD期待 +0.43% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.68,
+          "reason": "TD期待 +0.68% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.68,
+          "reason": "TD期待 +0.68% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.34,
+          "reason": "TD期待 +0.34% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.34,
+          "reason": "TD期待 +0.34% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "TD期待 +0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "TD期待 +0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.19,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.19,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.46,
+          "reason": "TD期待 +0.46% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.46,
+          "reason": "TD期待 +0.46% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.29,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.29,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.48,
+          "reason": "TD期待 +0.48% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.48,
+          "reason": "TD期待 +0.48% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.57,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +2.57%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.57,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +2.57%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.35,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +2.35%。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.35,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +2.35%。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.32,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.32%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.32,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.32%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.37,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.37%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.37,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.37%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.25,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.25%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.25,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.25%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.33,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.33%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.33,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.33%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.36,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.36%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.36,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.36%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.38,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.38%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.38,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.38%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.37,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.37%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.37,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.37%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.1,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.10%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.1,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.10%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.18,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.18%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.18,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.18%。"
+        }
+      ]
+    },
+    "2884.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 193,
+          "完成交易筆數": 25,
+          "勝率 (%)": 44.0,
+          "策略累積報酬 (%)": 41.46,
+          "最大回撤 (%)": -8.2,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 193,
+          "完成交易筆數": 25,
+          "勝率 (%)": 44.0,
+          "策略累積報酬 (%)": 41.46,
+          "最大回撤 (%)": -8.2,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 7,
+          "完成交易筆數": 2,
+          "勝率 (%)": 100.0,
+          "策略累積報酬 (%)": 9.42,
+          "最大回撤 (%)": -4.25,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 7,
+          "完成交易筆數": 2,
+          "勝率 (%)": 100.0,
+          "策略累積報酬 (%)": 9.42,
+          "最大回撤 (%)": -4.25,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "chip_available_days": 910,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.3,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.30%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.3,
+          "reason": "Q-Learning 偏向買入，TD期待 +1.30%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.48,
+          "reason": "Q-Learning 偏向續抱；TD期待 +1.48%。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.48,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.48%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.29,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.29%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.29,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.29%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.37,
+          "reason": "Q-Learning 偏向續抱；TD期待 +2.37%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.37,
+          "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +2.37%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.85,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 +0.85%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.85,
+          "reason": "既有退出風控已觸發；TD期待 +0.85%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.78,
+          "reason": "Q-Learning 偏向買入，TD期待 +2.78%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "BUY",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 2.78,
+          "reason": "Q-Learning 偏向買入，TD期待 +2.78%，且原策略條件具支撐。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.04,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.04%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.04,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.04%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.24,
+          "reason": "Q-Learning 偏向續抱；TD期待 +0.24%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 1,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.24,
+          "reason": "Q-Learning 原判 SELL，但 TD／偏好門檻未同時符合，仲裁暫緩退出；TD期待 +0.24%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.06,
+          "reason": "原系統硬性賣出風控已觸發；TD期待 +4.06%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "SELL",
+          "held_at_close": 1,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 4.06,
+          "reason": "既有退出風控已觸發；TD期待 +4.06%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.73,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.73,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.0,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.21,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": 0.21,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.24,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 3.24,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.84,
+          "reason": "TD期待 +0.84% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.84,
+          "reason": "TD期待 +0.84% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.78,
+          "reason": "TD期待 +0.78% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.78,
+          "reason": "TD期待 +0.78% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.73,
+          "reason": "TD期待 +0.73% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.73,
+          "reason": "TD期待 +0.73% 為正，但 Q-Learning 尚未選擇進場，列入關注期待。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.47,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.47,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.45,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.45%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.45,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.45%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.24,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.24%。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.24,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.24%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.29,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.29%。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 1.29,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +1.29%。"
+        }
+      ]
+    },
+    "2014.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 126,
+          "完成交易筆數": 22,
+          "勝率 (%)": 40.91,
+          "策略累積報酬 (%)": 11.14,
+          "最大回撤 (%)": -20.3,
+          "未平倉": false,
+          "待執行部位": 1
+        },
+        "extension_warning": {
+          "總交易天數": 131,
+          "完成交易筆數": 22,
+          "勝率 (%)": 40.91,
+          "策略累積報酬 (%)": 9.38,
+          "最大回撤 (%)": -22.67,
+          "未平倉": false,
+          "待執行部位": 1
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 0,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 0.0,
+          "最大回撤 (%)": 0.0,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 0,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 0.0,
+          "最大回撤 (%)": 0.0,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.63,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.63,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.55,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.55,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.5,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.5,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.57,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.57,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.56,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.59,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.59,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.47,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.47,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.28,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.28,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.64,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.64,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.45,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.45,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.52,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.52,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.2,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.23,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.23,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.27,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.27,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.98,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -0.98,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.04,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "SELL",
+          "td": -1.04,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.57,
+          "reason": "TD期待 -0.57% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": -0.57,
+          "reason": "TD期待 -0.57% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        }
+      ]
+    },
+    "1216.TW": {
+      "rule_comparison": {
+        "old_extension_exit": {
+          "總交易天數": 199,
+          "完成交易筆數": 15,
+          "勝率 (%)": 46.67,
+          "策略累積報酬 (%)": -0.73,
+          "最大回撤 (%)": -14.38,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 199,
+          "完成交易筆數": 15,
+          "勝率 (%)": 46.67,
+          "策略累積報酬 (%)": -0.73,
+          "最大回撤 (%)": -14.38,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "full_arbiter": {
+        "old_extension_exit": {
+          "總交易天數": 0,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 0.0,
+          "最大回撤 (%)": 0.0,
+          "未平倉": false,
+          "待執行部位": 0
+        },
+        "extension_warning": {
+          "總交易天數": 0,
+          "完成交易筆數": 0,
+          "勝率 (%)": null,
+          "策略累積報酬 (%)": 0.0,
+          "最大回撤 (%)": 0.0,
+          "未平倉": false,
+          "待執行部位": 0
+        }
+      },
+      "chip_available_days": 911,
+      "decisions": [
+        {
+          "date": "2026-09-01",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.91,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.91%。"
+        },
+        {
+          "date": "2026-09-01",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.91,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.91%。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.28,
+          "reason": "TD期待 +0.28% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-02",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.28,
+          "reason": "TD期待 +0.28% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.88,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.88%。"
+        },
+        {
+          "date": "2026-09-03",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.88,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.88%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.87,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.87%。"
+        },
+        {
+          "date": "2026-09-04",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.87,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.87%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.8,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.80%。"
+        },
+        {
+          "date": "2026-09-07",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.8,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.80%。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.18,
+          "reason": "TD期待 +0.18% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-08",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.18,
+          "reason": "TD期待 +0.18% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.96,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.96%。"
+        },
+        {
+          "date": "2026-09-09",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.96,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.96%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.89,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.89%。"
+        },
+        {
+          "date": "2026-09-10",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.89,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.89%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.78,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.78%。"
+        },
+        {
+          "date": "2026-09-11",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.78,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.78%。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.45,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-14",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.45,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.42,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-15",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.42,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.42,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-16",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.42,
+          "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.67,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.67%。"
+        },
+        {
+          "date": "2026-09-17",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.67,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.67%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.58,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.58%。"
+        },
+        {
+          "date": "2026-09-18",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.58,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.58%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.52,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.52%。"
+        },
+        {
+          "date": "2026-09-21",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.52,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.52%。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.5,
+          "reason": "TD期待 +0.50% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-22",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.5,
+          "reason": "TD期待 +0.50% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "old_extension_exit",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.62,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.62%。"
+        },
+        {
+          "date": "2026-09-23",
+          "variant": "extension_warning",
+          "action": "WATCH",
+          "held_at_close": 0,
+          "raw_flat": "BUY",
+          "raw_held": "HOLD",
+          "td": 0.62,
+          "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.62%。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.47,
+          "reason": "TD期待 +0.47% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-24",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.47,
+          "reason": "TD期待 +0.47% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.36,
+          "reason": "TD期待 +0.36% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-29",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.36,
+          "reason": "TD期待 +0.36% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "old_extension_exit",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "TD期待 +0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        },
+        {
+          "date": "2026-09-30",
+          "variant": "extension_warning",
+          "action": "IGNORE",
+          "held_at_close": 0,
+          "raw_flat": "HOLD",
+          "raw_held": "HOLD",
+          "td": 0.41,
+          "reason": "TD期待 +0.41% 與 RL 進場優勢不足，暫不耗用注意力與資金。"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Research reconstruction on latest adjusted historical data.",
+    "September controls precede October examples but this is not a broad untouched validation set.",
+    "Daily prefix refit; next-open execution; 0.08% buy and 0.38% sell research costs.",
+    "No liquidity/limit-up fill simulation; open trades marked to close."
+  ]
+}

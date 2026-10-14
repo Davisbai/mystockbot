@@ -49,10 +49,39 @@ GitHub Actions 僅執行終端機掃描，不會啟動網頁。
 成本、可選參考價風控、LINE Secrets 與歷史證據見 [PERFORMANCE_REVIEW.md](PERFORMANCE_REVIEW.md)。
 這些修正尚未證實能提高未來報酬。
 
+## 進場通知與模型修正（2026-10-14）
+
+`entry_watchlist.json` 是候選觀察清單，初始包含國喬、台化；與有成本紀錄的
+`long_term_watchlist.json` 分開。完整掃描會持續檢查候選股，不依賴當天熱門股榜。
+
+通知分成三類，優先列於 LINE 日報及網頁：
+
+- `ENTRY`：模型與既有規則確認進場，法人資料完整、日線完成，且無進場風控阻擋。
+- `SETUP`：既有趨勢／型態出現轉強，或資料、模型尚待確認；只是預警，不當作 BUY。
+- `BLOCKED`：模型偏買，但既有風控禁止進場，明確列出阻擋原因。
+
+通知包含日期、收盤參考價、觸發條件、原始模型／最終判定、Q 值與樣本支持。
+月線×98% 僅為既有規則參考，不能保證成交；未完成日線不產生確認進場。
+同股票、交易日及通知層級只確認一次；預警可升級為進場。LINE 完整傳送成功才記為已通知，
+失敗保留待傳，但過期或已反轉的進場通知不會當作當前機會補送。
+
+排程維持工作日台北時間 19:00；這次沒有增加盤中監控。網頁只顯示通知，不發送 LINE。
+通知狀態保存在 `entry_signal_state.json`，GitHub Actions 與日誌一同保存。
+
+法人資料修正支援 FinMind 英文／中文名稱，缺失保留為缺失，不補成零或沿用昨日買賣超。
+TD/RL 各正式入口統一從 `strategy_config.py` 的 `2023-01-01` 訓練，快取包含模型版本。
+Q 偏好指數不是校準勝率；模型原判、仲裁覆寫原因及資料狀態分開顯示。
+模型樣本不足、法人資料不完整或日線未完成時，暫緩確認新的 BUY；原有持倉風控仍可退出。
+
+對照比較未支持全面放寬五日乖離退出，因此維持原預設政策。
+研究模式 `TaiwanStockTradingSystem(..., extension_exit_mode='warning')` 僅供比較，
+不會由每日排程或網頁預設啟用。沒有為兩檔案例調低買進門檻或改由七法則接管。
+詳細數據與限制見 [調整驗證報告](diagnostics/tdrl_20261014/ADJUSTMENTS.md)。
+
 ## 驗證
 
 ```sh
-python -m unittest test_strategy_performance test_app -v
+python -m unittest test_strategy_performance test_app test_tdrl_audit test_entry_notifications -v
 ```
 
 測試包含核心策略邊界、五個頁面、歷史篩選、回測欄位、AI 驗證顯示及失敗回退。

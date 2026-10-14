@@ -1,0 +1,27 @@
+{
+  "captured_at": "2026-10-14T23:45:55.667606+08:00",
+  "packages": {
+    "pandas": "2.3.3",
+    "numpy": "2.5.3",
+    "yfinance": "1.7.0"
+  },
+  "inputs_sha256": {
+    "1216.TW_chips.json": "0ac41c32b48b1f191d044b398bca1b814d6c7e4ebeea80efe52515cffb27974c",
+    "1216.TW_prices.csv": "d7288bd612f86589d558d2f20952ca14c155e8bfbf745ce2b21d6962452a0b67",
+    "1312.TW_chips.json": "095952912f9389a621e586f4a23b8d05362cece85bfd26149b7594cd69eb8e14",
+    "1312.TW_prices.csv": "f8ba3b58f6e43e6c4eaa7b3601810d6c644224870c01ab6425692af66c2d5c2a",
+    "1326.TW_chips.json": "86308a34dfc6effb80817f27c3d96ee797cbbddedd3c8167bc9d88d641487e03",
+    "1326.TW_prices.csv": "c55146dccecb0ef89ce92145bf36e51a8d8bad874320660cb7d5a7bfe78207f1",
+    "2014.TW_chips.json": "d0109eace5037d80bdcee8853331a2003485b8dfda339c404d40a64508cc57bb",
+    "2014.TW_prices.csv": "bf608d269eb612a2643132075d04578c21bf0975ec3f21f14a63b246e4ce4f20",
+    "2303.TW_chips.json": "09eb2972e3f36f1c59f0971093718492096578fe6c32d01c395c538693d6c5b0",
+    "2303.TW_prices.csv": "5f67b53104fcb926818adc106546048a72286ea918fb29ca7ea97c2b61cda248",
+    "2330.TW_chips.json": "d698c51020403a3f4caea42a7495c931007704e871b3f55d597874963a1db464",
+    "2330.TW_prices.csv": "a8f4eb5b29f12597de0591cf694cbee6692bd43948af10a87ae3633977bbb282",
+    "2603.TW_chips.json": "0c6c8a844b732c68790baa0f076d5a27dbd7c7c58dd7b1c366a646c73befe13f",
+    "2603.TW_prices.csv": "b5799bda6d166e16b6dbd7a1bc323197943efa91f648be2f82e493173d65564a",
+    "2884.TW_chips.json": "465eeb64f6903de56b0d5d0d7a5e15ddf7f11aefe2bf30ae3dbb0bf4c4b38cc9",
+    "2884.TW_prices.csv": "9dd4e72be649187df055bb3278b0bc5a8d2c90ad7a6713ad0a3c08fa7bf40c76",
+    "TWII_prices.csv": "2967acf0602cfeb8a1f8f1be7c83beaf720b0de27303d12002cc2a61c9834a3c"
+  }
+}

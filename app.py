@@ -8,6 +8,8 @@ import re
 import json
 import tempfile
 from pathlib import Path
+from strategy_config import TRAINING_START_DATE, MODEL_VERSION
+from entry_notifications import load_entry_candidates, entry_notice
 from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report
 
 yf.set_tz_cache_location(str(Path(tempfile.gettempdir()) / "py-yfinance"))
@@ -80,7 +82,7 @@ def ensure_tdrl_alert(system, ticker, alert):
 
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
-def cached_analysis(tickers, start_date, market_ticker):
+def cached_analysis(tickers, start_date, market_ticker, model_version):
     system = TaiwanStockTradingSystem(tickers=list(tickers), start_date=start_date)
     system.market_ticker = market_ticker
     summary, alerts, logs = system.run_analysis()
@@ -90,7 +92,7 @@ def cached_analysis(tickers, start_date, market_ticker):
 
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
-def cached_ai_diagnosis(ticker):
+def cached_ai_diagnosis(ticker, model_version):
     engine = AdvancedQuantEngine(ticker=ticker)
     if not engine.fetch_data(period="2y"):
         raise ValueError("AI 歷史行情暫時不可用。")
@@ -113,7 +115,7 @@ def cached_fundamentals(ticker):
 
 def run_system_analysis(system):
     try:
-        summary, alerts, logs, market = cached_analysis(tuple(system.tickers), system.start_date, system.market_ticker)
+        summary, alerts, logs, market = cached_analysis(tuple(system.tickers), system.start_date, system.market_ticker, MODEL_VERSION)
         system.market_data = market
         return summary, alerts, logs
     except Exception as exc:
@@ -231,6 +233,7 @@ def is_frontend_watchlist_candidate(alert, ticker):
 # 🗂️ 側邊欄選單
 # ==========================================
 st.sidebar.title("🎯 台股獵手 v2.1 TD/RL")
+st.sidebar.caption(f"模型 {MODEL_VERSION}｜TD/RL 訓練起日 {TRAINING_START_DATE}")
 st.sidebar.markdown("---")
 
 if st.sidebar.button("清除分析快取"):
@@ -270,9 +273,9 @@ if menu == "1. 🚀 執行完整策略掃描":
             
             watchlist = load_watchlist()
             WATCHLIST_MAP = {k: v.get("名稱", "") for k, v in watchlist.items()}
-            COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **WATCHLIST_MAP}
+            COMBINED_MAP = {**STATIC_YF_MAP, **DYNAMIC_MAP, **load_entry_candidates(), **WATCHLIST_MAP}
             
-            system = TaiwanStockTradingSystem(tickers=list(COMBINED_MAP.keys()), start_date="2025-01-01")
+            system = TaiwanStockTradingSystem(tickers=list(COMBINED_MAP.keys()), start_date=TRAINING_START_DATE)
             
             summary, alerts, logs = run_system_analysis(system)
             
@@ -287,6 +290,7 @@ if menu == "1. 🚀 執行完整策略掃描":
                 rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_held, holding=holding)
                 rl_policy = alert.get('RL持有策略' if is_held else 'RL空手策略', 'HOLD')
                 rl_confidence = float(rl_meta.get('confidence', 50.0))
+                notice = entry_notice(stock, name, alert, rl_decision, rl_reason, rl_meta, is_held)
 
                 alert_data.append({
                     "代碼": stock.replace('.TW', '').replace('.TWO', ''),
@@ -298,13 +302,23 @@ if menu == "1. 🚀 執行完整策略掃描":
                     "今日評分": alert['今日評分'],
                     "TD期待%": alert.get('TD期待值', 0),
                     "RL動作": rl_policy,
-                    "RL信心%": rl_confidence,
+                    "Q偏好指數": rl_confidence,
+                    "籌碼狀態": alert.get('籌碼資料狀態', 'unavailable'),
+                    "模型版本": alert.get('模型版本', MODEL_VERSION),
+                    "訓練起日": alert.get('訓練起日', TRAINING_START_DATE),
+                    "硬性風控": rl_meta['hard_risk'],
+                    "退出風控觸發": rl_meta['exit_filter'],
+                    "價格延伸警示": rl_meta['extension_warning'],
+                    "模型原判被覆寫": rl_meta['overridden'],
+                    "狀態樣本數": rl_meta['state_support'],
+                    "樣本類型": rl_meta['support_kind'],
                     "Q值": (
                         f"SELL {alert.get('Q賣出', 0):.3f} / HOLD {alert.get('Q續抱', 0):.3f}"
                         if is_held else
                         f"BUY {alert.get('Q買入', 0):.3f} / CASH {alert.get('Q空手等待', 0):.3f}"
                     ),
                     "策略": tdrl_label(rl_decision, is_held),
+                    "進場通知層級": notice['level'] if notice else '—',
                     "判斷理由": rl_reason,
                     "量能倍率": alert.get('量能倍率', 0),
                     "漲停量價結構": get_limitup_structure(alert),
@@ -317,7 +331,7 @@ if menu == "1. 🚀 執行完整策略掃描":
                 scan_df["_排序"] = scan_df["策略"].map(decision_order).fillna(9)
                 scan_df = scan_df.sort_values(["_排序", "TD期待%"], ascending=[True, False]).drop(columns=["_排序"])
                 st.dataframe(scan_df, use_container_width=True, hide_index=True)
-                st.caption("TD期待% 是歷史相似狀態經 TD(0) 折現後的期待值，不是保證報酬；RL信心表示 Q 值差距與樣本支持度。")
+                st.caption("TD期待% 是歷史相似狀態經 TD(0) 折現後的期待值，不是保證報酬；Q偏好指數只反映 Q 值差距與樣本支持度，不是勝率。")
             else:
                 st.info("今日無特別訊號。")
 
@@ -391,7 +405,7 @@ elif menu == "2. 🔎 單股深度診斷":
             stage = st.empty()
             try:
                 # 1. 傳統技術與籌碼分析
-                system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
+                system = TaiwanStockTradingSystem(tickers=[ticker], start_date=TRAINING_START_DATE)
                 system.market_ticker = mkt_ticker
                 
                 stage.info("1/3 取得行情、計算規則策略與 TD/RL…")
@@ -406,7 +420,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 meta_prob, regime_idx, ai_success = 0.0, None, False
                 validation = {}
                 try:
-                    meta_prob, regime_idx, ai_success, validation = cached_ai_diagnosis(ticker)
+                    meta_prob, regime_idx, ai_success, validation = cached_ai_diagnosis(ticker, MODEL_VERSION)
 
                 except Exception as exc:
                     st.caption(f"AI 模型目前無可用結果：{exc}，以下仍顯示規則策略診斷。")
@@ -537,13 +551,23 @@ elif menu == "2. 🔎 單股深度診斷":
                 rl_c1, rl_c2, rl_c3, rl_c4 = st.columns(4)
                 rl_c1.metric("TD 折現期待", f"{alert.get('TD期待值', 0):+.2f}%", f"樣本支持 {alert.get('TD樣本支持', 0)}", delta_color="off")
                 rl_c2.metric("RL 原始動作", rl_policy, "持有模型" if is_held else "空手模型", delta_color="off")
-                rl_c3.metric("RL 信心", f"{rl_confidence:.1f}%")
+                rl_c3.metric("Q 偏好指數", f"{rl_confidence:.1f} / 100")
                 rl_c4.metric("監控狀態", "已列入監控" if is_held else "尚未列入")
                 if is_held:
                     st.write(f"- **Q值比較**: SELL = **{alert.get('Q賣出', 0):.3f}** ｜ HOLD = **{alert.get('Q續抱', 0):.3f}**")
                 else:
                     st.write(f"- **Q值比較**: BUY = **{alert.get('Q買入', 0):.3f}** ｜ CASH/HOLD = **{alert.get('Q空手等待', 0):.3f}**")
                 st.write(f"- **TD/RL 仲裁理由**: {rl_reason}")
+                notice = entry_notice(ticker, stock_name, alert, rl_decision, rl_reason, rl_meta, is_held)
+                if notice:
+                    st.markdown('#### 🎯 進場訊號／預警')
+                    st.text(notice['message'])
+                st.caption(f"模型 {MODEL_VERSION}｜訓練起日 {TRAINING_START_DATE}｜籌碼狀態 {alert.get('籌碼資料狀態', 'unavailable')}")
+                st.caption(f"狀態支持 {rl_meta['state_support']}｜類型 {rl_meta['support_kind']}。Q偏好指數不是勝率；近鄰估計也不是當前狀態的直接樣本。")
+                if rl_meta['overridden']:
+                    st.info(f"模型原判 {rl_meta['raw_action']} → 最終 {rl_decision}：{rl_meta['override_reason']}")
+                if alert.get('籌碼資料狀態', 'unavailable') not in ('available', 'not_applicable'):
+                    st.warning("法人資料缺失或不完整，相關評分未獲完整資料支持；目前不是零買賣超的確認。")
                 st.caption("監控清單是訊號追蹤紀錄；模型的持有／空手情境依清單切換，不代表券商實際部位。")
                 if alert.get('TD_RL錯誤'):
                     st.caption(f"⚠️ TD/RL 補算失敗，已安全回退原策略：{alert.get('TD_RL錯誤')}")
@@ -636,7 +660,7 @@ elif menu == "3. 📈 策略回測":
     if st.button("執行回測", type="primary"):
         with st.spinner("正在計算歷史回測數據..."):
             STATIC_YF_MAP = {k: v for k, v in STOCK_MAP.items()}
-            system = TaiwanStockTradingSystem(tickers=list(STATIC_YF_MAP.keys()), start_date="2024-01-01")
+            system = TaiwanStockTradingSystem(tickers=list(STATIC_YF_MAP.keys()), start_date=TRAINING_START_DATE)
             
             summary, alerts, logs = run_system_analysis(system)
             if not summary:
