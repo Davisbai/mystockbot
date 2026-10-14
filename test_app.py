@@ -1,9 +1,10 @@
 import copy
 import json
 import math
+import sys
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -90,6 +91,63 @@ class StreamlitTests(unittest.TestCase):
     def fake_analysis(self, system):
         system.market_data = self.prices.copy()
         return self.summary, {'2330.TW': dict(self.alert)}, {'2330.TW': []}
+
+    def stale_support(self):
+        import app_support
+        stale = ModuleType('app_support')
+        stale.__file__ = app_support.__file__
+        for name in ('performance_rows', 'observed_holding', 'sync_watchlist', 'tracking_report'):
+            setattr(stale, name, getattr(app_support, name))
+        return stale
+
+    def test_warm_deployment_reloads_cached_old_support_and_can_diagnose(self):
+        for version in (None, 1):
+            with self.subTest(version=version):
+                stale = self.stale_support()
+                if version is not None:
+                    stale.APP_SUPPORT_API_VERSION = version
+                with patch.dict(sys.modules, {'app_support': stale}), \
+                        patch('importlib.reload', wraps=__import__('importlib').reload) as reload_module, \
+                        patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis), \
+                        patch('STOCK_GOD.load_watchlist', return_value={}), \
+                        patch('STOCK_GOD.save_watchlist'):
+                    app = self.app('2. 🔎 單股深度診斷')
+                    app.button[0].click().run()
+                    self.assert_diagnosis_ok(app)
+                    reload_module.assert_called_once_with(stale)
+                    self.assertTrue(callable(stale.normalize_decision))
+
+    def test_current_support_does_not_reload_on_normal_reruns(self):
+        with patch('importlib.reload', side_effect=AssertionError('unnecessary reload')) as reload_module:
+            app = self.app('2. 🔎 單股深度診斷')
+            app.text_input[0].set_value('1312').run()
+            self.assertEqual(len(app.exception), 0)
+            reload_module.assert_not_called()
+
+    def test_incomplete_deployment_reports_reboot_without_uncaught_importerror(self):
+        stale = self.stale_support()
+        with patch.dict(sys.modules, {'app_support': stale}), \
+                patch('importlib.reload', return_value=stale):
+            app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=30).run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(any('Reboot app' in item.value and 'app_support.py' in item.value for item in app.error))
+        self.assertEqual(len(app.sidebar.radio), 0)
+
+    def test_reload_importerror_reports_recovery_instead_of_crashing(self):
+        stale = self.stale_support()
+        with patch.dict(sys.modules, {'app_support': stale}), \
+                patch('importlib.reload', side_effect=ImportError('test failure')):
+            app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=30).run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(any('Reboot app' in item.value for item in app.error))
+
+    def test_unavailable_history_module_does_not_break_diagnostic_startup(self):
+        with patch.dict(sys.modules, {'analyze_push_history': None}):
+            app = self.app('2. 🔎 單股深度診斷')
+            self.assertEqual(len(app.error), 0)
+            app.sidebar.radio[0].set_value('4. 🗂️ 歷史追蹤績效').run()
+            self.assertEqual(len(app.exception), 0)
+            self.assertTrue(any('無法載入或讀取追蹤紀錄' in item.value for item in app.error))
 
     def test_all_menu_pages_start_without_network(self):
         with patch('STOCK_GOD.yf.download', side_effect=AssertionError('unexpected external request')):

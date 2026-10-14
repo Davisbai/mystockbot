@@ -1,4 +1,8 @@
 import streamlit as st
+st.set_page_config(page_title="台股獵手 v2.1 - TD/RL 專業版", page_icon="🎯", layout="wide")
+
+import importlib
+import logging
 import pandas as pd
 import numpy as np
 import datetime
@@ -11,9 +15,26 @@ import time
 from pathlib import Path
 from strategy_config import TRAINING_START_DATE, MODEL_VERSION
 from entry_notifications import load_entry_candidates, entry_notice
-from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision
+try:
+    import app_support
+    support_exports = ('performance_rows', 'observed_holding', 'sync_watchlist',
+                       'tracking_report', 'normalize_decision')
+    # Streamlit may rerun the new entrypoint while sibling modules remain in
+    # sys.modules from before deployment. Reload only an incompatible helper.
+    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 1 or
+            any(not callable(getattr(app_support, name, None)) for name in support_exports)):
+        importlib.invalidate_caches()
+        app_support = importlib.reload(app_support)
+    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 1 or
+            any(not callable(getattr(app_support, name, None)) for name in support_exports)):
+        raise ImportError('app_support API is incomplete after reload')
+    from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision
+except (ImportError, SyntaxError, OSError):
+    logging.exception('Unable to load the app_support interface')
+    st.error("啟動所需的 app_support.py 版本不完整或無法載入。請整套更新 repository，並在 Streamlit Cloud 的 Manage app 選擇 Reboot app；若仍失敗，請查看服務日誌。")
+    st.stop()
 
-APP_CACHE_REVISION = 'app-fast-compatible-20261014-v1'
+APP_CACHE_REVISION = 'app-import-recovery-20261015-v2'
 
 yf.set_tz_cache_location(str(Path(tempfile.gettempdir()) / "py-yfinance"))
 # ⚠️ 確保 STOCK_GOD.py 在同目錄下
@@ -35,8 +56,6 @@ except ImportError as exc:
 # ==========================================
 # 🎨 網頁基本設定與 CSS 樣式
 # ==========================================
-st.set_page_config(page_title="台股獵手 v2.1 - TD/RL 專業版", page_icon="🎯", layout="wide")
-
 # 自定義 CSS 強化視覺提醒
 st.markdown("""
     <style>
@@ -744,8 +763,8 @@ elif menu == "4. 🗂️ 歷史追蹤績效":
         st.caption("以代碼、加入日期及參考成本區分追蹤段；同一推播日期只保留最後觀察，缺漏可能低估回撤。")
         st.download_button("下載完整追蹤分析 JSON", json.dumps(report, ensure_ascii=False, indent=2),
                            file_name="performance_history.json", mime="application/json")
-    except (OSError, ValueError, TypeError) as exc:
-        st.error(f"無法讀取追蹤紀錄：{exc}")
+    except (ImportError, SyntaxError, OSError, ValueError, TypeError) as exc:
+        st.error(f"無法載入或讀取追蹤紀錄：{exc}")
 
 # ==========================================
 # 5️⃣ 檢查大盤現況

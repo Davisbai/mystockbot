@@ -1,6 +1,7 @@
 """Shared, testable view transformations; no Streamlit or external requests."""
 import math
-from analyze_push_history import analyze
+
+APP_SUPPORT_API_VERSION = 1
 
 
 def normalize_decision(result, alert, is_held=False):
@@ -75,4 +76,7 @@ def sync_watchlist(watchlist, ticker, name, alert, decision):
 
 
 def tracking_report(log_text, watchlist):
+    # The diagnostic page can start even if the optional history module cannot
+    # be loaded; the history page reports its own import/read errors.
+    from analyze_push_history import analyze
     return analyze(log_text, watchlist)
