@@ -11,12 +11,24 @@ import pandas as pd
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 from STOCK_GOD import TaiwanStockTradingSystem
-from app_support import observed_holding, performance_rows, sync_watchlist, tracking_report
+from app_support import observed_holding, performance_rows, sync_watchlist, tracking_report, normalize_decision
 
 ROOT = Path(__file__).resolve().parent
 
 
 class AppSupportTests(unittest.TestCase):
+    def test_legacy_metadata_is_unknown_and_cannot_confirm_new_buy(self):
+        action, reason, meta = normalize_decision(('BUY', 'old reason', {'confidence': 61}), {'RL可用': True, 'RL空手策略': 'BUY'})
+        self.assertEqual(action, 'WATCH')
+        self.assertIsNone(meta['state_support'])
+        self.assertIsNone(meta['hard_risk'])
+        self.assertEqual(meta['support_kind'], '未提供')
+        self.assertFalse(meta['schema_compatible'])
+        self.assertTrue(meta['overridden'])
+        self.assertEqual(meta['override_reason'], reason)
+        self.assertEqual(meta['confidence'], 61)
+        self.assertEqual(normalize_decision(('SELL', 'risk', {}), {}, True)[0], 'SELL')
+
     def test_performance_keeps_days_separate_from_completed_trades(self):
         summary = {'2330.TW': {'總交易天數': 20, '完成交易筆數': 2,
                               '勝率 (%)': 50., '策略累積報酬 (%)': 3.,
@@ -69,6 +81,11 @@ class StreamlitTests(unittest.TestCase):
         app.sidebar.radio[0].set_value(menu).run()
         self.assertEqual(len(app.exception), 0)
         return app
+
+    def assert_diagnosis_ok(self, app):
+        self.assertEqual(len(app.exception), 0)
+        self.assertFalse(any('執行分析時發生錯誤' in item.value for item in app.error))
+        self.assertTrue(any('最終系統判定' in item.value for item in app.markdown))
 
     def fake_analysis(self, system):
         system.market_data = self.prices.copy()
@@ -134,6 +151,7 @@ class StreamlitTests(unittest.TestCase):
                 patch('STOCK_GOD.save_watchlist') as saved, \
                 patch('STOCK_GOD.yf.Ticker', return_value=SimpleNamespace(info={})):
             app.button[0].click().run()
+            app.checkbox(key='extra_ai').check().run()
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(saved.call_args[0][0]['2330.TW']['加入日期'], '2026-01-01')
         self.assertEqual(saved.call_args[0][0]['2330.TW']['加入價格'], 100)
@@ -163,9 +181,78 @@ class StreamlitTests(unittest.TestCase):
                 patch('STOCK_GOD.save_watchlist'), \
                 patch('STOCK_GOD.yf.Ticker', return_value=SimpleNamespace(info={})):
             app.button[0].click().run()
+            app.checkbox(key='extra_ai').check().run()
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any('AI 模型目前無可用結果' in item.value for item in app.caption))
         self.assertTrue(any('已完成交易筆數' in frame.value.columns for frame in app.dataframe))
+
+    def test_fast_default_skips_extras_and_reruns_preserve_decision(self):
+        self.alert.update({'RL可用': True, 'RL空手策略': 'BUY', 'RL持有策略': 'HOLD',
+                           'RL空手信心': 60, 'TD期待值': 1., '籌碼資料狀態': 'available',
+                           '日線已收盤': True})
+        app = self.app('2. 🔎 單股深度診斷')
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis) as analysis, \
+                patch('STOCK_GOD.AdvancedQuantEngine', side_effect=AssertionError('extra AI must be opt-in')) as extra, \
+                patch('STOCK_GOD.yf.Ticker', return_value=SimpleNamespace(info={})) as info, \
+                patch('STOCK_GOD.load_watchlist', return_value={}) as watchlist, \
+                patch('STOCK_GOD.save_watchlist') as saved:
+            app.button[0].click().run()
+            self.assert_diagnosis_ok(app)
+            self.assertTrue(any('【買入】' in item.value for item in app.success))
+            self.assertEqual(saved.call_count, 1)
+            extra.assert_not_called()
+            info.assert_not_called()
+            # The preceding BUY may have changed the on-disk list. Supplementary UI
+            # must retain the analyzed flat-position decision and never write again.
+            watchlist.return_value = {'2330.TW': {'加入日期': '2026-10-02', '加入價格': 110}}
+            app.checkbox(key='extra_fundamentals').check().run()
+            self.assert_diagnosis_ok(app)
+            self.assertEqual(analysis.call_count, 1)
+            self.assertEqual(saved.call_count, 1)
+            self.assertEqual(info.call_count, 1)
+            extra.assert_not_called()
+            self.assertTrue(any('【買入】' in item.value for item in app.success))
+            self.assertTrue(any(item.label == '每股淨值 (NAV)' and item.value == '—' for item in app.metric))
+            app.checkbox(key='extra_fundamentals').uncheck().run()
+            app.text_input[0].set_value('1326').run()
+            self.assert_diagnosis_ok(app)
+            self.assertEqual(analysis.call_count, 1)
+            self.assertTrue(any('2330.TW' in item.value for item in app.success))
+            app.sidebar.button[0].click().run()
+            self.assertFalse(any('最終系統判定' in item.value for item in app.markdown))
+
+    def test_legacy_core_metadata_renders_single_and_scan_without_key_errors(self):
+        legacy = ('WATCH', 'legacy reason', {'confidence': 55})
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis), \
+                patch('STOCK_GOD.resolve_td_rl_strategy', return_value=legacy), \
+                patch('STOCK_GOD.load_watchlist', return_value={}), \
+                patch('STOCK_GOD.save_watchlist'), \
+                patch('STOCK_GOD.YahooMarketScanner.scan', return_value=[]):
+            app = self.app('2. 🔎 單股深度診斷')
+            app.button[0].click().run()
+            self.assert_diagnosis_ok(app)
+            self.assertTrue(any('狀態支持 未提供' in item.value for item in app.caption))
+            self.assertTrue(any('核心回傳欄位不完整' in item.value for item in app.warning))
+            app.sidebar.radio[0].set_value('1. 🚀 執行完整策略掃描').run()
+            app.button[0].click().run()
+            self.assertEqual(len(app.exception), 0)
+            self.assertEqual(app.dataframe[0].value.iloc[0]['樣本類型'], '未提供')
+
+    def test_session_snapshot_expires_without_network_or_watchlist_writes(self):
+        app = self.app('2. 🔎 單股深度診斷')
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis) as analysis, \
+                patch('STOCK_GOD.load_watchlist', return_value={}), \
+                patch('STOCK_GOD.save_watchlist') as saved:
+            app.button[0].click().run()
+            self.assert_diagnosis_ok(app)
+            snapshot = dict(app.session_state['single_diagnosis'])
+            snapshot['saved_at'] -= 301
+            app.session_state['single_diagnosis'] = snapshot
+            app.run()
+            self.assertEqual(analysis.call_count, 1)
+            saved.assert_not_called()
+            self.assertTrue(any('請重新按開始診斷' in item.value for item in app.info))
+            self.assertFalse(any('最終系統判定' in item.value for item in app.markdown))
 
     def test_repeated_scan_reuses_calculation_but_reads_fresh_watchlist(self):
         app = self.app('1. 🚀 執行完整策略掃描')
