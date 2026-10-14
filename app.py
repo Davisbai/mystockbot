@@ -79,9 +79,43 @@ def ensure_tdrl_alert(system, ticker, alert):
         return _apply_tdrl_result(alert, result)
 
 
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
+def cached_analysis(tickers, start_date, market_ticker):
+    system = TaiwanStockTradingSystem(tickers=list(tickers), start_date=start_date)
+    system.market_ticker = market_ticker
+    summary, alerts, logs = system.run_analysis()
+    if system.market_data is None or system.market_data.empty or not alerts:
+        raise ValueError("行情資料暫時不可用，請稍後重試。")
+    return summary, alerts, logs, system.market_data
+
+
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
+def cached_ai_diagnosis(ticker):
+    engine = AdvancedQuantEngine(ticker=ticker)
+    if not engine.fetch_data(period="2y"):
+        raise ValueError("AI 歷史行情暫時不可用。")
+    engine.detect_market_regime()
+    engine.apply_triple_barrier()
+    probability, regime, available = 0., None, False
+    if engine.train_meta_labeling_model():
+        latest = engine.data.iloc[-1]
+        regime = int(latest['Regime'])
+        feat = latest[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
+        probability = float(engine.meta_classifier.predict_proba(feat)[0][1])
+        available = True
+    return probability, regime, available, engine.validation_metrics
+
+
+@st.cache_data(ttl=3600, max_entries=128, show_spinner=False)
+def cached_fundamentals(ticker):
+    return yf.Ticker(ticker).info
+
+
 def run_system_analysis(system):
     try:
-        return system.run_analysis()
+        summary, alerts, logs, market = cached_analysis(tuple(system.tickers), system.start_date, system.market_ticker)
+        system.market_data = market
+        return summary, alerts, logs
     except Exception as exc:
         st.error(f"行情分析失敗，請稍後重試：{exc}")
         st.stop()
@@ -198,6 +232,13 @@ def is_frontend_watchlist_candidate(alert, ticker):
 # ==========================================
 st.sidebar.title("🎯 台股獵手 v2.1 TD/RL")
 st.sidebar.markdown("---")
+
+if st.sidebar.button("清除分析快取"):
+    cached_analysis.clear()
+    cached_ai_diagnosis.clear()
+    cached_fundamentals.clear()
+    st.sidebar.success("已清除，請再次開始診斷或掃描。")
+st.sidebar.caption("行情與模型結果最多暫存 5 分鐘；基本面最多 1 小時。監控清單每次重新讀取。")
 menu = st.sidebar.radio(
     "請選擇功能:",
     (
@@ -347,11 +388,13 @@ elif menu == "2. 🔎 單股深度診斷":
 
         # --- 執行分析 ---
         with st.spinner("正在下載數據並執行系統與 AI 雙重診斷..."):
+            stage = st.empty()
             try:
                 # 1. 傳統技術與籌碼分析
                 system = TaiwanStockTradingSystem(tickers=[ticker], start_date="2023-01-01")
                 system.market_ticker = mkt_ticker
                 
+                stage.info("1/3 取得行情、計算規則策略與 TD/RL…")
                 summary, alerts, logs = run_system_analysis(system)
                 
                 if ticker not in alerts:
@@ -359,32 +402,26 @@ elif menu == "2. 🔎 單股深度診斷":
                     st.stop()
 
                 # 2. AI Meta-Labeling 模型診斷
-                ai_engine = AdvancedQuantEngine(ticker=ticker)
+                stage.info("2/3 執行 AI 模型與時序驗證…")
                 meta_prob, regime_idx, ai_success = 0.0, None, False
+                validation = {}
                 try:
-                    if ai_engine.fetch_data(period="2y"):
-                        ai_engine.detect_market_regime()
-                        ai_engine.apply_triple_barrier()
-                        if ai_engine.train_meta_labeling_model():
-                            latest_ai = ai_engine.data.iloc[-1]
-                            regime_idx = int(latest_ai['Regime'])
-                            feat = latest_ai[['Volatility_20', 'Volatility_50', 'Momentum_10', 'Momentum_20', 'Regime']].values.reshape(1, -1)
-                            meta_prob = ai_engine.meta_classifier.predict_proba(feat)[0][1]
-                            ai_success = True
+                    meta_prob, regime_idx, ai_success, validation = cached_ai_diagnosis(ticker)
 
                 except Exception as exc:
                     st.caption(f"AI 模型目前無可用結果：{exc}，以下仍顯示規則策略診斷。")
 
                 # 🌟 3. 獲取基本面資料 (僅供畫面顯示，絕對不影響後續任何判斷)
+                stage.info("3/3 取得基本面資料並整理報告…")
                 try:
-                    ticker_obj = yf.Ticker(ticker)
-                    info = ticker_obj.info
+                    info = cached_fundamentals(ticker)
                     raw_yield = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or 0
                     dividend_yield = raw_yield if raw_yield > 1 else raw_yield * 100
                     book_value = info.get('bookValue', 0)
                     pb_ratio = info.get('priceToBook', 0)
                 except Exception:
                     dividend_yield, book_value, pb_ratio = 0, 0, 0
+                stage.empty()
 
                 # --- 4. 提取進階訊號 ---
                 alert = ensure_tdrl_alert(system, ticker, alerts[ticker])
@@ -482,7 +519,6 @@ elif menu == "2. 🔎 單股深度診斷":
                     st.write(f"- **GMM 市場分群**: 狀態 {regime_idx}（編號無固定多空意義）")
                     st.write(f"- **AI 模型正類機率**: **{meta_prob*100:.1f}%**")
                     st.caption("模型正類機率未經機率校準，不能視為交易勝率或未來獲利保證。")
-                    validation = ai_engine.validation_metrics
                     st.markdown("#### AI 時序留出驗證")
                     st.dataframe(pd.DataFrame([{
                         "驗證起日": validation['validation_start'],

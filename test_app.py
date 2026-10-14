@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 from STOCK_GOD import TaiwanStockTradingSystem
 from app_support import observed_holding, performance_rows, sync_watchlist, tracking_report
@@ -54,6 +55,7 @@ class AppSupportTests(unittest.TestCase):
 
 class StreamlitTests(unittest.TestCase):
     def setUp(self):
+        st.cache_data.clear()
         self.prices = pd.DataFrame({'Close': [100., 110.], 'Market_MA20': [99., 100.]})
         self.alert = {'日期': '2026-10-02', '收盤價': 110., '月線價': 100.,
                       '今日漲幅': 1., '今日評分': 70, '個股原始評分': 70,
@@ -164,6 +166,23 @@ class StreamlitTests(unittest.TestCase):
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any('AI 模型目前無可用結果' in item.value for item in app.caption))
         self.assertTrue(any('已完成交易筆數' in frame.value.columns for frame in app.dataframe))
+
+    def test_repeated_scan_reuses_calculation_but_reads_fresh_watchlist(self):
+        app = self.app('1. 🚀 執行完整策略掃描')
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis) as analysis, \
+                patch('STOCK_GOD.STOCK_MAP', {'2330.TW': '台積電'}), \
+                patch('STOCK_GOD.YahooMarketScanner.scan', return_value=[]), \
+                patch('STOCK_GOD.load_watchlist', return_value={}) as watchlist:
+            app.button[0].click().run()
+            self.assertEqual(app.dataframe[0].value.iloc[0]['列入監控'], '—')
+            watchlist.return_value = {'2330.TW': {'名稱': '台積電', '加入日期': '2026-01-01', '加入價格': 100}}
+            app.button[0].click().run()
+            self.assertEqual(app.dataframe[0].value.iloc[0]['列入監控'], '✅')
+            self.assertEqual(analysis.call_count, 1)
+            app.sidebar.button[0].click().run()
+            app.button[0].click().run()
+            self.assertEqual(analysis.call_count, 2)
+        self.assertEqual(len(app.exception), 0)
 
 
 if __name__ == '__main__':

@@ -313,45 +313,46 @@ class TDRLDecisionEngine:
             }
 
         next_returns = work["Close"].pct_change().shift(-1) * 100.0
+        # 狀態與報酬只依賴歷史列，不必在每個 epoch／action 重讀 pandas。
+        states = [self._market_state(row) for row in work.to_dict('records')]
+        returns = next_returns.to_numpy()
+        clipped_returns = np.clip(returns, -12.0, 12.0)
+        transitions = [i for i in range(len(work) - 1) if not pd.isna(returns[i])]
+        q_states = [[state + (position,) for state in states] for position in (0, 1)]
+        rewards = {
+            (position, action): [self._reward_pct(position, action, returns[i]) for i in transitions]
+            for position in (0, 1) for action in self._valid_actions(position)
+        }
 
         # TD(0)：V(s) <- V(s) + alpha * [r + gamma*V(s') - V(s)]
         for epoch in range(self.epochs):
-            for i in range(len(work) - 1):
-                reward = next_returns.iloc[i]
-                if pd.isna(reward):
-                    continue
-                s = self._market_state(work.iloc[i])
-                s2 = self._market_state(work.iloc[i + 1])
+            for i in transitions:
+                s = states[i]
+                s2 = states[i + 1]
                 self.v_table.setdefault(s, 0.0)
                 self.v_table.setdefault(s2, 0.0)
-                td_target = float(np.clip(reward, -12.0, 12.0)) + self.gamma * self.v_table[s2]
+                td_target = float(clipped_returns[i]) + self.gamma * self.v_table[s2]
                 self.v_table[s] += self.alpha * (td_target - self.v_table[s])
                 if epoch == 0:
                     self.v_visits[s] = self.v_visits.get(s, 0) + 1
 
         # 離線 Q-learning / Bellman backup
         for epoch in range(self.epochs):
-            for i in range(len(work) - 1):
-                reward_ret = next_returns.iloc[i]
-                if pd.isna(reward_ret):
-                    continue
-                row = work.iloc[i]
-                next_row = work.iloc[i + 1]
-
+            for transition_idx, i in enumerate(transitions):
                 for position in (0, 1):
-                    s = self._q_state(row, position)
+                    s = q_states[position][i]
                     self.q_table.setdefault(s, np.zeros(3, dtype=float))
                     if epoch == 0:
                         self.q_visits[s] = self.q_visits.get(s, 0) + 1
 
                     for action in self._valid_actions(position):
                         next_position = self._next_position(position, action)
-                        s2 = self._q_state(next_row, next_position)
+                        s2 = q_states[next_position][i + 1]
                         self.q_table.setdefault(s2, np.zeros(3, dtype=float))
                         valid_next = self._valid_actions(next_position)
                         future_best = max(float(self.q_table[s2][a]) for a in valid_next)
 
-                        reward = self._reward_pct(position, action, reward_ret)
+                        reward = rewards[(position, action)][transition_idx]
                         target = reward + self.gamma * future_best
                         self.q_table[s][action] += self.alpha * (target - self.q_table[s][action])
 

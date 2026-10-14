@@ -4,12 +4,21 @@
 
 ## 執行
 
-在 repository 目錄安裝相依套件並啟動網頁：
+在 repository 目錄啟動網頁：
 
 ```sh
-python -m pip install -r requirements.txt
-python -m streamlit run app.py
+python run_app.py
 ```
+
+啟動器使用 `.venv-app` 專用環境，第一次會建立環境並安裝相依套件；需可連線至套件來源。
+既有環境會先檢查 Streamlit 版本及核心模組，再啟動伺服器，不更動系統 Python。
+瀏覽器開啟 `http://localhost:8501`。停止時在終端機按 Ctrl+C。
+可用 `python run_app.py --check` 只檢查環境，或 `python run_app.py --port 8502` 更換連接埠。
+
+若使用系統舊版 Streamlit，可能在載入時出現 `Descriptors cannot be created directly`
+（Streamlit／protobuf 不相容）。請改用上述啟動器；不用在系統環境降版 protobuf。
+Codespaces 也使用同一個專用環境；更新設定後執行 Rebuild Container，於 Ports 開啟 8501。
+Streamlit Cloud 的入口仍為 `app.py`，平台需從根目錄的 `requirements.txt` 安裝相依套件。
 
 網頁選單：完整掃描、單股診斷、規則策略回測、歷史追蹤績效、大盤診斷。
 歷史追蹤頁直接讀取 `line_push_log.txt` 與 `long_term_watchlist.json`，可篩選目前監控、
@@ -29,7 +38,13 @@ GitHub Actions 僅執行終端機掃描，不會啟動網頁。
 - 單股診斷沿用 BUY／SELL 同步訊號監控清單的行為，會寫入本機 JSON，
   不送出券商訂單，也不發送 LINE。既有加入日期及參考成本會保留，更新觀察高點。
   完整掃描頁只顯示結果，不新增或移除清單。
-- 每次執行分析重新讀取大盤，不沿用其他頁面的短期歷史資料。
+- 行情／規則／TD/RL 與 AI 診斷結果暫存最多 5 分鐘，基本面最多 1 小時。
+  行情快取依股票清單、起始日期與大盤區分，不混用其他頁面的短期資料；
+  監控清單不快取，每次重新讀取。可按側欄「清除分析快取」後再次診斷。
+- 單股診斷顯示行情與 TD/RL、AI 模型、基本面三個階段。
+  TD/RL 預先計算歷史狀態與 reward，保留原本 epochs 與更新順序。
+  同機 800 筆固定合成資料測量約由 11.29 秒降至 0.53 秒，輸出一致；
+  此數字僅涵蓋 TD/RL 計算，不代表整個網頁或實際行情下載時間。
 
 成本、可選參考價風控、LINE Secrets 與歷史證據見 [PERFORMANCE_REVIEW.md](PERFORMANCE_REVIEW.md)。
 這些修正尚未證實能提高未來報酬。
