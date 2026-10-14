@@ -88,6 +88,24 @@ class PerformanceTests(unittest.TestCase):
         engine.fit_predict(data)
         self.assertEqual(sum(engine.v_visits.values()), 3)
 
+    def test_precomputed_rl_matches_preoptimization_reference(self):
+        rng = np.random.RandomState(71)
+        n = 800
+        data = pd.DataFrame({
+            'Close': 100 * np.exp(np.cumsum(rng.normal(.001, .02, n))),
+            'Score': rng.randint(0, 101, n), 'MA20': 100.,
+            'MACD': rng.normal(0, 1, n), 'Signal': rng.normal(0, 1, n),
+            'Market_OK': rng.choice([True, False], n),
+            'Top_Divergence': rng.choice([True, False], n),
+        })
+        # Captured from main before optimizing; freezes observable decisions.
+        expected = {'available': True, 'td_expected_pct': 3.18, 'td_support': 31,
+                    'flat_action': 'BUY', 'held_action': 'HOLD',
+                    'flat_confidence': 82.2, 'held_confidence': 88.7,
+                    'q_buy_flat': 3.634, 'q_hold_flat': 2.417,
+                    'q_sell_held': 2.042, 'q_hold_held': 3.714}
+        self.assertEqual(TDRLDecisionEngine().fit_predict(data), expected)
+
     def test_immature_labels_and_purged_validation(self):
         rng = np.random.RandomState(8)
         close = 100 * np.exp(np.cumsum(rng.normal(.002, .015, 400)))
