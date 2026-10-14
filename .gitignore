@@ -1,3 +1,8 @@
 __pycache__/
 *.py[cod]
 .venv-app/
+diagnostics/**/*_prices.csv
+diagnostics/**/*_chips.json
+diagnostics/**/*_adjusted_frame.pkl
+diagnostics/**/baseline_core.py
+diagnostics/**/test_results.txt

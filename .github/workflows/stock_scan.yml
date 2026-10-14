@@ -6,6 +6,10 @@ on:
     - cron: '0 11 * * 1-5'  
   workflow_dispatch: 
 
+concurrency:
+  group: stock-strategy-daily-scan
+  cancel-in-progress: false
+
 jobs:
   daily_scan:
     runs-on: ubuntu-latest
@@ -52,6 +56,7 @@ jobs:
         # 把變更的檔案加入暫存區
         git add long_term_watchlist.json
         git add line_push_log.txt
+        git add entry_signal_state.json
         
         # 檢查是否有檔案真的被修改
         if git diff --staged --quiet; then
