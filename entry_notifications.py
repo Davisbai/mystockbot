@@ -2,6 +2,8 @@
 import copy
 import json
 from pathlib import Path
+from app_support import source_digest
+RUNTIME_SOURCE_SHA256 = source_digest(__file__)
 
 
 def load_entry_candidates(path='entry_watchlist.json'):

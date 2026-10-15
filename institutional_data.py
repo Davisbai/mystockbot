@@ -1,6 +1,8 @@
 """Parse FinMind daily institutional flows without treating missing data as zero."""
 import numpy as np
 import pandas as pd
+from app_support import source_digest
+RUNTIME_SOURCE_SHA256 = source_digest(__file__)
 
 
 ALIASES = {

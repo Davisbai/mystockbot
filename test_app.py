@@ -101,7 +101,7 @@ class StreamlitTests(unittest.TestCase):
         return stale
 
     def test_warm_deployment_reloads_cached_old_support_and_can_diagnose(self):
-        for version in (None, 1):
+        for version in (None, 1, 2):
             with self.subTest(version=version):
                 stale = self.stale_support()
                 if version is not None:
@@ -123,6 +123,31 @@ class StreamlitTests(unittest.TestCase):
             app.text_input[0].set_value('1312').run()
             self.assertEqual(len(app.exception), 0)
             reload_module.assert_not_called()
+
+    def test_core_loading_failure_stops_before_any_diagnosis(self):
+        with patch('app_support.load_current_core', side_effect=ImportError('incompatible core')):
+            app = AppTest.from_file(str(ROOT / 'app.py'), default_timeout=30).run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(any('已停止分析' in item.value for item in app.error))
+        self.assertEqual(len(app.sidebar.radio), 0)
+
+    def test_runtime_change_invalidates_snapshot_and_calculation_cache(self):
+        import STOCK_GOD
+        from app_support import runtime_fingerprint
+        revision = runtime_fingerprint()
+        app = self.app('2. 🔎 單股深度診斷')
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=self.fake_analysis) as analysis, \
+                patch('STOCK_GOD.load_watchlist', return_value={}), \
+                patch('STOCK_GOD.save_watchlist'), \
+                patch('app_support.load_current_core', return_value=(STOCK_GOD, revision)) as runtime:
+            app.button[0].click().run()
+            self.assert_diagnosis_ok(app)
+            runtime.return_value = STOCK_GOD, 'changed-dependency-revision'
+            app.run()
+            self.assertFalse(any('最終系統判定' in item.value for item in app.markdown))
+            app.button[0].click().run()
+            self.assert_diagnosis_ok(app)
+            self.assertEqual(analysis.call_count, 2)
 
     def test_incomplete_deployment_reports_reboot_without_uncaught_importerror(self):
         stale = self.stale_support()
