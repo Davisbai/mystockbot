@@ -19,7 +19,11 @@ from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_M
 from institutional_data import parse_institutional_flows
 from market_clock import daily_bar_closed
 from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
+from app_support import runtime_fingerprint
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score
+
+CORE_API_VERSION = 1
+CORE_RUNTIME_FINGERPRINT = runtime_fingerprint()
 
 # 引入 rich 套件以支援終端機 UI
 from rich.console import Console

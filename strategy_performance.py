@@ -1,6 +1,8 @@
 """Daily, long-only research backtest; close signals execute next session open."""
 import numpy as np
 import pandas as pd
+from app_support import source_digest
+RUNTIME_SOURCE_SHA256 = source_digest(__file__)
 
 
 def watchlist_risk(price, cost, peak, stop_loss=0.08, trailing=0.12, activation=0.15):

@@ -1,6 +1,8 @@
 """Conservative daily-bar completion checks for displayed entry signals."""
 import datetime
 import pytz
+from app_support import source_digest
+RUNTIME_SOURCE_SHA256 = source_digest(__file__)
 
 
 def daily_bar_closed(ticker, bar_date, now=None):

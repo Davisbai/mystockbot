@@ -3,6 +3,7 @@ st.set_page_config(page_title="台股獵手 v2.1 - TD/RL 專業版", page_icon="
 
 import importlib
 import logging
+import hashlib
 import pandas as pd
 import numpy as np
 import datetime
@@ -13,32 +14,32 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from strategy_config import TRAINING_START_DATE, MODEL_VERSION
-from entry_notifications import load_entry_candidates, entry_notice
 try:
     import app_support
     support_exports = ('performance_rows', 'observed_holding', 'sync_watchlist',
-                       'tracking_report', 'normalize_decision')
+                       'tracking_report', 'normalize_decision', 'load_current_core')
+    support_source = hashlib.sha256(Path(__file__).resolve().with_name('app_support.py').read_bytes()).hexdigest()
     # Streamlit may rerun the new entrypoint while sibling modules remain in
     # sys.modules from before deployment. Reload only an incompatible helper.
-    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 1 or
+    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 2 or
+            getattr(app_support, 'APP_SUPPORT_SOURCE_SHA256', None) != support_source or
             any(not callable(getattr(app_support, name, None)) for name in support_exports)):
         importlib.invalidate_caches()
         app_support = importlib.reload(app_support)
-    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 1 or
+    if (getattr(app_support, 'APP_SUPPORT_API_VERSION', None) != 2 or
+            getattr(app_support, 'APP_SUPPORT_SOURCE_SHA256', None) != support_source or
             any(not callable(getattr(app_support, name, None)) for name in support_exports)):
         raise ImportError('app_support API is incomplete after reload')
-    from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision
+    from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision, load_current_core
 except (ImportError, SyntaxError, OSError):
     logging.exception('Unable to load the app_support interface')
     st.error("啟動所需的 app_support.py 版本不完整或無法載入。請整套更新 repository，並在 Streamlit Cloud 的 Manage app 選擇 Reboot app；若仍失敗，請查看服務日誌。")
     st.stop()
 
-APP_CACHE_REVISION = 'app-import-recovery-20261015-v2'
-
 yf.set_tz_cache_location(str(Path(tempfile.gettempdir()) / "py-yfinance"))
 # ⚠️ 確保 STOCK_GOD.py 在同目錄下
 try:
+    core, CORE_RUNTIME_FINGERPRINT = load_current_core()
     from STOCK_GOD import (
         TaiwanStockTradingSystem,
         AdvancedQuantEngine,
@@ -49,9 +50,15 @@ try:
         TDRLDecisionEngine,
         resolve_td_rl_strategy as core_resolve_td_rl_strategy,
     )
-except ImportError as exc:
-    st.error(f"❌ 核心模組載入失敗：{exc}，請安裝 requirements.txt 並確認 STOCK_GOD.py 位於同目錄。")
+    # Bind these only after dependency refresh, so the UI and core use the same inputs.
+    from strategy_config import TRAINING_START_DATE, MODEL_VERSION
+    from entry_notifications import load_entry_candidates, entry_notice
+except (ImportError, SyntaxError, OSError):
+    logging.exception('Unable to load a matching STOCK_GOD runtime')
+    st.error("核心 STOCK_GOD.py 與相依檔案版本不一致或無法載入，已停止分析。請整套更新 repository 並 Reboot app；詳細原因請查看服務日誌。")
     st.stop()
+
+APP_CACHE_REVISION = 'core-runtime-sync-v3-' + CORE_RUNTIME_FINGERPRINT
 
 # ==========================================
 # 🎨 網頁基本設定與 CSS 樣式
@@ -261,6 +268,7 @@ def is_frontend_watchlist_candidate(alert, ticker):
 # ==========================================
 st.sidebar.title("🎯 台股獵手 v2.1 TD/RL")
 st.sidebar.caption(f"模型 {MODEL_VERSION}｜TD/RL 訓練起日 {TRAINING_START_DATE}")
+st.sidebar.caption(f"核心執行版本 {CORE_RUNTIME_FINGERPRINT[:12]}")
 st.sidebar.markdown("---")
 
 if st.sidebar.button("清除分析快取"):

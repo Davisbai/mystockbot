@@ -1,7 +1,61 @@
 """Shared, testable view transformations; no Streamlit or external requests."""
 import math
+import hashlib
+import importlib
+from pathlib import Path
+from threading import RLock
 
-APP_SUPPORT_API_VERSION = 1
+APP_SUPPORT_API_VERSION = 2
+APP_SUPPORT_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+CORE_API_VERSION = 1
+_RUNTIME_LOCK = RLock()
+_CORE_DEPENDENCIES = ('strategy_config', 'strategy_performance', 'institutional_data',
+                      'market_clock', 'entry_notifications')
+
+
+def source_digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _dependencies_match_sources():
+    root = Path(__file__).resolve().parent
+    return all(getattr(importlib.import_module(name), 'RUNTIME_SOURCE_SHA256', None)
+               == source_digest(root / f'{name}.py') for name in _CORE_DEPENDENCIES)
+
+
+def runtime_fingerprint():
+    """Version the complete local computation graph, independent of model labels."""
+    root = Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for name in (*_CORE_DEPENDENCIES, 'app_support', 'STOCK_GOD'):
+        digest.update(name.encode('utf-8') + b'\0')
+        digest.update((root / f'{name}.py').read_bytes() + b'\0')
+    return digest.hexdigest()
+
+
+def load_current_core():
+    """Refresh dependencies and core once on deployment; reuse normal reruns."""
+    with _RUNTIME_LOCK:
+        expected = runtime_fingerprint()
+        core = importlib.import_module('STOCK_GOD')
+        if (getattr(core, 'CORE_API_VERSION', None) != CORE_API_VERSION or
+                getattr(core, 'CORE_RUNTIME_FINGERPRINT', None) != expected or
+                not _dependencies_match_sources()):
+            importlib.invalidate_caches()
+            for name in _CORE_DEPENDENCIES:
+                importlib.reload(importlib.import_module(name))
+            core = importlib.reload(core)
+        if (getattr(core, 'CORE_API_VERSION', None) != CORE_API_VERSION or
+                getattr(core, 'CORE_RUNTIME_FINGERPRINT', None) != expected or
+                not _dependencies_match_sources()):
+            raise ImportError('Core runtime version does not match local sources')
+        if Path(core.__file__).resolve() != Path(__file__).resolve().with_name('STOCK_GOD.py'):
+            raise ImportError('Core runtime loaded from an unexpected location')
+        required = ('TaiwanStockTradingSystem', 'AdvancedQuantEngine', 'YahooMarketScanner',
+                    'load_watchlist', 'save_watchlist', 'TDRLDecisionEngine', 'resolve_td_rl_strategy')
+        if any(not callable(getattr(core, name, None)) for name in required):
+            raise ImportError('Core runtime exports are incomplete')
+        return core, expected
 
 
 def normalize_decision(result, alert, is_held=False):
