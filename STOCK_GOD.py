@@ -19,7 +19,8 @@ from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_M
 from institutional_data import parse_institutional_flows
 from market_clock import daily_bar_closed
 from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
-from app_support import runtime_fingerprint
+from app_support import runtime_fingerprint, observed_holding
+from daily_signal_reports import build_daily_report, load_daily_report, save_daily_report, format_daily_report, mark_report_delivery
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score
 
 CORE_API_VERSION = 1
@@ -1257,6 +1258,26 @@ def run_full_scan_gui(scanner):
     # 🌟 第一段 LINE 訊息陣列 (只放今日交易提示)
     line_message_1 = [f"📊 Davis，今日台股策略掃描已完成\n時間: {now_str}\n"]
 
+    # Classify before entries/exits mutate the monitoring list. This also keeps
+    # exits that would otherwise disappear from the post-scan holdings message.
+    for stock, alert in alerts.items():
+        if stock in watchlist:
+            watchlist[stock] = observed_holding(watchlist[stock], alert)
+            watchlist_updated = True
+    daily_decisions = {
+        stock: resolve_td_rl_strategy(alert, is_held=stock in watchlist, holding=watchlist.get(stock))
+        for stock, alert in alerts.items()
+    }
+    report_date = now_str[:10]
+    daily_report = build_daily_report(
+        alerts, COMBINED_MAP, watchlist, daily_decisions,
+        previous=load_daily_report(report_date),
+        now=datetime.datetime.fromisoformat(now_str).replace(tzinfo=tw_tz))
+    save_daily_report(daily_report)
+    report_needs_delivery = daily_report['delivery']['status'] != 'sent'
+    if report_needs_delivery:
+        line_message_1.append(format_daily_report(daily_report))
+
     # 🚨 【策略一】股災雷達：大跌時佈局寬基 ETF
     try:
         mkt_close = system.market_data['Close'].iloc[-1]
@@ -1298,15 +1319,7 @@ def run_full_scan_gui(scanner):
     for stock, alert in alerts.items():
         stock_name = COMBINED_MAP.get(stock, "")
         is_in_watchlist = stock in watchlist
-        if is_in_watchlist:
-            record = watchlist[stock]
-            record['觀察最高價'] = max(float(record.get('觀察最高價', record['加入價格'])), float(alert['收盤價']))
-            watchlist_updated = True
         
-        # 🌟 漲幅過濾：若非庫存且漲幅 < 3%，則不顯示 (保持清爽)
-        if stock in DYNAMIC_MAP and not is_in_watchlist and alert.get('今日漲幅', 0) < 3.0:
-            continue
-
         tag = "[熱門]" if stock in DYNAMIC_MAP else "[固定]"
         
         # 🌟 指標標籤
@@ -1349,7 +1362,7 @@ def run_full_scan_gui(scanner):
         # ==========================================
         # 🧠 TD / Q-Learning 最終策略仲裁
         # ==========================================
-        rl_decision, rl_reason, rl_meta = resolve_td_rl_strategy(alert, is_held=is_in_watchlist, holding=watchlist.get(stock))
+        rl_decision, rl_reason, rl_meta = daily_decisions[stock]
         rl_confidence = float(rl_meta.get("confidence", 50.0))
         td_expected = float(alert.get("TD期待值", 0.0) or 0.0)
         rl_policy = alert.get("RL持有策略" if is_in_watchlist else "RL空手策略", "HOLD")
@@ -1512,7 +1525,10 @@ def run_full_scan_gui(scanner):
     # 🚀 推播第一段：交易提示
     if len(line_message_1) > 2:
         print("\n[系統] 準備發送第一段 LINE 推播 (今日交易提示)...")
-        deliver_entry_report("\n".join(line_message_1), signal_state, pending_notices, send_line_message)
+        delivered = deliver_entry_report("\n".join(line_message_1), signal_state, pending_notices,
+                                         send_line_message, saver=save_signal_state)
+        if report_needs_delivery:
+            mark_report_delivery(daily_report, delivered)
         time.sleep(1.5)
     else:
         print("\n[系統] 今日無符合條件的熱門股提示。")

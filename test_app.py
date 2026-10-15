@@ -2,6 +2,7 @@ import copy
 import json
 import math
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -247,6 +248,40 @@ class StreamlitTests(unittest.TestCase):
             app.button[0].click().run()
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any('大盤資料不足' in item.value for item in app.warning))
+
+    def test_daily_list_page_reads_archives_and_filters_without_network_or_writes(self):
+        import datetime
+        import daily_signal_reports as reports
+        now = datetime.datetime(2026, 10, 15, 19, tzinfo=reports.TAIPEI)
+        alert = {'日期': '2026-10-15', '收盤價': 110., '今日評分': 80, '日線已收盤': True}
+        with tempfile.TemporaryDirectory() as directory:
+            report = reports.build_daily_report(
+                {'2330.TW': alert}, {'2330.TW': '台積電'}, {},
+                {'2330.TW': ('BUY', 'entry reason', {'raw_action': 'BUY'})}, now=now)
+            archive = reports.save_daily_report(report, directory)
+            before = archive.read_bytes()
+            with patch.object(reports, 'REPORT_DIRECTORY', Path(directory)), \
+                    patch('STOCK_GOD.yf.download', side_effect=AssertionError('unexpected network request')), \
+                    patch('STOCK_GOD.save_watchlist', side_effect=AssertionError('unexpected write')):
+                app = self.app('6. 📋 每日訊號清單')
+                self.assertEqual(len(app.exception), 0)
+                self.assertEqual(app.selectbox[0].value, '2026-10-15')
+                self.assertEqual(app.dataframe[0].value.iloc[0]['類別'], '當日買入')
+                next(r for r in app.radio if r.label == '清單類別').set_value('當日賣出').run()
+                self.assertEqual(len(app.dataframe), 0)
+                self.assertTrue(any('本類無股票' in item.value for item in app.info))
+                self.assertEqual(archive.read_bytes(), before)
+
+    def test_daily_list_page_handles_missing_and_corrupt_archives(self):
+        import daily_signal_reports as reports
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(reports, 'REPORT_DIRECTORY', Path(directory)):
+            app = self.app('6. 📋 每日訊號清單')
+            self.assertTrue(any('尚無每日清單' in item.value for item in app.info))
+            (Path(directory) / '2026-10-15.json').write_text('{}', encoding='utf-8')
+            app.run()
+            self.assertEqual(len(app.exception), 0)
+            self.assertTrue(any('無法讀取每日清單' in item.value for item in app.error))
 
     def test_analysis_failure_is_reported_without_page_crash(self):
         app = self.app('3. 📈 策略回測')
