@@ -10,7 +10,7 @@ APP_SUPPORT_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdiges
 CORE_API_VERSION = 1
 _RUNTIME_LOCK = RLock()
 _CORE_DEPENDENCIES = ('strategy_config', 'strategy_performance', 'institutional_data',
-                      'market_clock', 'entry_notifications')
+                      'market_clock', 'entry_notifications', 'daily_signal_reports')
 
 
 def source_digest(path):

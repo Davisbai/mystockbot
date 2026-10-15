@@ -10,6 +10,9 @@ concurrency:
   group: stock-strategy-daily-scan
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   daily_scan:
     runs-on: ubuntu-latest
@@ -57,6 +60,9 @@ jobs:
         git add long_term_watchlist.json
         git add line_push_log.txt
         git add entry_signal_state.json
+        if [ -d daily_reports ]; then
+          git add -- daily_reports/
+        fi
         
         # 檢查是否有檔案真的被修改
         if git diff --staged --quiet; then

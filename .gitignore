@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .venv-app/
+daily_reports/*.tmp
 diagnostics/**/*_prices.csv
 diagnostics/**/*_chips.json
 diagnostics/**/*_adjusted_frame.pkl

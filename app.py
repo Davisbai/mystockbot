@@ -53,6 +53,7 @@ try:
     # Bind these only after dependency refresh, so the UI and core use the same inputs.
     from strategy_config import TRAINING_START_DATE, MODEL_VERSION
     from entry_notifications import load_entry_candidates, entry_notice
+    from daily_signal_reports import CATEGORIES, list_report_dates, load_daily_report
 except (ImportError, SyntaxError, OSError):
     logging.exception('Unable to load a matching STOCK_GOD runtime')
     st.error("核心 STOCK_GOD.py 與相依檔案版本不一致或無法載入，已停止分析。請整套更新 repository 並 Reboot app；詳細原因請查看服務日誌。")
@@ -285,7 +286,8 @@ menu = st.sidebar.radio(
         "2. 🔎 單股深度診斷",
         "3. 📈 策略回測",
         "4. 🗂️ 歷史追蹤績效",
-        "5. 📊 檢查大盤現況"
+        "5. 📊 檢查大盤現況",
+        "6. 📋 每日訊號清單"
     ),
     index=1
 )
@@ -828,3 +830,58 @@ elif menu == "5. 📊 檢查大盤現況":
                     
             except Exception as e:
                 st.error(f"無法獲取大盤數據: {e}")
+
+elif menu == "6. 📋 每日訊號清單":
+    st.header("📋 每日訊號清單")
+    st.caption("讀取盤後掃描存檔，不下載行情、不重跑模型、不發送推播。買入／賣出為系統訊號，並非券商成交。")
+    dates = list_report_dates()
+    if not dates:
+        st.info("尚無每日清單。每日盤後完整掃描會自動存檔；目前排程為週一至週五台北時間 19:00。")
+    else:
+        selected_date = st.selectbox("清單日期", dates)
+        try:
+            report = load_daily_report(selected_date)
+            if report is None:
+                st.info("清單檔案已移動，請重新整理頁面。")
+                st.stop()
+            status = {'pending': '待傳送', 'sent': '已送出', 'failed': '傳送失敗（同日重跑可重試）'}
+            st.write(f"產生時間：{report['generated_at']}｜行情日期：{report['market_date'] or '無可用資料'}")
+            st.caption(f"LINE 狀態：{status.get(report['delivery']['status'], '未記錄')}｜價格基準：{report['price_basis']}")
+            metrics = st.columns(4)
+            for column, (key, label) in zip(metrics, CATEGORIES.items()):
+                column.metric(label, len(report[key]))
+            st.caption("當日買入／賣出會保留同日先前掃描的訊號；同一股票若當日先買後賣，可同時列在兩類。關注與續抱顯示最新掃描狀態。")
+            scope = st.radio("清單類別", ['全部', *CATEGORIES.values()], horizontal=True)
+            download_rows = []
+            for key, label in CATEGORIES.items():
+                rows = [{
+                    '類別': label, '代碼': row['ticker'], '名稱': row['name'],
+                    '資料日期': row['data_date'], '收盤參考價': row['close'],
+                    '狀態': row.get('status', row['action']), '模型原判': row['raw_action'],
+                    '最終策略': row['action'], '判斷理由': row['reason'],
+                    '訊號首次記錄': row.get('signal_recorded_at'),
+                    '參考加入日期': row.get('entry_date'), '原參考成本': row.get('reference_cost'),
+                    '參考報酬 (%)': row.get('reference_return_pct'),
+                    '評分': row['score'], 'TD期待 (%)': row['td_expected_pct'],
+                    '籌碼狀態': row['chip_status'], '狀態樣本': row['state_support'],
+                    '樣本類型': row['support_kind'], '模型版本': row['model_version'],
+                    '風控觸發': '、'.join(row['risk_reasons']),
+                } for row in report[key]]
+                download_rows.extend(rows)
+                if scope in ('全部', label):
+                    st.subheader(label)
+                    if rows:
+                        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                    else:
+                        st.info("本類無股票。")
+            if report['unavailable']:
+                st.warning("部分股票的行情缺失、日期落後或尚未收盤，未將其列為本次確認的買入／賣出或續抱。")
+                st.dataframe(pd.DataFrame(report['unavailable'])[['ticker', 'name', 'reason']].rename(
+                    columns={'ticker': '代碼', 'name': '名稱', 'reason': '待確認原因'}),
+                    use_container_width=True, hide_index=True)
+            st.download_button("下載清單 JSON", json.dumps(report, ensure_ascii=False, indent=2),
+                               file_name=f'daily_signals_{selected_date}.json', mime='application/json')
+            st.download_button("下載清單 CSV", pd.DataFrame(download_rows).to_csv(index=False).encode('utf-8-sig'),
+                               file_name=f'daily_signals_{selected_date}.csv', mime='text/csv')
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            st.error(f"無法讀取每日清單：{exc}")
