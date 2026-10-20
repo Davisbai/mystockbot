@@ -17,7 +17,7 @@ from pathlib import Path
 try:
     import app_support
     support_exports = ('performance_rows', 'observed_holding', 'sync_watchlist',
-                       'tracking_report', 'normalize_decision', 'load_current_core')
+                       'tracking_report', 'normalize_decision', 'load_current_core', 'backtest_history_view')
     support_source = hashlib.sha256(Path(__file__).resolve().with_name('app_support.py').read_bytes()).hexdigest()
     # Streamlit may rerun the new entrypoint while sibling modules remain in
     # sys.modules from before deployment. Reload only an incompatible helper.
@@ -30,7 +30,7 @@ try:
             getattr(app_support, 'APP_SUPPORT_SOURCE_SHA256', None) != support_source or
             any(not callable(getattr(app_support, name, None)) for name in support_exports)):
         raise ImportError('app_support API is incomplete after reload')
-    from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision, load_current_core
+    from app_support import performance_rows, observed_holding, sync_watchlist, tracking_report, normalize_decision, load_current_core, backtest_history_view
 except (ImportError, SyntaxError, OSError):
     logging.exception('Unable to load the app_support interface')
     st.error("啟動所需的 app_support.py 版本不完整或無法載入。請整套更新 repository，並在 Streamlit Cloud 的 Manage app 選擇 Reboot app；若仍失敗，請查看服務日誌。")
@@ -700,12 +700,18 @@ elif menu == "2. 🔎 單股深度診斷":
                     st.write("目前七法則短線濾網尚未形成完整共振。")
 
             with col_r:
-                st.markdown("### 📋 最近交易紀錄")
-                if stock_logs:
-                    for log in stock_logs[-5:]:
+                st.markdown("### 📋 規則回測交易紀錄（歷史模擬）")
+                history = backtest_history_view(stock_logs, alert['日期'])
+                st.caption(f"行情截止日：{history['data_date']}｜最後規則交易日：{history['latest_trade_date'] or '無交易'}。以下為規則回測，與今日 TD/RL 訊號及券商成交分開解讀。")
+                show_history = st.checkbox("顯示全部期間的最後 5 筆回測交易", key='show_full_rule_history')
+                visible_logs = history['historical'] if show_history else history['recent']
+                if visible_logs:
+                    st.caption("整段回測最後 5 筆" if show_history else "近 90 日內最後 5 筆回測交易")
+                    for log in visible_logs:
                         st.text(f"• {log}")
                 else:
-                    st.write("今日無特別系統紀錄。")
+                    st.info("本次回測沒有交易紀錄。" if show_history else "近 90 日沒有規則回測交易，可勾選查看較早的歷史模擬紀錄。")
+                st.caption("當日關注／買入／續抱／賣出，請至選單 6「每日訊號清單」查閱已存檔訊號。")
 
         except Exception as e:
             st.error(f"執行分析時發生錯誤: {e}")

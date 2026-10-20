@@ -1,0 +1,91 @@
+{
+  "ticker": "6561.TWO",
+  "latest_data_date": "2026-10-20",
+  "latest_close": 313.5,
+  "chip_status": "available",
+  "summary": {
+    "總交易天數": 235,
+    "完成交易筆數": 26,
+    "勝率 (%)": 42.31,
+    "策略累積報酬 (%)": 6.65,
+    "最大回撤 (%)": -24.34,
+    "未平倉": false,
+    "待執行部位": 0
+  },
+  "last_rule_trades": [
+    "2024-10-30 | 🔴 賣出 | 開盤成交假設: 431.55 | 前日觸發評分: 0",
+    "2024-11-05 | 🟢 買進 | 開盤成交假設: 449.28 | 前日觸發評分: 80",
+    "2024-11-07 | 🔴 賣出 | 開盤成交假設: 491.74 | 前日觸發評分: 105",
+    "2024-11-11 | 🟢 買進 | 開盤成交假設: 488.00 | 前日觸發評分: 80",
+    "2024-11-22 | 🔴 賣出 | 開盤成交假設: 470.27 | 前日觸發評分: 15"
+  ],
+  "rule_trade_actions": 52,
+  "market_data_end": "2026-10-20",
+  "price_data_start": "2023-01-03",
+  "by_year": {
+    "2023": {
+      "rows": 239,
+      "score_at_least_60": 63,
+      "candidates_blocked_by_sell": 0,
+      "trade_actions": 21,
+      "Market_OK": 141,
+      "Buy_Signal": 63,
+      "Sell_Signal": 52,
+      "MACD_Death_Cross": 10,
+      "MA20_Broken": 43,
+      "Top_Divergence": 0,
+      "Resistance_Rejection": 0,
+      "Limit_Up_Support_Broken": 0,
+      "False_Breakout_Risk": 0,
+      "Overextended_MA5": 0
+    },
+    "2024": {
+      "rows": 242,
+      "score_at_least_60": 76,
+      "candidates_blocked_by_sell": 15,
+      "trade_actions": 31,
+      "Market_OK": 170,
+      "Buy_Signal": 61,
+      "Sell_Signal": 80,
+      "MACD_Death_Cross": 6,
+      "MA20_Broken": 56,
+      "Top_Divergence": 2,
+      "Resistance_Rejection": 5,
+      "Limit_Up_Support_Broken": 14,
+      "False_Breakout_Risk": 8,
+      "Overextended_MA5": 3
+    },
+    "2025": {
+      "rows": 242,
+      "score_at_least_60": 66,
+      "candidates_blocked_by_sell": 66,
+      "trade_actions": 0,
+      "Market_OK": 170,
+      "Buy_Signal": 0,
+      "Sell_Signal": 242,
+      "MACD_Death_Cross": 7,
+      "MA20_Broken": 98,
+      "Top_Divergence": 0,
+      "Resistance_Rejection": 2,
+      "Limit_Up_Support_Broken": 242,
+      "False_Breakout_Risk": 0,
+      "Overextended_MA5": 0
+    },
+    "2026": {
+      "rows": 192,
+      "score_at_least_60": 55,
+      "candidates_blocked_by_sell": 55,
+      "trade_actions": 0,
+      "Market_OK": 143,
+      "Buy_Signal": 0,
+      "Sell_Signal": 192,
+      "MACD_Death_Cross": 10,
+      "MA20_Broken": 52,
+      "Top_Divergence": 0,
+      "Resistance_Rejection": 0,
+      "Limit_Up_Support_Broken": 192,
+      "False_Breakout_Risk": 0,
+      "Overextended_MA5": 0
+    }
+  }
+}
