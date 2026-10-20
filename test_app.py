@@ -13,25 +13,12 @@ import pandas as pd
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 from STOCK_GOD import TaiwanStockTradingSystem
-from app_support import observed_holding, performance_rows, sync_watchlist, tracking_report, normalize_decision, backtest_history_view
+from app_support import observed_holding, performance_rows, sync_watchlist, tracking_report, normalize_decision
 
 ROOT = Path(__file__).resolve().parent
 
 
 class AppSupportTests(unittest.TestCase):
-    def test_old_rule_actions_are_not_mislabelled_as_recent_quotes(self):
-        logs = ['2024-11-22 | SELL', '2024-10-30 | BUY', 'not a dated trade']
-        view = backtest_history_view(logs, '2026-10-20')
-        self.assertEqual(view['recent'], [])
-        self.assertEqual(view['latest_trade_date'], '2024-11-22')
-        self.assertEqual(view['historical'], ['2024-10-30 | BUY', '2024-11-22 | SELL'])
-        self.assertEqual(backtest_history_view([], '2026-10-20')['latest_trade_date'], None)
-
-    def test_recent_rule_actions_use_the_analyzed_data_date(self):
-        view = backtest_history_view(['2026-10-20 | SELL', '2026-10-01 | BUY',
-                                      '2026-11-01 | future', '2024-11-22 | old'], '2026-10-20')
-        self.assertEqual(view['recent'], ['2026-10-01 | BUY', '2026-10-20 | SELL'])
-
     def test_legacy_metadata_is_unknown_and_cannot_confirm_new_buy(self):
         action, reason, meta = normalize_decision(('BUY', 'old reason', {'confidence': 61}), {'RL可用': True, 'RL空手策略': 'BUY'})
         self.assertEqual(action, 'WATCH')
@@ -261,24 +248,6 @@ class StreamlitTests(unittest.TestCase):
             app.button[0].click().run()
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(any('大盤資料不足' in item.value for item in app.warning))
-
-    def test_old_backtest_actions_are_explicit_and_can_be_viewed_without_retraining(self):
-        app = self.app('2. 🔎 單股深度診斷')
-        def analysis(system):
-            summary, alerts, logs = self.fake_analysis(system)
-            logs['2330.TW'] = ['2024-11-22 | historical simulated SELL']
-            return summary, alerts, logs
-        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True, side_effect=analysis) as computed, \
-                patch('STOCK_GOD.load_watchlist', return_value={}), patch('STOCK_GOD.save_watchlist'):
-            app.button[0].click().run()
-            self.assert_diagnosis_ok(app)
-            self.assertTrue(any('近 90 日沒有規則回測交易' in item.value for item in app.info))
-            self.assertTrue(any('行情截止日：2026-10-02｜最後規則交易日：2024-11-22' in item.value for item in app.caption))
-            self.assertFalse(any('historical simulated SELL' in item.value for item in app.text))
-            app.checkbox(key='show_full_rule_history').check().run()
-            self.assert_diagnosis_ok(app)
-            self.assertTrue(any('historical simulated SELL' in item.value for item in app.text))
-            self.assertEqual(computed.call_count, 1)
 
     def test_daily_list_page_reads_archives_and_filters_without_network_or_writes(self):
         import datetime

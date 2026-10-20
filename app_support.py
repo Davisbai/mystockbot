@@ -4,7 +4,6 @@ import hashlib
 import importlib
 from pathlib import Path
 from threading import RLock
-from datetime import date, timedelta
 
 APP_SUPPORT_API_VERSION = 2
 APP_SUPPORT_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
@@ -135,24 +134,3 @@ def tracking_report(log_text, watchlist):
     # be loaded; the history page reports its own import/read errors.
     from analyze_push_history import analyze
     return analyze(log_text, watchlist)
-
-
-def backtest_history_view(logs, data_date, days=90):
-    """Separate simulated historical actions from the current quote/signal date."""
-    end = date.fromisoformat(data_date)
-    cutoff = end - timedelta(days=days)
-    dated = []
-    for log in logs:
-        try:
-            stamp = date.fromisoformat(str(log)[:10])
-        except ValueError:
-            continue
-        if stamp <= end:
-            dated.append((stamp, str(log)))
-    dated.sort(key=lambda item: item[0])
-    return {
-        'cutoff': cutoff.isoformat(), 'data_date': end.isoformat(),
-        'latest_trade_date': dated[-1][0].isoformat() if dated else None,
-        'recent': [log for stamp, log in dated if stamp >= cutoff][-5:],
-        'historical': [log for _, log in dated][-5:],
-    }
