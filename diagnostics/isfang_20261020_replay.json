@@ -1,0 +1,154 @@
+{
+  "ticker": "6561.TWO",
+  "inputs_sha256": "cbda67ac8d3f621c0a9c177f61242874b948673b8a7335ba11710dfa3240f546",
+  "price_basis": "Yahoo adjusted OHLC; same inputs for both versions",
+  "before": {
+    "latest_data_date": "2026-10-20",
+    "last_rule_trade_date": "2024-11-22",
+    "latest_support": 466.542542655513,
+    "summary": {
+      "總交易天數": 235,
+      "完成交易筆數": 26,
+      "勝率 (%)": 42.31,
+      "策略累積報酬 (%)": 6.65,
+      "最大回撤 (%)": -24.34,
+      "未平倉": false,
+      "待執行部位": 0
+    },
+    "by_year": {
+      "2023": {
+        "rows": 239,
+        "score_at_least_60": 63,
+        "candidates_blocked_by_sell": 0,
+        "trade_actions": 21,
+        "support_break_sell_days": 0
+      },
+      "2024": {
+        "rows": 242,
+        "score_at_least_60": 76,
+        "candidates_blocked_by_sell": 15,
+        "trade_actions": 31,
+        "support_break_sell_days": 14
+      },
+      "2025": {
+        "rows": 242,
+        "score_at_least_60": 66,
+        "candidates_blocked_by_sell": 66,
+        "trade_actions": 0,
+        "support_break_sell_days": 242
+      },
+      "2026": {
+        "rows": 192,
+        "score_at_least_60": 55,
+        "candidates_blocked_by_sell": 55,
+        "trade_actions": 0,
+        "support_break_sell_days": 192
+      }
+    },
+    "last_rule_trades": [
+      {
+        "date": "2024-10-30",
+        "action": "SELL",
+        "fill_price": 431.55
+      },
+      {
+        "date": "2024-11-05",
+        "action": "BUY",
+        "fill_price": 449.28
+      },
+      {
+        "date": "2024-11-07",
+        "action": "SELL",
+        "fill_price": 491.74
+      },
+      {
+        "date": "2024-11-11",
+        "action": "BUY",
+        "fill_price": 488.0
+      },
+      {
+        "date": "2024-11-22",
+        "action": "SELL",
+        "fill_price": 470.27
+      }
+    ],
+    "latest_support_source_date": "2024-11-06"
+  },
+  "after": {
+    "latest_data_date": "2026-10-20",
+    "last_rule_trade_date": "2026-10-14",
+    "latest_support": null,
+    "summary": {
+      "總交易天數": 411,
+      "完成交易筆數": 44,
+      "勝率 (%)": 29.55,
+      "策略累積報酬 (%)": -11.33,
+      "最大回撤 (%)": -31.16,
+      "未平倉": true,
+      "待執行部位": 1
+    },
+    "by_year": {
+      "2023": {
+        "rows": 239,
+        "score_at_least_60": 63,
+        "candidates_blocked_by_sell": 0,
+        "trade_actions": 21,
+        "support_break_sell_days": 0
+      },
+      "2024": {
+        "rows": 242,
+        "score_at_least_60": 76,
+        "candidates_blocked_by_sell": 15,
+        "trade_actions": 31,
+        "support_break_sell_days": 0
+      },
+      "2025": {
+        "rows": 242,
+        "score_at_least_60": 66,
+        "candidates_blocked_by_sell": 3,
+        "trade_actions": 17,
+        "support_break_sell_days": 0
+      },
+      "2026": {
+        "rows": 192,
+        "score_at_least_60": 55,
+        "candidates_blocked_by_sell": 0,
+        "trade_actions": 20,
+        "support_break_sell_days": 0
+      }
+    },
+    "last_rule_trades": [
+      {
+        "date": "2026-08-26",
+        "action": "BUY",
+        "fill_price": 322.0
+      },
+      {
+        "date": "2026-08-27",
+        "action": "SELL",
+        "fill_price": 320.0
+      },
+      {
+        "date": "2026-08-28",
+        "action": "BUY",
+        "fill_price": 321.0
+      },
+      {
+        "date": "2026-09-10",
+        "action": "SELL",
+        "fill_price": 317.0
+      },
+      {
+        "date": "2026-10-14",
+        "action": "BUY",
+        "fill_price": 310.0
+      }
+    ]
+  },
+  "training_start": "2023-01-01",
+  "execution_assumption": "close signal / next-session open hypothetical fill",
+  "buy_cost": 0.0008,
+  "sell_cost": 0.0038,
+  "support_window_sessions": 20,
+  "baseline_source_commit": "1010a11"
+}
