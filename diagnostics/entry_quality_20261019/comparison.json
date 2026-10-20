@@ -1,0 +1,2739 @@
+{
+  "as_of": "2026-10-19",
+  "cases": [
+    "6561.TWO",
+    "1312.TW",
+    "1326.TW"
+  ],
+  "controls": [
+    "2330.TW",
+    "2303.TW",
+    "2603.TW",
+    "2884.TW",
+    "2014.TW",
+    "1216.TW"
+  ],
+  "variants_declared_before_download": [
+    "baseline",
+    "cooldown_3",
+    "confirm_2",
+    "ma20_rising",
+    "evidence",
+    "evidence_confirm_2"
+  ],
+  "input_hashes": {
+    "6561.TWO": "336e2a3002304536eac3f54a36e8308fc21b746e4b6c7e77049585efe795c22b",
+    "1312.TW": "2a2c7ff7dfa77d30f0e146859bed1c691cb755e25fbc4e27c36c1d1e38c610e5",
+    "1326.TW": "57706d4bb532b18a7b780609460014617078494d23a4022739575430c22af1f2",
+    "2330.TW": "309fc7b48b21e38d5abe6dd3867e4523b81cc38f1d0912a470ab67932d3a1575",
+    "2303.TW": "66716a7df86b9731b15d6cd445c07598f6dfe4e2e896d9ef1490893fc3c6490a",
+    "2603.TW": "230973ecdef3914104e09a7a6537ef3958d7eff8104df35222bc1da343e4ce0d",
+    "2884.TW": "ce4e5d92c923a4205098f63e4c4778f79fb29049792ea8ed86d5eb839c050e31",
+    "2014.TW": "f4bd7e741fa7013f1465343910c9c3d3ba21c2fe6dbfe6a38fea4e13e2436bed",
+    "1216.TW": "d1daf789a5f466f7b4e4c106d79cb0ae475ebe313e5f8ddec5a54e49a5c14600"
+  },
+  "coverage": {
+    "6561.TWO": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "1312.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "1326.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "2330.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "2303.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "2603.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "2884.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "2014.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    },
+    "1216.TW": {
+      "first": "2023-01-03",
+      "last": "2026-10-19",
+      "sessions": 914
+    }
+  },
+  "rows": {
+    "6561.TWO": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": 6.6534,
+          "gross_return_pct": 20.227,
+          "max_drawdown_pct": -24.34,
+          "completed_trades": 26,
+          "held_sessions": 235,
+          "win_rate_pct": 42.31,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 11.7924,
+          "gross_return_pct": 22.5838,
+          "max_drawdown_pct": -21.86,
+          "completed_trades": 20,
+          "held_sessions": 204,
+          "win_rate_pct": 30.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 37.1673,
+          "gross_return_pct": 46.9827,
+          "max_drawdown_pct": -11.19,
+          "completed_trades": 15,
+          "held_sessions": 136,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 0.96,
+          "gross_return_pct": 13.2858,
+          "max_drawdown_pct": -21.06,
+          "completed_trades": 25,
+          "held_sessions": 201,
+          "win_rate_pct": 44.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 5.3685,
+          "gross_return_pct": 18.7784,
+          "max_drawdown_pct": -25.25,
+          "completed_trades": 26,
+          "held_sessions": 232,
+          "win_rate_pct": 42.31,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 35.9555,
+          "gross_return_pct": 45.0144,
+          "max_drawdown_pct": -11.0,
+          "completed_trades": 14,
+          "held_sessions": 106,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": 0.3733,
+          "gross_return_pct": 4.2255,
+          "max_drawdown_pct": -9.72,
+          "completed_trades": 8,
+          "held_sessions": 91,
+          "win_rate_pct": 12.5,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -0.0259,
+          "gross_return_pct": 3.811,
+          "max_drawdown_pct": -10.24,
+          "completed_trades": 8,
+          "held_sessions": 88,
+          "win_rate_pct": 12.5,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 0.3869,
+          "gross_return_pct": 2.8087,
+          "max_drawdown_pct": -12.7,
+          "completed_trades": 5,
+          "held_sessions": 64,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -10.937,
+          "gross_return_pct": -8.7884,
+          "max_drawdown_pct": -11.94,
+          "completed_trades": 5,
+          "held_sessions": 41,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -6.2983,
+          "gross_return_pct": -3.1494,
+          "max_drawdown_pct": -14.09,
+          "completed_trades": 7,
+          "held_sessions": 76,
+          "win_rate_pct": 14.29,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -4.9219,
+          "gross_return_pct": -2.6281,
+          "max_drawdown_pct": -9.99,
+          "completed_trades": 5,
+          "held_sessions": 55,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": -17.1684,
+          "gross_return_pct": -13.1932,
+          "max_drawdown_pct": -21.5,
+          "completed_trades": 10,
+          "held_sessions": 83,
+          "win_rate_pct": 10.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -17.2886,
+          "gross_return_pct": -13.7176,
+          "max_drawdown_pct": -21.61,
+          "completed_trades": 9,
+          "held_sessions": 78,
+          "win_rate_pct": 11.11,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -13.2558,
+          "gross_return_pct": -10.7529,
+          "max_drawdown_pct": -15.24,
+          "completed_trades": 6,
+          "held_sessions": 57,
+          "win_rate_pct": 16.67,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -17.3746,
+          "gross_return_pct": -15.0586,
+          "max_drawdown_pct": -17.37,
+          "completed_trades": 6,
+          "held_sessions": 41,
+          "win_rate_pct": 16.67,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -17.1684,
+          "gross_return_pct": -13.1932,
+          "max_drawdown_pct": -21.5,
+          "completed_trades": 10,
+          "held_sessions": 83,
+          "win_rate_pct": 10.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -11.876,
+          "gross_return_pct": -9.7501,
+          "max_drawdown_pct": -13.89,
+          "completed_trades": 5,
+          "held_sessions": 52,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": -11.6115,
+          "gross_return_pct": 8.3401,
+          "max_drawdown_pct": -31.16,
+          "completed_trades": 44,
+          "held_sessions": 410,
+          "win_rate_pct": 29.55,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -7.855,
+          "gross_return_pct": 9.3598,
+          "max_drawdown_pct": -32.74,
+          "completed_trades": 37,
+          "held_sessions": 371,
+          "win_rate_pct": 21.62,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 19.0625,
+          "gross_return_pct": 34.3227,
+          "max_drawdown_pct": -19.6,
+          "completed_trades": 26,
+          "held_sessions": 258,
+          "win_rate_pct": 34.62,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -25.9428,
+          "gross_return_pct": -12.5813,
+          "max_drawdown_pct": -40.53,
+          "completed_trades": 36,
+          "held_sessions": 284,
+          "win_rate_pct": 36.11,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -18.4806,
+          "gross_return_pct": -0.5389,
+          "max_drawdown_pct": -36.5,
+          "completed_trades": 43,
+          "held_sessions": 392,
+          "win_rate_pct": 30.23,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 13.5477,
+          "gross_return_pct": 26.9261,
+          "max_drawdown_pct": -22.19,
+          "completed_trades": 24,
+          "held_sessions": 214,
+          "win_rate_pct": 37.5,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "1312.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": -29.7526,
+          "gross_return_pct": -23.3257,
+          "max_drawdown_pct": -32.04,
+          "completed_trades": 19,
+          "held_sessions": 185,
+          "win_rate_pct": 26.32,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -22.2749,
+          "gross_return_pct": -15.942,
+          "max_drawdown_pct": -26.29,
+          "completed_trades": 17,
+          "held_sessions": 175,
+          "win_rate_pct": 29.41,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -23.2252,
+          "gross_return_pct": -17.3515,
+          "max_drawdown_pct": -26.59,
+          "completed_trades": 16,
+          "held_sessions": 142,
+          "win_rate_pct": 25.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -21.2355,
+          "gross_return_pct": -16.7579,
+          "max_drawdown_pct": -25.48,
+          "completed_trades": 12,
+          "held_sessions": 97,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -29.7526,
+          "gross_return_pct": -23.3257,
+          "max_drawdown_pct": -32.04,
+          "completed_trades": 19,
+          "held_sessions": 185,
+          "win_rate_pct": 26.32,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -18.3641,
+          "gross_return_pct": -12.9246,
+          "max_drawdown_pct": -24.88,
+          "completed_trades": 14,
+          "held_sessions": 137,
+          "win_rate_pct": 28.57,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": -13.3718,
+          "gross_return_pct": -7.5257,
+          "max_drawdown_pct": -24.71,
+          "completed_trades": 14,
+          "held_sessions": 96,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -8.5484,
+          "gross_return_pct": -2.8254,
+          "max_drawdown_pct": -22.8,
+          "completed_trades": 13,
+          "held_sessions": 84,
+          "win_rate_pct": 46.15,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -10.1325,
+          "gross_return_pct": -5.0238,
+          "max_drawdown_pct": -17.57,
+          "completed_trades": 12,
+          "held_sessions": 79,
+          "win_rate_pct": 41.67,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -16.2476,
+          "gross_return_pct": -11.4156,
+          "max_drawdown_pct": -24.01,
+          "completed_trades": 12,
+          "held_sessions": 79,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -17.881,
+          "gross_return_pct": -12.3391,
+          "max_drawdown_pct": -28.63,
+          "completed_trades": 14,
+          "held_sessions": 94,
+          "win_rate_pct": 35.71,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -5.2522,
+          "gross_return_pct": -0.7845,
+          "max_drawdown_pct": -13.22,
+          "completed_trades": 10,
+          "held_sessions": 71,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": 13.8478,
+          "gross_return_pct": 19.3116,
+          "max_drawdown_pct": -32.73,
+          "completed_trades": 10,
+          "held_sessions": 69,
+          "win_rate_pct": 60.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 12.4006,
+          "gross_return_pct": 17.7007,
+          "max_drawdown_pct": -33.03,
+          "completed_trades": 10,
+          "held_sessions": 66,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 6.5022,
+          "gross_return_pct": 9.9932,
+          "max_drawdown_pct": -27.55,
+          "completed_trades": 7,
+          "held_sessions": 57,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -23.8105,
+          "gross_return_pct": -21.2501,
+          "max_drawdown_pct": -33.94,
+          "completed_trades": 7,
+          "held_sessions": 51,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 2.3657,
+          "gross_return_pct": 7.2784,
+          "max_drawdown_pct": -32.73,
+          "completed_trades": 10,
+          "held_sessions": 63,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 4.6296,
+          "gross_return_pct": 7.5624,
+          "max_drawdown_pct": -18.51,
+          "completed_trades": 6,
+          "held_sessions": 45,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": -33.6256,
+          "gross_return_pct": -18.6432,
+          "max_drawdown_pct": -58.27,
+          "completed_trades": 44,
+          "held_sessions": 351,
+          "win_rate_pct": 38.64,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -22.5878,
+          "gross_return_pct": -6.9212,
+          "max_drawdown_pct": -53.25,
+          "completed_trades": 40,
+          "held_sessions": 326,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -26.5183,
+          "gross_return_pct": -13.6593,
+          "max_drawdown_pct": -48.18,
+          "completed_trades": 35,
+          "held_sessions": 278,
+          "win_rate_pct": 34.29,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -51.8485,
+          "gross_return_pct": -44.1542,
+          "max_drawdown_pct": -58.43,
+          "completed_trades": 32,
+          "held_sessions": 228,
+          "win_rate_pct": 34.38,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -43.4262,
+          "gross_return_pct": -30.6561,
+          "max_drawdown_pct": -61.47,
+          "completed_trades": 44,
+          "held_sessions": 343,
+          "win_rate_pct": 34.09,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -19.0709,
+          "gross_return_pct": -7.0743,
+          "max_drawdown_pct": -37.8,
+          "completed_trades": 30,
+          "held_sessions": 253,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "1326.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": -37.2413,
+          "gross_return_pct": -31.4995,
+          "max_drawdown_pct": -37.24,
+          "completed_trades": 19,
+          "held_sessions": 177,
+          "win_rate_pct": 10.53,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -35.5549,
+          "gross_return_pct": -30.304,
+          "max_drawdown_pct": -35.55,
+          "completed_trades": 17,
+          "held_sessions": 168,
+          "win_rate_pct": 11.76,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -32.2734,
+          "gross_return_pct": -28.4233,
+          "max_drawdown_pct": -32.51,
+          "completed_trades": 12,
+          "held_sessions": 138,
+          "win_rate_pct": 8.33,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -36.8822,
+          "gross_return_pct": -33.2941,
+          "max_drawdown_pct": -36.88,
+          "completed_trades": 12,
+          "held_sessions": 87,
+          "win_rate_pct": 8.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -37.2413,
+          "gross_return_pct": -31.4995,
+          "max_drawdown_pct": -37.24,
+          "completed_trades": 19,
+          "held_sessions": 177,
+          "win_rate_pct": 10.53,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -31.8605,
+          "gross_return_pct": -28.318,
+          "max_drawdown_pct": -32.1,
+          "completed_trades": 11,
+          "held_sessions": 136,
+          "win_rate_pct": 9.09,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": -31.4494,
+          "gross_return_pct": -26.5441,
+          "max_drawdown_pct": -31.83,
+          "completed_trades": 15,
+          "held_sessions": 105,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -29.2695,
+          "gross_return_pct": -24.5566,
+          "max_drawdown_pct": -29.27,
+          "completed_trades": 14,
+          "held_sessions": 92,
+          "win_rate_pct": 21.43,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -35.8728,
+          "gross_return_pct": -31.9143,
+          "max_drawdown_pct": -35.87,
+          "completed_trades": 13,
+          "held_sessions": 80,
+          "win_rate_pct": 7.69,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -28.5359,
+          "gross_return_pct": -24.4734,
+          "max_drawdown_pct": -32.11,
+          "completed_trades": 12,
+          "held_sessions": 79,
+          "win_rate_pct": 16.67,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -26.2845,
+          "gross_return_pct": -21.3728,
+          "max_drawdown_pct": -28.61,
+          "completed_trades": 14,
+          "held_sessions": 99,
+          "win_rate_pct": 21.43,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -32.5544,
+          "gross_return_pct": -28.7202,
+          "max_drawdown_pct": -32.63,
+          "completed_trades": 12,
+          "held_sessions": 74,
+          "win_rate_pct": 8.33,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": 75.0773,
+          "gross_return_pct": 89.4938,
+          "max_drawdown_pct": -24.13,
+          "completed_trades": 17,
+          "held_sessions": 78,
+          "win_rate_pct": 52.94,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 76.6066,
+          "gross_return_pct": 87.5082,
+          "max_drawdown_pct": -20.59,
+          "completed_trades": 13,
+          "held_sessions": 55,
+          "win_rate_pct": 53.85,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 102.9052,
+          "gross_return_pct": 112.6431,
+          "max_drawdown_pct": -10.89,
+          "completed_trades": 10,
+          "held_sessions": 47,
+          "win_rate_pct": 70.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 80.0381,
+          "gross_return_pct": 93.9673,
+          "max_drawdown_pct": -24.13,
+          "completed_trades": 16,
+          "held_sessions": 74,
+          "win_rate_pct": 56.25,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 75.0773,
+          "gross_return_pct": 89.4938,
+          "max_drawdown_pct": -24.13,
+          "completed_trades": 17,
+          "held_sessions": 78,
+          "win_rate_pct": 52.94,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 102.9052,
+          "gross_return_pct": 112.6431,
+          "max_drawdown_pct": -10.89,
+          "completed_trades": 10,
+          "held_sessions": 47,
+          "win_rate_pct": 70.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": -24.6791,
+          "gross_return_pct": -4.651,
+          "max_drawdown_pct": -59.53,
+          "completed_trades": 51,
+          "held_sessions": 360,
+          "win_rate_pct": 27.45,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -19.4986,
+          "gross_return_pct": -1.4063,
+          "max_drawdown_pct": -56.99,
+          "completed_trades": 44,
+          "held_sessions": 315,
+          "win_rate_pct": 27.27,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -11.8758,
+          "gross_return_pct": 3.6284,
+          "max_drawdown_pct": -57.44,
+          "completed_trades": 35,
+          "held_sessions": 265,
+          "win_rate_pct": 25.71,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -18.791,
+          "gross_return_pct": -2.2778,
+          "max_drawdown_pct": -55.65,
+          "completed_trades": 40,
+          "held_sessions": 240,
+          "win_rate_pct": 30.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -19.0042,
+          "gross_return_pct": 2.0615,
+          "max_drawdown_pct": -56.48,
+          "completed_trades": 50,
+          "held_sessions": 354,
+          "win_rate_pct": 28.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -6.7507,
+          "gross_return_pct": 8.6494,
+          "max_drawdown_pct": -54.97,
+          "completed_trades": 33,
+          "held_sessions": 257,
+          "win_rate_pct": 27.27,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "2330.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": 8.1367,
+          "gross_return_pct": 24.8397,
+          "max_drawdown_pct": -17.91,
+          "completed_trades": 31,
+          "held_sessions": 223,
+          "win_rate_pct": 41.94,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 16.3316,
+          "gross_return_pct": 31.2419,
+          "max_drawdown_pct": -13.19,
+          "completed_trades": 26,
+          "held_sessions": 186,
+          "win_rate_pct": 42.31,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 0.7384,
+          "gross_return_pct": 14.1748,
+          "max_drawdown_pct": -20.73,
+          "completed_trades": 27,
+          "held_sessions": 177,
+          "win_rate_pct": 40.74,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 2.1153,
+          "gross_return_pct": 15.7354,
+          "max_drawdown_pct": -17.11,
+          "completed_trades": 27,
+          "held_sessions": 175,
+          "win_rate_pct": 48.15,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 8.1367,
+          "gross_return_pct": 24.8397,
+          "max_drawdown_pct": -17.91,
+          "completed_trades": 31,
+          "held_sessions": 223,
+          "win_rate_pct": 41.94,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 0.7384,
+          "gross_return_pct": 14.1748,
+          "max_drawdown_pct": -20.73,
+          "completed_trades": 27,
+          "held_sessions": 177,
+          "win_rate_pct": 40.74,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": 13.024,
+          "gross_return_pct": 21.7685,
+          "max_drawdown_pct": -9.95,
+          "completed_trades": 16,
+          "held_sessions": 94,
+          "win_rate_pct": 37.5,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 18.7556,
+          "gross_return_pct": 26.1871,
+          "max_drawdown_pct": -9.95,
+          "completed_trades": 13,
+          "held_sessions": 85,
+          "win_rate_pct": 46.15,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 10.2414,
+          "gross_return_pct": 16.6017,
+          "max_drawdown_pct": -8.75,
+          "completed_trades": 12,
+          "held_sessions": 74,
+          "win_rate_pct": 41.67,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 7.8839,
+          "gross_return_pct": 16.2307,
+          "max_drawdown_pct": -9.95,
+          "completed_trades": 16,
+          "held_sessions": 86,
+          "win_rate_pct": 37.5,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 13.024,
+          "gross_return_pct": 21.7685,
+          "max_drawdown_pct": -9.95,
+          "completed_trades": 16,
+          "held_sessions": 94,
+          "win_rate_pct": 37.5,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 10.2414,
+          "gross_return_pct": 16.6017,
+          "max_drawdown_pct": -8.75,
+          "completed_trades": 12,
+          "held_sessions": 74,
+          "win_rate_pct": 41.67,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": -7.0175,
+          "gross_return_pct": 1.9582,
+          "max_drawdown_pct": -16.25,
+          "completed_trades": 20,
+          "held_sessions": 89,
+          "win_rate_pct": 45.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 5.9476,
+          "gross_return_pct": 13.5289,
+          "max_drawdown_pct": -9.77,
+          "completed_trades": 15,
+          "held_sessions": 72,
+          "win_rate_pct": 66.67,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -2.6289,
+          "gross_return_pct": 4.3387,
+          "max_drawdown_pct": -13.06,
+          "completed_trades": 15,
+          "held_sessions": 70,
+          "win_rate_pct": 66.67,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -9.1882,
+          "gross_return_pct": -0.4221,
+          "max_drawdown_pct": -16.94,
+          "completed_trades": 20,
+          "held_sessions": 80,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -7.0175,
+          "gross_return_pct": 1.9582,
+          "max_drawdown_pct": -16.25,
+          "completed_trades": 20,
+          "held_sessions": 89,
+          "win_rate_pct": 45.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -2.6289,
+          "gross_return_pct": 4.3387,
+          "max_drawdown_pct": -13.06,
+          "completed_trades": 15,
+          "held_sessions": 70,
+          "win_rate_pct": 66.67,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": 19.7044,
+          "gross_return_pct": 63.7498,
+          "max_drawdown_pct": -23.48,
+          "completed_trades": 68,
+          "held_sessions": 408,
+          "win_rate_pct": 41.18,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 64.1637,
+          "gross_return_pct": 110.5393,
+          "max_drawdown_pct": -13.87,
+          "completed_trades": 54,
+          "held_sessions": 340,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 13.9029,
+          "gross_return_pct": 46.7547,
+          "max_drawdown_pct": -26.87,
+          "completed_trades": 55,
+          "held_sessions": 323,
+          "win_rate_pct": 47.27,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 5.3792,
+          "gross_return_pct": 41.5211,
+          "max_drawdown_pct": -23.6,
+          "completed_trades": 64,
+          "held_sessions": 343,
+          "win_rate_pct": 42.19,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 19.7044,
+          "gross_return_pct": 63.7498,
+          "max_drawdown_pct": -23.48,
+          "completed_trades": 68,
+          "held_sessions": 408,
+          "win_rate_pct": 41.18,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 13.9029,
+          "gross_return_pct": 46.7547,
+          "max_drawdown_pct": -26.87,
+          "completed_trades": 55,
+          "held_sessions": 323,
+          "win_rate_pct": 47.27,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "2303.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": -30.0868,
+          "gross_return_pct": -21.8495,
+          "max_drawdown_pct": -33.43,
+          "completed_trades": 24,
+          "held_sessions": 195,
+          "win_rate_pct": 25.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -31.4964,
+          "gross_return_pct": -24.1276,
+          "max_drawdown_pct": -34.78,
+          "completed_trades": 22,
+          "held_sessions": 186,
+          "win_rate_pct": 22.73,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -19.4788,
+          "gross_return_pct": -13.6478,
+          "max_drawdown_pct": -26.78,
+          "completed_trades": 15,
+          "held_sessions": 126,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -18.5653,
+          "gross_return_pct": -11.9302,
+          "max_drawdown_pct": -23.39,
+          "completed_trades": 17,
+          "held_sessions": 145,
+          "win_rate_pct": 29.41,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -30.0868,
+          "gross_return_pct": -21.8495,
+          "max_drawdown_pct": -33.43,
+          "completed_trades": 24,
+          "held_sessions": 195,
+          "win_rate_pct": 25.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -19.4788,
+          "gross_return_pct": -13.6478,
+          "max_drawdown_pct": -26.78,
+          "completed_trades": 15,
+          "held_sessions": 126,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": -13.22,
+          "gross_return_pct": -7.4377,
+          "max_drawdown_pct": -23.53,
+          "completed_trades": 14,
+          "held_sessions": 135,
+          "win_rate_pct": 35.71,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -6.9167,
+          "gross_return_pct": -1.6252,
+          "max_drawdown_pct": -21.54,
+          "completed_trades": 12,
+          "held_sessions": 125,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 28.3082,
+          "gross_return_pct": 34.3584,
+          "max_drawdown_pct": -11.1,
+          "completed_trades": 10,
+          "held_sessions": 109,
+          "win_rate_pct": 60.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -9.3894,
+          "gross_return_pct": -4.6786,
+          "max_drawdown_pct": -19.63,
+          "completed_trades": 11,
+          "held_sessions": 93,
+          "win_rate_pct": 45.45,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -13.22,
+          "gross_return_pct": -7.4377,
+          "max_drawdown_pct": -23.53,
+          "completed_trades": 14,
+          "held_sessions": 135,
+          "win_rate_pct": 35.71,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 28.3082,
+          "gross_return_pct": 34.3584,
+          "max_drawdown_pct": -11.1,
+          "completed_trades": 10,
+          "held_sessions": 109,
+          "win_rate_pct": 60.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": 91.0567,
+          "gross_return_pct": 104.7282,
+          "max_drawdown_pct": -23.48,
+          "completed_trades": 15,
+          "held_sessions": 72,
+          "win_rate_pct": 73.33,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 90.6113,
+          "gross_return_pct": 100.5211,
+          "max_drawdown_pct": -14.35,
+          "completed_trades": 11,
+          "held_sessions": 60,
+          "win_rate_pct": 81.82,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 114.9868,
+          "gross_return_pct": 126.1638,
+          "max_drawdown_pct": -8.67,
+          "completed_trades": 11,
+          "held_sessions": 55,
+          "win_rate_pct": 81.82,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 85.6106,
+          "gross_return_pct": 97.9782,
+          "max_drawdown_pct": -16.34,
+          "completed_trades": 14,
+          "held_sessions": 60,
+          "win_rate_pct": 78.57,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 91.0567,
+          "gross_return_pct": 104.7282,
+          "max_drawdown_pct": -23.48,
+          "completed_trades": 15,
+          "held_sessions": 72,
+          "win_rate_pct": 73.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 114.9868,
+          "gross_return_pct": 126.1638,
+          "max_drawdown_pct": -8.67,
+          "completed_trades": 11,
+          "held_sessions": 55,
+          "win_rate_pct": 81.82,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": 17.625,
+          "gross_return_pct": 50.1602,
+          "max_drawdown_pct": -48.35,
+          "completed_trades": 53,
+          "held_sessions": 405,
+          "win_rate_pct": 41.51,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 23.3367,
+          "gross_return_pct": 51.7536,
+          "max_drawdown_pct": -48.07,
+          "completed_trades": 45,
+          "held_sessions": 374,
+          "win_rate_pct": 44.44,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 112.0186,
+          "gross_return_pct": 151.4273,
+          "max_drawdown_pct": -30.11,
+          "completed_trades": 37,
+          "held_sessions": 296,
+          "win_rate_pct": 48.65,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 36.9592,
+          "gross_return_pct": 66.2015,
+          "max_drawdown_pct": -35.55,
+          "completed_trades": 42,
+          "held_sessions": 298,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 17.625,
+          "gross_return_pct": 50.1602,
+          "max_drawdown_pct": -48.35,
+          "completed_trades": 53,
+          "held_sessions": 405,
+          "win_rate_pct": 41.51,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 112.0186,
+          "gross_return_pct": 151.4273,
+          "max_drawdown_pct": -30.11,
+          "completed_trades": 37,
+          "held_sessions": 296,
+          "win_rate_pct": 48.65,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "2603.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": 52.0288,
+          "gross_return_pct": 74.7047,
+          "max_drawdown_pct": -15.55,
+          "completed_trades": 30,
+          "held_sessions": 225,
+          "win_rate_pct": 60.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 41.1989,
+          "gross_return_pct": 56.3874,
+          "max_drawdown_pct": -16.39,
+          "completed_trades": 22,
+          "held_sessions": 203,
+          "win_rate_pct": 59.09,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 39.3647,
+          "gross_return_pct": 52.1151,
+          "max_drawdown_pct": -13.51,
+          "completed_trades": 19,
+          "held_sessions": 157,
+          "win_rate_pct": 68.42,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 33.8832,
+          "gross_return_pct": 53.1453,
+          "max_drawdown_pct": -15.55,
+          "completed_trades": 29,
+          "held_sessions": 197,
+          "win_rate_pct": 58.62,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 50.5576,
+          "gross_return_pct": 73.014,
+          "max_drawdown_pct": -15.55,
+          "completed_trades": 30,
+          "held_sessions": 223,
+          "win_rate_pct": 60.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 41.1629,
+          "gross_return_pct": 54.0779,
+          "max_drawdown_pct": -13.51,
+          "completed_trades": 19,
+          "held_sessions": 156,
+          "win_rate_pct": 68.42,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": -1.1301,
+          "gross_return_pct": 3.1385,
+          "max_drawdown_pct": -19.54,
+          "completed_trades": 9,
+          "held_sessions": 111,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -0.86,
+          "gross_return_pct": 3.4203,
+          "max_drawdown_pct": -19.32,
+          "completed_trades": 9,
+          "held_sessions": 110,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 4.9089,
+          "gross_return_pct": 8.4344,
+          "max_drawdown_pct": -15.3,
+          "completed_trades": 7,
+          "held_sessions": 92,
+          "win_rate_pct": 28.57,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 11.3788,
+          "gross_return_pct": 13.5415,
+          "max_drawdown_pct": -9.11,
+          "completed_trades": 4,
+          "held_sessions": 60,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -1.1301,
+          "gross_return_pct": 3.1385,
+          "max_drawdown_pct": -19.54,
+          "completed_trades": 9,
+          "held_sessions": 111,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 8.1167,
+          "gross_return_pct": 11.2363,
+          "max_drawdown_pct": -12.71,
+          "completed_trades": 6,
+          "held_sessions": 89,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": 18.0412,
+          "gross_return_pct": 22.008,
+          "max_drawdown_pct": -12.37,
+          "completed_trades": 7,
+          "held_sessions": 88,
+          "win_rate_pct": 57.14,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 23.612,
+          "gross_return_pct": 27.6638,
+          "max_drawdown_pct": -11.29,
+          "completed_trades": 7,
+          "held_sessions": 82,
+          "win_rate_pct": 57.14,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 21.2937,
+          "gross_return_pct": 24.7935,
+          "max_drawdown_pct": -11.2,
+          "completed_trades": 6,
+          "held_sessions": 81,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -0.4537,
+          "gross_return_pct": 2.4186,
+          "max_drawdown_pct": -19.84,
+          "completed_trades": 6,
+          "held_sessions": 80,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 18.0412,
+          "gross_return_pct": 22.008,
+          "max_drawdown_pct": -12.37,
+          "completed_trades": 7,
+          "held_sessions": 88,
+          "win_rate_pct": 57.14,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 21.2937,
+          "gross_return_pct": 24.7935,
+          "max_drawdown_pct": -11.2,
+          "completed_trades": 6,
+          "held_sessions": 81,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": 68.5786,
+          "gross_return_pct": 109.5071,
+          "max_drawdown_pct": -25.23,
+          "completed_trades": 47,
+          "held_sessions": 431,
+          "win_rate_pct": 55.32,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 64.4068,
+          "gross_return_pct": 96.7706,
+          "max_drawdown_pct": -19.32,
+          "completed_trades": 39,
+          "held_sessions": 402,
+          "win_rate_pct": 53.85,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 81.2169,
+          "gross_return_pct": 110.1742,
+          "max_drawdown_pct": -15.3,
+          "completed_trades": 32,
+          "held_sessions": 331,
+          "win_rate_pct": 59.38,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 41.0369,
+          "gross_return_pct": 69.7157,
+          "max_drawdown_pct": -27.87,
+          "completed_trades": 40,
+          "held_sessions": 344,
+          "win_rate_pct": 57.5,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 66.9471,
+          "gross_return_pct": 107.4796,
+          "max_drawdown_pct": -25.23,
+          "completed_trades": 47,
+          "held_sessions": 429,
+          "win_rate_pct": 55.32,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 89.1677,
+          "gross_return_pct": 118.387,
+          "max_drawdown_pct": -13.51,
+          "completed_trades": 31,
+          "held_sessions": 327,
+          "win_rate_pct": 61.29,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "2884.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": -12.4691,
+          "gross_return_pct": -2.2344,
+          "max_drawdown_pct": -17.74,
+          "completed_trades": 24,
+          "held_sessions": 224,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -13.2426,
+          "gross_return_pct": -3.5437,
+          "max_drawdown_pct": -18.05,
+          "completed_trades": 23,
+          "held_sessions": 207,
+          "win_rate_pct": 30.43,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -1.9812,
+          "gross_return_pct": 6.0051,
+          "max_drawdown_pct": -12.37,
+          "completed_trades": 17,
+          "held_sessions": 161,
+          "win_rate_pct": 41.18,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -10.8698,
+          "gross_return_pct": -1.8146,
+          "max_drawdown_pct": -17.93,
+          "completed_trades": 21,
+          "held_sessions": 174,
+          "win_rate_pct": 28.57,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -14.2024,
+          "gross_return_pct": -4.1704,
+          "max_drawdown_pct": -17.74,
+          "completed_trades": 24,
+          "held_sessions": 223,
+          "win_rate_pct": 29.17,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -2.3687,
+          "gross_return_pct": 5.5861,
+          "max_drawdown_pct": -12.37,
+          "completed_trades": 17,
+          "held_sessions": 160,
+          "win_rate_pct": 41.18,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": 25.2145,
+          "gross_return_pct": 32.4386,
+          "max_drawdown_pct": -6.15,
+          "completed_trades": 12,
+          "held_sessions": 111,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 0.9959
+        },
+        "cooldown_3": {
+          "net_return_pct": 21.2768,
+          "gross_return_pct": 27.0971,
+          "max_drawdown_pct": -6.6,
+          "completed_trades": 10,
+          "held_sessions": 96,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 0.9959
+        },
+        "confirm_2": {
+          "net_return_pct": 21.538,
+          "gross_return_pct": 28.55,
+          "max_drawdown_pct": -5.15,
+          "completed_trades": 12,
+          "held_sessions": 96,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 0.9959
+        },
+        "ma20_rising": {
+          "net_return_pct": 20.792,
+          "gross_return_pct": 27.761,
+          "max_drawdown_pct": -5.18,
+          "completed_trades": 12,
+          "held_sessions": 99,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 0.9959
+        },
+        "evidence": {
+          "net_return_pct": 25.2145,
+          "gross_return_pct": 32.4386,
+          "max_drawdown_pct": -6.15,
+          "completed_trades": 12,
+          "held_sessions": 111,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 0.9959
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 21.538,
+          "gross_return_pct": 28.55,
+          "max_drawdown_pct": -5.15,
+          "completed_trades": 12,
+          "held_sessions": 96,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 0.9959
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": 17.9901,
+          "gross_return_pct": 25.3738,
+          "max_drawdown_pct": -8.2,
+          "completed_trades": 13,
+          "held_sessions": 85,
+          "win_rate_pct": 30.77,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 11.621,
+          "gross_return_pct": 18.0608,
+          "max_drawdown_pct": -8.2,
+          "completed_trades": 12,
+          "held_sessions": 75,
+          "win_rate_pct": 25.0,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 11.8993,
+          "gross_return_pct": 18.3552,
+          "max_drawdown_pct": -5.91,
+          "completed_trades": 12,
+          "held_sessions": 72,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 17.097,
+          "gross_return_pct": 23.2835,
+          "max_drawdown_pct": -8.43,
+          "completed_trades": 11,
+          "held_sessions": 69,
+          "win_rate_pct": 36.36,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 17.9901,
+          "gross_return_pct": 25.3738,
+          "max_drawdown_pct": -8.2,
+          "completed_trades": 13,
+          "held_sessions": 85,
+          "win_rate_pct": 30.77,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 13.9035,
+          "gross_return_pct": 20.475,
+          "max_drawdown_pct": -6.49,
+          "completed_trades": 12,
+          "held_sessions": 67,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": 30.1892,
+          "gross_return_pct": 63.2952,
+          "max_drawdown_pct": -18.25,
+          "completed_trades": 49,
+          "held_sessions": 421,
+          "win_rate_pct": 38.78,
+          "chip_available_fraction": 0.9989
+        },
+        "cooldown_3": {
+          "net_return_pct": 18.2343,
+          "gross_return_pct": 45.5921,
+          "max_drawdown_pct": -18.56,
+          "completed_trades": 45,
+          "held_sessions": 379,
+          "win_rate_pct": 35.56,
+          "chip_available_fraction": 0.9989
+        },
+        "confirm_2": {
+          "net_return_pct": 34.2031,
+          "gross_return_pct": 62.238,
+          "max_drawdown_pct": -12.6,
+          "completed_trades": 41,
+          "held_sessions": 330,
+          "win_rate_pct": 39.02,
+          "chip_available_fraction": 0.9989
+        },
+        "ma20_rising": {
+          "net_return_pct": 26.9179,
+          "gross_return_pct": 55.5664,
+          "max_drawdown_pct": -18.59,
+          "completed_trades": 44,
+          "held_sessions": 343,
+          "win_rate_pct": 38.64,
+          "chip_available_fraction": 0.9989
+        },
+        "evidence": {
+          "net_return_pct": 27.6112,
+          "gross_return_pct": 60.0616,
+          "max_drawdown_pct": -18.25,
+          "completed_trades": 49,
+          "held_sessions": 420,
+          "win_rate_pct": 36.73,
+          "chip_available_fraction": 0.9989
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 36.0667,
+          "gross_return_pct": 64.4909,
+          "max_drawdown_pct": -12.6,
+          "completed_trades": 41,
+          "held_sessions": 324,
+          "win_rate_pct": 39.02,
+          "chip_available_fraction": 0.9989
+        }
+      }
+    },
+    "2014.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": -43.3641,
+          "gross_return_pct": -36.4497,
+          "max_drawdown_pct": -44.11,
+          "completed_trades": 25,
+          "held_sessions": 175,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -30.9087,
+          "gross_return_pct": -23.5379,
+          "max_drawdown_pct": -32.41,
+          "completed_trades": 22,
+          "held_sessions": 150,
+          "win_rate_pct": 22.73,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -25.995,
+          "gross_return_pct": -18.8512,
+          "max_drawdown_pct": -31.26,
+          "completed_trades": 20,
+          "held_sessions": 130,
+          "win_rate_pct": 25.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -32.4053,
+          "gross_return_pct": -27.9014,
+          "max_drawdown_pct": -33.38,
+          "completed_trades": 14,
+          "held_sessions": 98,
+          "win_rate_pct": 21.43,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -42.4999,
+          "gross_return_pct": -35.7765,
+          "max_drawdown_pct": -43.26,
+          "completed_trades": 24,
+          "held_sessions": 166,
+          "win_rate_pct": 20.83,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -29.8596,
+          "gross_return_pct": -23.7944,
+          "max_drawdown_pct": -34.85,
+          "completed_trades": 18,
+          "held_sessions": 117,
+          "win_rate_pct": 22.22,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": 10.5136,
+          "gross_return_pct": 18.5166,
+          "max_drawdown_pct": -23.3,
+          "completed_trades": 15,
+          "held_sessions": 93,
+          "win_rate_pct": 40.0,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 27.5667,
+          "gross_return_pct": 36.0667,
+          "max_drawdown_pct": -15.97,
+          "completed_trades": 14,
+          "held_sessions": 68,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 17.8297,
+          "gross_return_pct": 25.1031,
+          "max_drawdown_pct": -16.05,
+          "completed_trades": 13,
+          "held_sessions": 77,
+          "win_rate_pct": 46.15,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 21.9758,
+          "gross_return_pct": 29.0131,
+          "max_drawdown_pct": -13.96,
+          "completed_trades": 12,
+          "held_sessions": 71,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 12.2491,
+          "gross_return_pct": 19.8243,
+          "max_drawdown_pct": -20.41,
+          "completed_trades": 14,
+          "held_sessions": 83,
+          "win_rate_pct": 42.86,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 17.1797,
+          "gross_return_pct": 23.8411,
+          "max_drawdown_pct": -14.01,
+          "completed_trades": 12,
+          "held_sessions": 65,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": -4.9266,
+          "gross_return_pct": 0.5586,
+          "max_drawdown_pct": -25.72,
+          "completed_trades": 12,
+          "held_sessions": 79,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -14.164,
+          "gross_return_pct": -9.6292,
+          "max_drawdown_pct": -23.29,
+          "completed_trades": 11,
+          "held_sessions": 70,
+          "win_rate_pct": 27.27,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -11.8329,
+          "gross_return_pct": -9.2889,
+          "max_drawdown_pct": -20.91,
+          "completed_trades": 6,
+          "held_sessions": 55,
+          "win_rate_pct": 16.67,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -8.1023,
+          "gross_return_pct": -4.1346,
+          "max_drawdown_pct": -23.89,
+          "completed_trades": 9,
+          "held_sessions": 61,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 1.038,
+          "gross_return_pct": 6.376,
+          "max_drawdown_pct": -25.72,
+          "completed_trades": 11,
+          "held_sessions": 74,
+          "win_rate_pct": 36.36,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -4.9772,
+          "gross_return_pct": -2.6848,
+          "max_drawdown_pct": -14.76,
+          "completed_trades": 5,
+          "held_sessions": 50,
+          "win_rate_pct": 20.0,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": -41.0127,
+          "gross_return_pct": -24.983,
+          "max_drawdown_pct": -44.91,
+          "completed_trades": 52,
+          "held_sessions": 348,
+          "win_rate_pct": 28.85,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -25.5395,
+          "gross_return_pct": -7.4616,
+          "max_drawdown_pct": -33.37,
+          "completed_trades": 47,
+          "held_sessions": 287,
+          "win_rate_pct": 29.79,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -23.8506,
+          "gross_return_pct": -8.7875,
+          "max_drawdown_pct": -31.26,
+          "completed_trades": 39,
+          "held_sessions": 263,
+          "win_rate_pct": 30.77,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -24.8926,
+          "gross_return_pct": -11.6785,
+          "max_drawdown_pct": -36.06,
+          "completed_trades": 35,
+          "held_sessions": 231,
+          "win_rate_pct": 34.29,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -35.356,
+          "gross_return_pct": -18.9176,
+          "max_drawdown_pct": -45.26,
+          "completed_trades": 49,
+          "held_sessions": 324,
+          "win_rate_pct": 30.61,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -22.6442,
+          "gross_return_pct": -9.0345,
+          "max_drawdown_pct": -34.85,
+          "completed_trades": 35,
+          "held_sessions": 233,
+          "win_rate_pct": 31.43,
+          "chip_available_fraction": 1.0
+        }
+      }
+    },
+    "1216.TW": {
+      "development_2023_2024": {
+        "baseline": {
+          "net_return_pct": 0.8895,
+          "gross_return_pct": 12.6863,
+          "max_drawdown_pct": -14.26,
+          "completed_trades": 24,
+          "held_sessions": 198,
+          "win_rate_pct": 41.67,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 0.5355,
+          "gross_return_pct": 11.2608,
+          "max_drawdown_pct": -14.26,
+          "completed_trades": 22,
+          "held_sessions": 177,
+          "win_rate_pct": 36.36,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 12.869,
+          "gross_return_pct": 23.1954,
+          "max_drawdown_pct": -9.07,
+          "completed_trades": 19,
+          "held_sessions": 164,
+          "win_rate_pct": 42.11,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 8.7443,
+          "gross_return_pct": 18.1477,
+          "max_drawdown_pct": -8.44,
+          "completed_trades": 18,
+          "held_sessions": 154,
+          "win_rate_pct": 55.56,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 0.8895,
+          "gross_return_pct": 12.6863,
+          "max_drawdown_pct": -14.26,
+          "completed_trades": 24,
+          "held_sessions": 198,
+          "win_rate_pct": 41.67,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 12.869,
+          "gross_return_pct": 23.1954,
+          "max_drawdown_pct": -9.07,
+          "completed_trades": 19,
+          "held_sessions": 164,
+          "win_rate_pct": 42.11,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "comparison_2025": {
+        "baseline": {
+          "net_return_pct": 10.7304,
+          "gross_return_pct": 14.4515,
+          "max_drawdown_pct": -6.51,
+          "completed_trades": 7,
+          "held_sessions": 123,
+          "win_rate_pct": 71.43,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 7.9043,
+          "gross_return_pct": 11.5305,
+          "max_drawdown_pct": -6.51,
+          "completed_trades": 7,
+          "held_sessions": 120,
+          "win_rate_pct": 57.14,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 3.1983,
+          "gross_return_pct": 6.1759,
+          "max_drawdown_pct": -6.37,
+          "completed_trades": 6,
+          "held_sessions": 107,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": 0.3966,
+          "gross_return_pct": 3.2934,
+          "max_drawdown_pct": -6.92,
+          "completed_trades": 6,
+          "held_sessions": 80,
+          "win_rate_pct": 50.0,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 10.7304,
+          "gross_return_pct": 14.4515,
+          "max_drawdown_pct": -6.51,
+          "completed_trades": 7,
+          "held_sessions": 123,
+          "win_rate_pct": 71.43,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 1.5086,
+          "gross_return_pct": 4.4375,
+          "max_drawdown_pct": -7.91,
+          "completed_trades": 6,
+          "held_sessions": 105,
+          "win_rate_pct": 33.33,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "reviewed_2026": {
+        "baseline": {
+          "net_return_pct": -5.3925,
+          "gross_return_pct": -1.7616,
+          "max_drawdown_pct": -10.91,
+          "completed_trades": 8,
+          "held_sessions": 81,
+          "win_rate_pct": 12.5,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": -5.6335,
+          "gross_return_pct": -2.0118,
+          "max_drawdown_pct": -11.14,
+          "completed_trades": 8,
+          "held_sessions": 78,
+          "win_rate_pct": 12.5,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": -5.4684,
+          "gross_return_pct": -2.2917,
+          "max_drawdown_pct": -10.92,
+          "completed_trades": 7,
+          "held_sessions": 69,
+          "win_rate_pct": 14.29,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -9.0781,
+          "gross_return_pct": -6.0226,
+          "max_drawdown_pct": -11.6,
+          "completed_trades": 7,
+          "held_sessions": 60,
+          "win_rate_pct": 14.29,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": -5.3925,
+          "gross_return_pct": -1.7616,
+          "max_drawdown_pct": -10.91,
+          "completed_trades": 8,
+          "held_sessions": 81,
+          "win_rate_pct": 12.5,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": -5.4684,
+          "gross_return_pct": -2.2917,
+          "max_drawdown_pct": -10.92,
+          "completed_trades": 7,
+          "held_sessions": 69,
+          "win_rate_pct": 14.29,
+          "chip_available_fraction": 1.0
+        }
+      },
+      "all": {
+        "baseline": {
+          "net_return_pct": 5.3642,
+          "gross_return_pct": 26.2063,
+          "max_drawdown_pct": -14.38,
+          "completed_trades": 39,
+          "held_sessions": 403,
+          "win_rate_pct": 43.59,
+          "chip_available_fraction": 1.0
+        },
+        "cooldown_3": {
+          "net_return_pct": 2.0541,
+          "gross_return_pct": 21.1201,
+          "max_drawdown_pct": -14.6,
+          "completed_trades": 37,
+          "held_sessions": 376,
+          "win_rate_pct": 37.84,
+          "chip_available_fraction": 1.0
+        },
+        "confirm_2": {
+          "net_return_pct": 9.7687,
+          "gross_return_pct": 27.309,
+          "max_drawdown_pct": -14.79,
+          "completed_trades": 32,
+          "held_sessions": 341,
+          "win_rate_pct": 40.62,
+          "chip_available_fraction": 1.0
+        },
+        "ma20_rising": {
+          "net_return_pct": -1.0426,
+          "gross_return_pct": 14.2425,
+          "max_drawdown_pct": -16.27,
+          "completed_trades": 31,
+          "held_sessions": 295,
+          "win_rate_pct": 48.39,
+          "chip_available_fraction": 1.0
+        },
+        "evidence": {
+          "net_return_pct": 5.3642,
+          "gross_return_pct": 26.2063,
+          "max_drawdown_pct": -14.38,
+          "completed_trades": 39,
+          "held_sessions": 403,
+          "win_rate_pct": 43.59,
+          "chip_available_fraction": 1.0
+        },
+        "evidence_confirm_2": {
+          "net_return_pct": 7.9714,
+          "gross_return_pct": 25.2246,
+          "max_drawdown_pct": -15.43,
+          "completed_trades": 32,
+          "held_sessions": 339,
+          "win_rate_pct": 37.5,
+          "chip_available_fraction": 1.0
+        }
+      }
+    }
+  },
+  "trade_audit": {
+    "6561.TWO": {
+      "trades": [
+        {
+          "entry_date": "2023-02-10",
+          "exit_date": "2023-03-15",
+          "held_sessions": 21,
+          "gross_return_pct": 23.0241,
+          "net_return_pct": 22.4585,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-03-21",
+          "exit_date": "2023-03-24",
+          "held_sessions": 3,
+          "gross_return_pct": -0.0,
+          "net_return_pct": -0.4597,
+          "entry_score": 70.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-03-27",
+          "exit_date": "2023-03-28",
+          "held_sessions": 1,
+          "gross_return_pct": -3.2468,
+          "net_return_pct": -3.6915,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-04-11",
+          "exit_date": "2023-04-25",
+          "held_sessions": 10,
+          "gross_return_pct": -5.0826,
+          "net_return_pct": -5.5189,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-05-23",
+          "exit_date": "2023-06-01",
+          "held_sessions": 7,
+          "gross_return_pct": -6.1761,
+          "net_return_pct": -6.6074,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-06-13",
+          "exit_date": "2023-06-29",
+          "held_sessions": 10,
+          "gross_return_pct": -4.2746,
+          "net_return_pct": -4.7146,
+          "entry_score": 90.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-07-04",
+          "exit_date": "2023-07-20",
+          "held_sessions": 12,
+          "gross_return_pct": -0.0,
+          "net_return_pct": -0.4597,
+          "entry_score": 85.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-08-02",
+          "exit_date": "2023-08-24",
+          "held_sessions": 15,
+          "gross_return_pct": 6.211,
+          "net_return_pct": 5.7228,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-09-01",
+          "exit_date": "2023-10-12",
+          "held_sessions": 26,
+          "gross_return_pct": -4.8143,
+          "net_return_pct": -5.2519,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-11-24",
+          "exit_date": "2023-12-20",
+          "held_sessions": 18,
+          "gross_return_pct": -0.0,
+          "net_return_pct": -0.4597,
+          "entry_score": 85.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2023-12-29",
+          "exit_date": "2024-01-18",
+          "held_sessions": 13,
+          "gross_return_pct": -1.8293,
+          "net_return_pct": -2.2805,
+          "entry_score": 65.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": false
+        },
+        {
+          "entry_date": "2024-02-19",
+          "exit_date": "2024-02-29",
+          "held_sessions": 7,
+          "gross_return_pct": 7.0571,
+          "net_return_pct": 6.5649,
+          "entry_score": 90.0,
+          "exit_reasons": [
+            "Resistance_Rejection"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-03-01",
+          "exit_date": "2024-03-04",
+          "held_sessions": 1,
+          "gross_return_pct": 1.2414,
+          "net_return_pct": 0.776,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "False_Breakout_Risk"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-03-12",
+          "exit_date": "2024-03-19",
+          "held_sessions": 5,
+          "gross_return_pct": -0.406,
+          "net_return_pct": -0.8638,
+          "entry_score": 70.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-03-21",
+          "exit_date": "2024-04-15",
+          "held_sessions": 15,
+          "gross_return_pct": 0.9321,
+          "net_return_pct": 0.4681,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "Resistance_Rejection"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-05-30",
+          "exit_date": "2024-07-12",
+          "held_sessions": 30,
+          "gross_return_pct": 23.6883,
+          "net_return_pct": 23.1198,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "Overextended_MA5"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-07-15",
+          "exit_date": "2024-07-16",
+          "held_sessions": 1,
+          "gross_return_pct": -6.3492,
+          "net_return_pct": -6.7797,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "Top_Divergence"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-07-17",
+          "exit_date": "2024-07-31",
+          "held_sessions": 8,
+          "gross_return_pct": -1.7751,
+          "net_return_pct": -2.2267,
+          "entry_score": 70.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-08-07",
+          "exit_date": "2024-08-08",
+          "held_sessions": 1,
+          "gross_return_pct": 5.0,
+          "net_return_pct": 4.5173,
+          "entry_score": 105.0,
+          "exit_reasons": [
+            "Overextended_MA5"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-08-09",
+          "exit_date": "2024-08-12",
+          "held_sessions": 1,
+          "gross_return_pct": 1.3279,
+          "net_return_pct": 0.8621,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "Resistance_Rejection"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-08-13",
+          "exit_date": "2024-08-19",
+          "held_sessions": 4,
+          "gross_return_pct": 1.4199,
+          "net_return_pct": 0.9537,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "False_Breakout_Risk"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-08-20",
+          "exit_date": "2024-08-22",
+          "held_sessions": 2,
+          "gross_return_pct": 1.4,
+          "net_return_pct": 0.9339,
+          "entry_score": 70.0,
+          "exit_reasons": [
+            "False_Breakout_Risk"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-09-02",
+          "exit_date": "2024-09-09",
+          "held_sessions": 5,
+          "gross_return_pct": -13.3945,
+          "net_return_pct": -13.7926,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-10-18",
+          "exit_date": "2024-10-30",
+          "held_sessions": 8,
+          "gross_return_pct": -3.6458,
+          "net_return_pct": -4.0888,
+          "entry_score": 85.0,
+          "exit_reasons": [
+            "MACD_Death_Cross",
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-11-05",
+          "exit_date": "2024-11-07",
+          "held_sessions": 2,
+          "gross_return_pct": 9.4496,
+          "net_return_pct": 8.9465,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "Overextended_MA5"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2024-11-11",
+          "exit_date": "2024-11-22",
+          "held_sessions": 9,
+          "gross_return_pct": -3.6329,
+          "net_return_pct": -4.0759,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-02-10",
+          "exit_date": "2025-03-13",
+          "held_sessions": 22,
+          "gross_return_pct": -0.2217,
+          "net_return_pct": -0.6804,
+          "entry_score": 95.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-04-28",
+          "exit_date": "2025-05-21",
+          "held_sessions": 16,
+          "gross_return_pct": -0.0,
+          "net_return_pct": -0.4597,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-06-02",
+          "exit_date": "2025-06-23",
+          "held_sessions": 15,
+          "gross_return_pct": -0.0115,
+          "net_return_pct": -0.4712,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-07-21",
+          "exit_date": "2025-07-23",
+          "held_sessions": 2,
+          "gross_return_pct": -0.9975,
+          "net_return_pct": -1.4526,
+          "entry_score": 85.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-07-28",
+          "exit_date": "2025-08-04",
+          "held_sessions": 4,
+          "gross_return_pct": 10.9726,
+          "net_return_pct": 10.4624,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "Resistance_Rejection"
+          ],
+          "independent_evidence": false
+        },
+        {
+          "entry_date": "2025-08-06",
+          "exit_date": "2025-08-25",
+          "held_sessions": 13,
+          "gross_return_pct": -1.6704,
+          "net_return_pct": -2.1224,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2025-11-13",
+          "exit_date": "2025-11-19",
+          "held_sessions": 4,
+          "gross_return_pct": -2.1593,
+          "net_return_pct": -2.609,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": false
+        },
+        {
+          "entry_date": "2025-12-01",
+          "exit_date": "2025-12-17",
+          "held_sessions": 12,
+          "gross_return_pct": -3.3426,
+          "net_return_pct": -3.7869,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MA20_Broken"
+          ],
+          "independent_evidence": false
+        },
+        {
+          "entry_date": "2025-12-29",
+          "exit_date": "2026-01-13",
+          "held_sessions": 10,
+          "gross_return_pct": -3.7433,
+          "net_return_pct": -4.1858,
+          "entry_score": 105.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-02-24",
+          "exit_date": "2026-03-18",
+          "held_sessions": 15,
+          "gross_return_pct": 5.1699,
+          "net_return_pct": 4.6864,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-03-26",
+          "exit_date": "2026-03-31",
+          "held_sessions": 3,
+          "gross_return_pct": -1.931,
+          "net_return_pct": -2.3818,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-04-09",
+          "exit_date": "2026-04-27",
+          "held_sessions": 12,
+          "gross_return_pct": -0.5472,
+          "net_return_pct": -1.0044,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-05-22",
+          "exit_date": "2026-06-11",
+          "held_sessions": 14,
+          "gross_return_pct": -2.9289,
+          "net_return_pct": -3.3751,
+          "entry_score": 80.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-07-06",
+          "exit_date": "2026-07-15",
+          "held_sessions": 6,
+          "gross_return_pct": -2.1837,
+          "net_return_pct": -2.6333,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MACD_Death_Cross",
+            "MA20_Broken"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-08-03",
+          "exit_date": "2026-08-19",
+          "held_sessions": 12,
+          "gross_return_pct": -3.6309,
+          "net_return_pct": -4.0739,
+          "entry_score": 105.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-08-24",
+          "exit_date": "2026-08-25",
+          "held_sessions": 1,
+          "gross_return_pct": -1.087,
+          "net_return_pct": -1.5417,
+          "entry_score": 85.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-08-26",
+          "exit_date": "2026-08-27",
+          "held_sessions": 1,
+          "gross_return_pct": -0.6211,
+          "net_return_pct": -1.078,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        },
+        {
+          "entry_date": "2026-08-28",
+          "exit_date": "2026-09-10",
+          "held_sessions": 9,
+          "gross_return_pct": -1.2461,
+          "net_return_pct": -1.7001,
+          "entry_score": 60.0,
+          "exit_reasons": [
+            "MACD_Death_Cross"
+          ],
+          "independent_evidence": true
+        }
+      ],
+      "losing_trades": 31,
+      "short_trades_at_most_3_sessions": 12,
+      "short_trade_losses": 7,
+      "gross_winners_lost_to_cost": 0,
+      "losing_exit_reason_counts": {
+        "MACD_Death_Cross": 24,
+        "MA20_Broken": 8,
+        "Top_Divergence": 1
+      }
+    }
+  },
+  "control_comparison": {
+    "comparison_2025": {
+      "cooldown_3": {
+        "median_return_delta_pp": 3.0009,
+        "median_drawdown_delta_pp": 0.11,
+        "improved_stocks": 4,
+        "completed_trades": 65
+      },
+      "confirm_2": {
+        "median_return_delta_pp": 1.6282,
+        "median_drawdown_delta_pp": 2.72,
+        "improved_stocks": 3,
+        "completed_trades": 60
+      },
+      "ma20_rising": {
+        "median_return_delta_pp": -0.2959,
+        "median_drawdown_delta_pp": 2.435,
+        "improved_stocks": 3,
+        "completed_trades": 61
+      },
+      "evidence": {
+        "median_return_delta_pp": 0.0,
+        "median_drawdown_delta_pp": 0.0,
+        "improved_stocks": 1,
+        "completed_trades": 72
+      },
+      "evidence_confirm_2": {
+        "median_return_delta_pp": 1.9418,
+        "median_drawdown_delta_pp": 4.015,
+        "improved_stocks": 3,
+        "completed_trades": 58
+      }
+    },
+    "reviewed_2026": {
+      "cooldown_3": {
+        "median_return_delta_pp": -0.3432,
+        "median_drawdown_delta_pp": 1.755,
+        "improved_stocks": 2,
+        "completed_trades": 64
+      },
+      "confirm_2": {
+        "median_return_delta_pp": 1.5883,
+        "median_drawdown_delta_pp": 2.74,
+        "improved_stocks": 3,
+        "completed_trades": 57
+      },
+      "ma20_rising": {
+        "median_return_delta_pp": -3.4306,
+        "median_drawdown_delta_pp": -0.46,
+        "improved_stocks": 0,
+        "completed_trades": 67
+      },
+      "evidence": {
+        "median_return_delta_pp": 0.0,
+        "median_drawdown_delta_pp": 0.0,
+        "improved_stocks": 1,
+        "completed_trades": 74
+      },
+      "evidence_confirm_2": {
+        "median_return_delta_pp": 1.601,
+        "median_drawdown_delta_pp": 2.45,
+        "improved_stocks": 3,
+        "completed_trades": 56
+      }
+    }
+  },
+  "scope": "Rule strategy only; not a TD/Q-Learning policy backtest.",
+  "validation_limit": "2026 has already been reviewed; this is retrospective comparison, not untouched out-of-sample proof.",
+  "core_model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+  "source_sha256": {
+    "STOCK_GOD.py": "6d9620ac9d0037078d4e639b0a42019accf46d42b6b690c70f8114251914d945",
+    "strategy_config.py": "9e7672b30e874b29fc4abe092cd1e0c49d3f74e25e86e9c58df6d8ae140c6991",
+    "strategy_performance.py": "5d5081fe42e47912e4840f1293df78fd58c981de99237f1bd3969c6474af8426",
+    "institutional_data.py": "4edd96bf222ca9e590e7917531d34ad83e6a1274c5f2b28a80637ef7029e02d9"
+  },
+  "execution_assumption": "Close signal, next-session open; buy cost 0.08%, sell cost 0.38%."
+}

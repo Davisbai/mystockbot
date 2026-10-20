@@ -159,10 +159,16 @@ Q 偏好指數不是校準勝率；模型原判、仲裁覆寫原因及資料狀
 資料、年度擋單筆數與完整風險結果見 [是方支撐有效期核對](diagnostics/ISFANG_SUPPORT_EXPIRY.md)。
 先前報告保留其原始程式版本的結果，不作為此次版本的績效。
 
+## 支撐修正後的進場品質研究
+
+新增 `research_entry_quality.py` 比較三檔案例、六檔固定對照及五種進場假設。
+兩日確認在部分期間改善報酬及回撤，仍存在變差的股票／年度，因此尚未替換正式買訊、TD/RL 或通知。
+資料截止 2026-10-19，結果及限制見 [進場品質研究報告](diagnostics/entry_quality_20261019/REPORT.md)。
+
 ## 驗證
 
 ```sh
-python -m unittest test_strategy_performance test_app test_tdrl_audit test_entry_notifications test_core_runtime test_daily_signal_reports test_support_expiry -v
+python -m unittest test_strategy_performance test_app test_tdrl_audit test_entry_notifications test_core_runtime test_daily_signal_reports test_support_expiry test_research_entry_quality -v
 ```
 
 測試包含核心策略邊界、五個頁面、歷史篩選、回測欄位、AI 驗證顯示及失敗回退，
