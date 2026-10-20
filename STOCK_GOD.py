@@ -593,6 +593,32 @@ class YahooMarketScanner:
 # ==========================================
 # 📈 策略回測與訊號分析模組 (最終整合版)
 # ==========================================
+def recent_limit_up_support(frame, window=20):
+    """A first limit-up anchor is valid only inside the existing rolling window."""
+    if window < 2:
+        raise ValueError('Support window must contain at least two sessions')
+    result = pd.DataFrame(index=frame.index)
+    result['Limit_Up_Support'] = np.nan
+    result['Limit_Up_Type'] = 'NONE'
+    result['Limit_Up_Anchor'] = pd.NaT
+    result['Limit_Up_Valid'] = False
+    limit_up = frame['Is_Limit_Up'].eq(True).to_numpy()
+    for i in range(window - 1, len(frame)):
+        start = i - window + 1
+        anchors = np.flatnonzero(limit_up[start:i + 1]) + start
+        if not 1 <= len(anchors) <= 3:
+            continue
+        anchor = int(anchors[0])
+        price = float(frame['Open' if len(anchors) == 1 else 'High'].iloc[anchor])
+        if not np.isfinite(price) or price <= 0:
+            continue
+        result.at[frame.index[i], 'Limit_Up_Support'] = price
+        result.at[frame.index[i], 'Limit_Up_Type'] = 'SINGLE' if len(anchors) == 1 else 'MULTI'
+        result.at[frame.index[i], 'Limit_Up_Anchor'] = frame.index[anchor]
+        result.at[frame.index[i], 'Limit_Up_Valid'] = True
+    return result
+
+
 class TaiwanStockTradingSystem:
     def __init__(self, tickers, start_date=TRAINING_START_DATE, extension_exit_mode=EXTENSION_EXIT_MODE):
         if extension_exit_mode not in ('legacy_exit', 'warning'):
@@ -788,27 +814,9 @@ class TaiwanStockTradingSystem:
         df['Ambush_Setup'] = df['No_New_Lows'] & df['Has_Recent_Action'] & df['Volume_Dry_Up'] & (df['Close'] > df['MA5'])
 
         # === 🎬 修改點 2：動態尋找首板關鍵支撐位 ===
-        df['Limit_Up_Support'] = np.nan
-        df['Limit_Up_Type'] = "NONE"
-
-        for i in range(20, len(df)):
-            sub_df = df.iloc[i-20:i+1]
-            limit_up_days = sub_df[sub_df['Is_Limit_Up']]
-            
-            if not limit_up_days.empty:
-                first_lu_idx = limit_up_days.index[0]
-                first_lu_row = df.loc[first_lu_idx]
-                total_lu = len(limit_up_days)
-                
-                if total_lu == 1:
-                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['Open']
-                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "SINGLE"
-                elif total_lu in [2, 3]:
-                    df.iloc[i, df.columns.get_loc('Limit_Up_Support')] = first_lu_row['High']
-                    df.iloc[i, df.columns.get_loc('Limit_Up_Type')] = "MULTI"
-                    
-        df['Limit_Up_Support'] = df['Limit_Up_Support'].ffill()
-        df['Limit_Up_Type'] = df['Limit_Up_Type'].ffill()
+        support = recent_limit_up_support(df)
+        for column in support:
+            df[column] = support[column]
 
         # === 🎬 修改點 3：漲停回檔低吸訊號組合 ===
         df['Support_Held'] = (
@@ -1009,12 +1017,13 @@ class TaiwanStockTradingSystem:
         
         # 判定今日與昨日是否都收盤跌破漲停支撐 2%
         break_limit_up_support_raw = (
-            df['Close'] < df['Limit_Up_Support'] * 0.98
+            df['Limit_Up_Valid'] & (df['Close'] < df['Limit_Up_Support'] * 0.98)
         )
 
         break_limit_up_support = (
             break_limit_up_support_raw & 
-            break_limit_up_support_raw.shift(1).fillna(False)
+            break_limit_up_support_raw.shift(1, fill_value=False) &
+            df['Limit_Up_Anchor'].eq(df['Limit_Up_Anchor'].shift(1))
         )
 
         df = df.copy()  # Consolidate indicator blocks before adding audit fields.
@@ -1133,6 +1142,8 @@ class TaiwanStockTradingSystem:
                 "漲停基因": bool(last_day.get('Has_Limit_Up_Gene', False)),
                 "近期漲停數": int(last_day.get('Limit_Up_Count_20', 0)) if not pd.isna(last_day.get('Limit_Up_Count_20', np.nan)) else 0,
                 "漲停支撐價": round(float(last_day.get('Limit_Up_Support', 0)), 2) if not pd.isna(last_day.get('Limit_Up_Support', np.nan)) else 0,
+                "漲停支撐有效": bool(last_day.get('Limit_Up_Valid', False)),
+                "漲停支撐來源日期": last_day['Limit_Up_Anchor'].strftime('%Y-%m-%d') if pd.notna(last_day.get('Limit_Up_Anchor')) else None,
                 "漲停型態": str(last_day.get('Limit_Up_Type', 'NONE')),
                 "低位縮量漲停": bool(last_day.get('Low_Shrink_LimitUp', False)),
                 "低位放量漲停": bool(last_day.get('Low_HighVol_LimitUp', False)),
