@@ -54,6 +54,7 @@ try:
     from strategy_config import TRAINING_START_DATE, MODEL_VERSION
     from entry_notifications import load_entry_candidates, entry_notice
     from daily_signal_reports import CATEGORIES, list_report_dates, load_daily_report
+    from swing_strategy import evaluate_swing
 except (ImportError, SyntaxError, OSError):
     logging.exception('Unable to load a matching STOCK_GOD runtime')
     st.error("核心 STOCK_GOD.py 與相依檔案版本不一致或無法載入，已停止分析。請整套更新 repository 並 Reboot app；詳細原因請查看服務日誌。")
@@ -123,7 +124,7 @@ def cached_analysis(tickers, start_date, market_ticker, model_version, cache_rev
     summary, alerts, logs = system.run_analysis()
     if system.market_data is None or system.market_data.empty or not alerts:
         raise ValueError("行情資料暫時不可用，請稍後重試。")
-    return summary, alerts, logs, system.market_data
+    return summary, alerts, logs, system.market_data, getattr(system, 'single_price_frame', None)
 
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
@@ -150,8 +151,9 @@ def cached_fundamentals(ticker):
 
 def run_system_analysis(system):
     try:
-        summary, alerts, logs, market = cached_analysis(tuple(system.tickers), system.start_date, system.market_ticker, MODEL_VERSION, APP_CACHE_REVISION)
+        summary, alerts, logs, market, prices = cached_analysis(tuple(system.tickers), system.start_date, system.market_ticker, MODEL_VERSION, APP_CACHE_REVISION)
         system.market_data = market
+        system.single_price_frame = prices
         return summary, alerts, logs
     except Exception as exc:
         st.error(f"行情分析失敗，請稍後重試：{exc}")
@@ -458,6 +460,7 @@ elif menu == "2. 🔎 單股深度診斷":
                 'ticker': ticker, 'name': stock_name, 'market_ticker': mkt_ticker,
                 'summary': summary, 'alerts': alerts, 'logs': logs,
                 'market': system.market_data, 'elapsed': time.perf_counter() - started,
+                'price_frame': getattr(system, 'single_price_frame', None),
                 'saved_at': time.time(), 'revision': APP_CACHE_REVISION,
                 'model_version': MODEL_VERSION,
                 'decision': decision, 'is_held': is_held,
@@ -475,6 +478,7 @@ elif menu == "2. 🔎 單股深度診斷":
             st.caption("預設快速診斷包含七法則、技術籌碼、TD/Q-Learning 與風控。下列補充資料不改變主判定。")
             extra_ai = st.checkbox("執行額外 AI 分類驗證", value=False, key='extra_ai')
             extra_fundamentals = st.checkbox("載入基本面資料", value=False, key='extra_fundamentals')
+            extra_swing = st.checkbox("查看均線波段策略（獨立訊號與回測）", value=False, key='extra_swing')
         try:
             meta_prob, regime_idx, ai_success, validation = 0.0, None, False, {}
             if extra_ai:
@@ -543,6 +547,33 @@ elif menu == "2. 🔎 單股深度診斷":
             st.dataframe(pd.DataFrame(performance_rows({ticker: summary[ticker]}, {ticker: stock_name})),
                          use_container_width=True, hide_index=True)
             st.caption("收盤訊號於次日開盤執行，含研究成本；這是規則策略，與 TD/RL 仲裁及訊號追蹤報酬分開解讀。")
+            if extra_swing:
+                st.markdown("#### 📈 均線波段策略（獨立研究）")
+                prices = snapshot.get('price_frame')
+                if not ticker.endswith(('.TW', '.TWO')):
+                    st.info("均線波段策略目前只支援台股。")
+                elif prices is None or prices.empty:
+                    st.info("這次診斷未保留個股歷史行情，請重新按「開始診斷」取得完整結果。")
+                else:
+                    # Never treat an unfinished intraday bar as a confirmed close.
+                    complete = bool(alert.get('日線已收盤', False))
+                    source = prices if complete else prices.iloc[:-1]
+                    if not complete:
+                        st.caption("最新日線尚未確認收盤，以下僅使用先前已完成的日線。")
+                    try:
+                        swing = evaluate_swing(source, etf=ticker.split('.')[0].startswith('00'))
+                        st.write(f"**行情截止日：{swing['date']}｜下一交易日模擬訊號：{swing['signal_label']}**")
+                        st.caption(swing['signal_reason'] + "；這是此策略的模擬部位，與實際持股及主系統判定無關。")
+                        st.dataframe(pd.DataFrame([swing['summary']]), use_container_width=True, hide_index=True)
+                        if swing['trades']:
+                            with st.expander("查看最近 5 筆均線波段模擬交易"):
+                                st.dataframe(pd.DataFrame(swing['trades'][-5:]), use_container_width=True, hide_index=True)
+                        st.caption("20 日均線高於 60 日均線且收盤上穿 20 日線進場；收盤跌破模擬買價 7% 或連續兩日低於 20 日線出場。"
+                                   "訊號於收盤產生，回測假設次日開盤成交；每筆最多投入 20% 模擬現金。"
+                                   "起始資金 10 萬元，單邊手續費 0.1425%（最低 20 元）、滑價 0.1%，賣出股票稅 0.3%／ETF 0.1%。"
+                                   "行情採原系統已調整價格，未計股利現金流；不同資金配置的回測報酬不可直接相比。")
+                    except ValueError as exc:
+                        st.info(f"均線波段策略資料不足或格式不符：{exc}")
             st.markdown("### 📊 核心數據儀表板")
 
             col1, col2, col3 = st.columns(3)

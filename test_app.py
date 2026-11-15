@@ -203,7 +203,10 @@ class StreamlitTests(unittest.TestCase):
         app = self.app('4. 🗂️ 歷史追蹤績效')
         self.assertEqual(len(app.dataframe[0].value), expected['tracked_episodes'])
         next(r for r in app.radio if r.label == '顯示範圍').set_value('目前監控').run()
-        self.assertEqual(len(app.dataframe[0].value), expected['current_episodes_matched'])
+        if expected['current_episodes_matched']:
+            self.assertEqual(len(app.dataframe[0].value), expected['current_episodes_matched'])
+        else:
+            self.assertEqual(len(app.dataframe), 0)
         app.number_input[0].set_value(10000).run()
         self.assertEqual(len(app.dataframe), 0)
         for name, data in before.items():
@@ -254,6 +257,31 @@ class StreamlitTests(unittest.TestCase):
         self.assertEqual(saved.call_args[0][0]['2330.TW']['加入價格'], 100)
         self.assertTrue(any('AI 模型正類機率' in item.value for item in app.markdown))
         self.assertTrue(any('平衡正確率 (%)' in frame.value.columns for frame in app.dataframe))
+
+    def test_optional_swing_uses_diagnosis_prices_without_reanalysis(self):
+        prices = pd.DataFrame(
+            {'Open': np.linspace(100, 130, 145), 'Close': np.linspace(100, 130, 145),
+             'High': np.linspace(101, 131, 145), 'Low': np.linspace(99, 129, 145),
+             'Volume': np.full(145, 10000)},
+            index=pd.bdate_range('2026-01-01', periods=145))
+        self.alert['日線已收盤'] = True
+
+        def analysis(system):
+            system.market_data = self.prices.copy()
+            system.single_price_frame = prices.copy()
+            return self.summary, {'2330.TW': dict(self.alert)}, {'2330.TW': []}
+
+        app = self.app('2. 🔎 單股深度診斷')
+        with patch.object(TaiwanStockTradingSystem, 'run_analysis', autospec=True,
+                          side_effect=analysis) as computed, \
+                patch('STOCK_GOD.load_watchlist', return_value={}), \
+                patch('STOCK_GOD.save_watchlist'):
+            app.button[0].click().run()
+            app.checkbox(key='extra_swing').check().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(computed.call_count, 1)
+        self.assertTrue(any('均線波段策略（獨立研究）' in item.value for item in app.markdown))
+        self.assertTrue(any('模擬持股數' in frame.value.columns for frame in app.dataframe))
 
     def test_market_download_empty_is_reported_without_exception(self):
         app = self.app('5. 📊 檢查大盤現況')

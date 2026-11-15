@@ -1093,10 +1093,15 @@ class TaiwanStockTradingSystem:
     def run_analysis(self):
         self.fetch_market_data()
         results_summary, daily_alerts, trade_logs = {}, {}, {}
+        # The single-stock UI can reuse the exact adjusted bars from this run.
+        # Broad scans do not retain a frame for every ticker.
+        self.single_price_frame = None
         
         for ticker in self.tickers:
             df = self.process_stock(ticker)
             if df is None: continue
+            if len(self.tickers) == 1:
+                self.single_price_frame = df[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
                 
             actions = df[df['Trade_Action'] != 0]
             trade_logs[ticker] = [
