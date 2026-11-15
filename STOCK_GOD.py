@@ -1314,7 +1314,7 @@ def run_full_scan_gui(scanner):
         now=scan_now,
         data_errors=getattr(system, 'data_errors', {}))
     save_daily_report(daily_report)
-    report_needs_delivery = daily_report['delivery']['status'] != 'sent'
+    report_needs_delivery = daily_report['delivery']['status'] not in ('sent', 'backfill')
     if report_needs_delivery:
         line_message_1.append(format_daily_report(daily_report))
 

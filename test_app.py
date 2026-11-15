@@ -196,6 +196,14 @@ class StreamlitTests(unittest.TestCase):
                 app.sidebar.radio[0].set_value(option).run()
                 self.assertEqual(len(app.exception), 0, option)
 
+    def test_historical_backfill_is_labeled_without_a_new_scan(self):
+        with patch('STOCK_GOD.yf.download', side_effect=AssertionError('unexpected external request')):
+            app = self.app('6. 📋 每日訊號清單')
+            app.selectbox[0].set_value('2026-11-13').run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(any('歷史補建' in item.value and '未執行 LINE 推播' in item.value
+                            for item in app.info))
+
     def test_history_filter_survives_rerun_and_does_not_modify_sources(self):
         before = {name: (ROOT / name).read_bytes() for name in ('line_push_log.txt', 'long_term_watchlist.json')}
         expected = tracking_report(before['line_push_log.txt'].decode('utf-8'),
