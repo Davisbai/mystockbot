@@ -20,7 +20,9 @@ from institutional_data import parse_institutional_flows
 from market_clock import daily_bar_closed
 from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
 from app_support import runtime_fingerprint, observed_holding
-from daily_signal_reports import build_daily_report, load_daily_report, save_daily_report, format_daily_report, mark_report_delivery
+from daily_signal_reports import (build_daily_report, latest_complete_market_date,
+                                  load_daily_report, save_daily_report,
+                                  format_daily_report, mark_report_delivery)
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score
 
 CORE_API_VERSION = 1
@@ -704,6 +706,18 @@ class TaiwanStockTradingSystem:
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
+        # Yahoo can return a non-trading placeholder with incomplete OHLC.
+        # It must not abort the backtest or silently become today's signal.
+        columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+        if not set(columns).issubset(df.columns):
+            raise ValueError('行情缺少 OHLCV 欄位')
+        df[columns] = df[columns].apply(pd.to_numeric, errors='coerce')
+        valid = np.isfinite(df[columns]).all(axis=1) & (df[['Open', 'High', 'Low', 'Close']] > 0).all(axis=1) & (df['Volume'] >= 0)
+        if not valid.all():
+            print(f"⚠️ [行情資料] {ticker} 排除 {int((~valid).sum())} 筆 OHLCV 不完整的日期。")
+            df = df.loc[valid].copy()
+        if df.empty:
+            return None
             
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
             
@@ -1096,10 +1110,18 @@ class TaiwanStockTradingSystem:
         # The single-stock UI can reuse the exact adjusted bars from this run.
         # Broad scans do not retain a frame for every ticker.
         self.single_price_frame = None
+        self.data_errors = {}
         
         for ticker in self.tickers:
-            df = self.process_stock(ticker)
-            if df is None: continue
+            try:
+                df = self.process_stock(ticker)
+            except (ValueError, KeyError, TypeError) as exc:
+                self.data_errors[ticker] = f'行情或分析資料不完整：{exc}'
+                print(f"⚠️ [個股略過] {ticker}: {exc}")
+                continue
+            if df is None:
+                self.data_errors[ticker] = '沒有有效的 OHLCV 行情資料'
+                continue
             if len(self.tickers) == 1:
                 self.single_price_frame = df[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
                 
@@ -1284,11 +1306,13 @@ def run_full_scan_gui(scanner):
         stock: resolve_td_rl_strategy(alert, is_held=stock in watchlist, holding=watchlist.get(stock))
         for stock, alert in alerts.items()
     }
-    report_date = now_str[:10]
+    scan_now = datetime.datetime.fromisoformat(now_str).replace(tzinfo=tw_tz)
+    report_date = latest_complete_market_date(alerts, scan_now) or now_str[:10]
     daily_report = build_daily_report(
         alerts, COMBINED_MAP, watchlist, daily_decisions,
         previous=load_daily_report(report_date),
-        now=datetime.datetime.fromisoformat(now_str).replace(tzinfo=tw_tz))
+        now=scan_now,
+        data_errors=getattr(system, 'data_errors', {}))
     save_daily_report(daily_report)
     report_needs_delivery = daily_report['delivery']['status'] != 'sent'
     if report_needs_delivery:

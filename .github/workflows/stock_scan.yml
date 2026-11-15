@@ -2,8 +2,8 @@ name: Stock Strategy Daily Scan
 
 on:
   schedule:
-    # 台灣時間 19:00 (UTC 11:00)
-    - cron: '0 11 * * 1-5'  
+    # 台灣時間 19:17 (UTC 11:17)，避開整點壅塞；實際觸發仍可能延遲。
+    - cron: '17 11 * * 1-5'
   workflow_dispatch: 
 
 concurrency:
