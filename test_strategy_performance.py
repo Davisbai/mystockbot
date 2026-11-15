@@ -79,6 +79,32 @@ class PerformanceTests(unittest.TestCase):
         self.assertFalse((result.Buy_Signal & result.Sell_Signal).any())
         self.assertTrue(np.isfinite(result.Strategy_Returns).all())
 
+    def test_process_stock_ignores_incomplete_yahoo_placeholder(self):
+        rng = np.random.RandomState(31)
+        dates = pd.bdate_range('2024-01-01', periods=240)
+        close = 100 * np.exp(np.cumsum(rng.normal(.001, .01, len(dates))))
+        prices = pd.DataFrame({'Open': close, 'Close': close,
+                               'High': close * 1.02, 'Low': close * .98,
+                               'Volume': 1000000.}, index=dates)
+        prices.loc[dates[-1], ['Open', 'Close']] = np.nan
+        system = TaiwanStockTradingSystem(['2330.TW'])
+        system.market_data = pd.DataFrame({'Close': close * 100, 'Market_OK': True}, index=dates)
+        with patch('STOCK_GOD.yf.download', return_value=prices), \
+                patch.object(system, 'fetch_real_chip_data', side_effect=lambda frame, ticker:
+                             frame.assign(Foreign_Buy=0., Trust_Buy=0., Margin_Balance=0.)):
+            result = system.process_stock('2330.TW')
+        self.assertEqual(result.index[-1], dates[-2])
+        self.assertTrue(np.isfinite(result[['Open', 'Close', 'Strategy_Returns']]).all().all())
+
+    def test_run_analysis_skips_bad_ticker_and_records_reason(self):
+        system = TaiwanStockTradingSystem(['BAD.TW', 'EMPTY.TW'])
+        with patch.object(system, 'fetch_market_data'), \
+                patch.object(system, 'process_stock', side_effect=[ValueError('invalid OHLC'), None]):
+            summary, alerts, logs = system.run_analysis()
+        self.assertEqual((summary, alerts, logs), ({}, {}, {}))
+        self.assertIn('invalid OHLC', system.data_errors['BAD.TW'])
+        self.assertIn('沒有有效', system.data_errors['EMPTY.TW'])
+
     def test_rl_epochs_do_not_inflate_sample_count(self):
         data = pd.DataFrame({'Close': [100., 101., 102., 103.]})
         engine = TDRLDecisionEngine(min_rows=2, epochs=3)

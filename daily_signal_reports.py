@@ -92,31 +92,44 @@ def _row(ticker, name, alert, result, holding):
     }
 
 
-def build_daily_report(alerts, names, holdings, decisions, previous=None, now=None):
-    """Classify from pre-scan holdings; preserve today's confirmed action events."""
+def latest_complete_market_date(alerts, now=None):
+    """Use the actual complete quote date, even when the scheduled job starts late."""
     now = datetime.datetime.now(TAIPEI) if now is None else now.astimezone(TAIPEI)
-    report_date = now.date().isoformat()
     dates = []
     for alert in alerts.values():
         try:
-            dates.append(_date(alert.get('日期')))
+            day = _date(alert.get('日期'))
         except (ValueError, TypeError):
             continue
-    market_date = max(dates, default=None)
+        price = _number(alert.get('收盤價'))
+        if (day <= now.date().isoformat() and alert.get('日線已收盤') is not False
+                and price is not None and price > 0):
+            dates.append(day)
+    return max(dates, default=None)
+
+
+def build_daily_report(alerts, names, holdings, decisions, previous=None, now=None,
+                       data_errors=None):
+    """Classify by completed market day; preserve events on reruns of that day."""
+    now = datetime.datetime.now(TAIPEI) if now is None else now.astimezone(TAIPEI)
+    market_date = latest_complete_market_date(alerts, now)
+    report_date = market_date or now.date().isoformat()
+    data_errors = data_errors or {}
     previous = previous if previous and previous.get('report_date') == report_date else None
     report = {'schema_version': 1, 'report_date': report_date,
               'generated_at': now.isoformat(timespec='seconds'), 'market_date': market_date,
               'price_basis': '收盤參考價；非券商成交',
               **{key: [] for key in CATEGORIES}, 'unavailable': []}
-    # Only actual reports generated on this day establish today's action events.
+    # Only reports for the same market day preserve earlier action events.
     prior_buys = {row['ticker']: row for row in previous.get('buy', [])} if previous else {}
     prior_sells = {row['ticker']: copy.deepcopy(row) for row in previous.get('sell', [])} if previous else {}
     current_buys = {}
-    for ticker in sorted(set(alerts) | set(holdings)):
+    for ticker in sorted(set(alerts) | set(holdings) | set(data_errors)):
         alert, holding = alerts.get(ticker), holdings.get(ticker)
         name = names.get(ticker, (holding or {}).get('名稱', ticker))
         if not alert or ticker not in decisions:
-            report['unavailable'].append({'ticker': ticker, 'name': name, 'reason': '本次無可用分析資料'})
+            report['unavailable'].append({'ticker': ticker, 'name': name,
+                                          'reason': data_errors.get(ticker, '本次無可用分析資料')})
             continue
         row = _row(ticker, name, alert, decisions[ticker], holding)
         # Never call a previous trading day's/unfinished bar's signal a new BUY/SELL.
@@ -165,7 +178,8 @@ def mark_report_delivery(report, delivered, directory=None):
 
 def format_daily_report(report):
     lines = [f"📋 每日訊號清單｜{report['report_date']}",
-             f"行情日期：{report['market_date'] or '無可用資料'}", '系統訊號與收盤參考價，非券商成交。']
+             f"行情日期：{report['market_date'] or '無可用資料'}",
+             f"產生時間：{report['generated_at']}", '系統訊號與收盤參考價，非券商成交。']
     for key, label in CATEGORIES.items():
         lines.append(f'\n【{label}】{len(report[key])} 檔')
         if not report[key]:

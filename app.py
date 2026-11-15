@@ -883,6 +883,8 @@ elif menu == "6. 📋 每日訊號清單":
                 st.stop()
             status = {'pending': '待傳送', 'sent': '已送出', 'failed': '傳送失敗（同日重跑可重試）'}
             st.write(f"產生時間：{report['generated_at']}｜行情日期：{report['market_date'] or '無可用資料'}")
+            if report['market_date'] and report['report_date'] != report['generated_at'][:10]:
+                st.caption("排程或手動掃描晚於行情日；此清單歸屬行情日期，請按日期解讀歷史訊號。")
             st.caption(f"LINE 狀態：{status.get(report['delivery']['status'], '未記錄')}｜價格基準：{report['price_basis']}")
             metrics = st.columns(4)
             for column, (key, label) in zip(metrics, CATEGORIES.items()):

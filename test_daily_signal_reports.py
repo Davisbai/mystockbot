@@ -75,6 +75,33 @@ class DailyReportTests(unittest.TestCase):
         self.assertEqual(report['hold'], [])
         self.assertEqual({row['ticker'] for row in report['unavailable']}, {'H.TW', 'S.TW', 'B.TW'})
 
+    def test_delayed_job_belongs_to_completed_market_day(self):
+        delayed = self.now + datetime.timedelta(hours=7, minutes=20)
+        report = self.build(now=delayed)
+        self.assertEqual(report['report_date'], '2026-10-15')
+        self.assertEqual(report['market_date'], '2026-10-15')
+        self.assertTrue(report['generated_at'].startswith('2026-10-16T02:20'))
+        self.assertEqual([row['ticker'] for row in report['buy']], ['B.TW'])
+        self.assertEqual([row['ticker'] for row in report['sell']], ['S.TW'])
+        report['delivery'] = {'status': 'sent'}
+        self.assertEqual(self.build(previous=report, now=delayed)['delivery']['status'], 'sent')
+
+    def test_weekend_scan_is_dated_by_quote_and_stale_stock_is_unavailable(self):
+        weekend = datetime.datetime(2026, 10, 18, 18, tzinfo=reports.TAIPEI)
+        self.alerts['B.TW']['日期'] = '2026-10-14'
+        report = self.build(now=weekend)
+        self.assertEqual(report['report_date'], '2026-10-15')
+        self.assertEqual(report['buy'], [])
+        self.assertIn('B.TW', [row['ticker'] for row in report['unavailable']])
+        self.assertEqual([row['ticker'] for row in report['sell']], ['S.TW'])
+
+    def test_failed_quote_is_visible_without_hiding_other_stock(self):
+        report = reports.build_daily_report(self.alerts, self.names, self.holdings,
+                                            self.decisions, now=self.now,
+                                            data_errors={'BAD.TW': '行情或分析資料不完整：開盤價缺失'})
+        self.assertEqual(report['buy'][0]['ticker'], 'B.TW')
+        self.assertIn('開盤價缺失', next(row['reason'] for row in report['unavailable'] if row['ticker'] == 'BAD.TW'))
+
     def test_empty_or_next_day_scan_does_not_relabel_yesterday_events_as_today(self):
         report = reports.build_daily_report({}, {}, self.holdings, {}, self.build(),
                                            self.now + datetime.timedelta(days=1))
