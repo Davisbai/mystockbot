@@ -86,6 +86,12 @@ class DailyReportTests(unittest.TestCase):
         report['delivery'] = {'status': 'sent'}
         self.assertEqual(self.build(previous=report, now=delayed)['delivery']['status'], 'sent')
 
+    def test_unchanged_backfill_is_not_turned_into_new_notification(self):
+        archive = self.build()
+        archive['delivery'] = {'status': 'backfill', 'attempted_at': None, 'sent_at': None}
+        rerun = self.build(previous=archive)
+        self.assertEqual(rerun['delivery']['status'], 'backfill')
+
     def test_weekend_scan_is_dated_by_quote_and_stale_stock_is_unavailable(self):
         weekend = datetime.datetime(2026, 10, 18, 18, tzinfo=reports.TAIPEI)
         self.alerts['B.TW']['日期'] = '2026-10-14'
