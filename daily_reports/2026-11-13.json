@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "report_date": "2026-11-13",
-  "generated_at": "2026-11-15T18:44:27+08:00",
+  "generated_at": "2026-11-17T05:02:50+08:00",
   "market_date": "2026-11-13",
   "price_basis": "收盤參考價；非券商成交",
   "watch": [
@@ -18,6 +18,29 @@
       "q_preference": 59.8,
       "chip_status": "available",
       "state_support": 157.0,
+      "support_kind": "exact",
+      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+      "training_start": "2023-01-01",
+      "entry_date": "",
+      "reference_cost": null,
+      "reference_return_pct": null,
+      "risk_reasons": [],
+      "bar_closed": true,
+      "status": "關注，尚未確認進場"
+    },
+    {
+      "ticker": "2323.TW",
+      "name": "中環",
+      "data_date": "2026-11-13",
+      "close": 10.95,
+      "action": "WATCH",
+      "reason": "RL 有買入傾向，但信心/評分尚未完全達標；TD期待 +0.92%。",
+      "raw_action": "BUY",
+      "score": 6.0,
+      "td_expected_pct": 0.92,
+      "q_preference": 59.5,
+      "chip_status": "available",
+      "state_support": 194.0,
       "support_kind": "exact",
       "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
       "training_start": "2023-01-01",
@@ -124,6 +147,31 @@
       "status": "關注，尚未確認進場"
     },
     {
+      "ticker": "2923.TW",
+      "name": "鼎固-KY",
+      "data_date": "2026-11-13",
+      "close": 26.15,
+      "action": "IGNORE",
+      "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。 觸發條件：跌破月線2%。",
+      "raw_action": "BUY",
+      "score": 0.0,
+      "td_expected_pct": 2.99,
+      "q_preference": 82.1,
+      "chip_status": "available",
+      "state_support": 155.0,
+      "support_kind": "exact",
+      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+      "training_start": "2023-01-01",
+      "entry_date": "",
+      "reference_cost": null,
+      "reference_return_pct": null,
+      "risk_reasons": [
+        "跌破月線2%"
+      ],
+      "bar_closed": true,
+      "status": "關注（風控阻擋，禁止介入）"
+    },
+    {
       "ticker": "3231.TW",
       "name": "緯創",
       "data_date": "2026-11-13",
@@ -144,32 +192,6 @@
       "reference_return_pct": null,
       "risk_reasons": [
         "跌破月線2%"
-      ],
-      "bar_closed": true,
-      "status": "關注（風控阻擋，禁止介入）"
-    },
-    {
-      "ticker": "4956.TW",
-      "name": "光鋐",
-      "data_date": "2026-11-13",
-      "close": 34.65,
-      "action": "IGNORE",
-      "reason": "空手狀態且原系統出現賣出/避險訊號，不介入。 觸發條件：跌破月線2%、連續跌破漲停支撐。",
-      "raw_action": "BUY",
-      "score": 18.0,
-      "td_expected_pct": 1.73,
-      "q_preference": 55.5,
-      "chip_status": "available",
-      "state_support": 185.0,
-      "support_kind": "exact",
-      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
-      "training_start": "2023-01-01",
-      "entry_date": "",
-      "reference_cost": null,
-      "reference_return_pct": null,
-      "risk_reasons": [
-        "跌破月線2%",
-        "連續跌破漲停支撐"
       ],
       "bar_closed": true,
       "status": "關注（風控阻擋，禁止介入）"
@@ -249,11 +271,10 @@
   "hold": [],
   "sell": [],
   "unavailable": [],
-  "content_hash": "bc3377767befe63495077c7fb6468640cb48cb49e2ad38f267217fd8c8225467",
+  "content_hash": "49029f123f9d65342856e59fab614c84a6d0386abe06f03f46153e3dd3a7cc1c",
   "delivery": {
-    "status": "backfill",
-    "attempted_at": null,
-    "sent_at": null
-  },
-  "backfill_note": "此為歷史補建：以 2026-11-13 完整行情於 2026-11-15 重新計算；未執行 LINE 推播，非當日新訊號。"
+    "status": "sent",
+    "attempted_at": "2026-11-17T05:03:48+08:00",
+    "sent_at": "2026-11-17T05:03:48+08:00"
+  }
 }
