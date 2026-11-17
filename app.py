@@ -289,7 +289,8 @@ menu = st.sidebar.radio(
         "3. 📈 策略回測",
         "4. 🗂️ 歷史追蹤績效",
         "5. 📊 檢查大盤現況",
-        "6. 📋 每日訊號清單"
+        "6. 📋 每日訊號清單",
+        "7. 📊 Trade Dashboard"
     ),
     index=1
 )
@@ -927,3 +928,9 @@ elif menu == "6. 📋 每日訊號清單":
                                file_name=f'daily_signals_{selected_date}.csv', mime='text/csv')
         except (OSError, ValueError, TypeError, KeyError) as exc:
             st.error(f"無法讀取每日清單：{exc}")
+
+
+# 7️⃣ Trade Dashboard（唯讀）
+elif menu == "7. 📊 Trade Dashboard":
+    from trade_dashboard import render_trade_dashboard
+    render_trade_dashboard(list_report_dates, load_daily_report, CATEGORIES)
