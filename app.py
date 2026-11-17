@@ -408,8 +408,18 @@ elif menu == "2. 🔎 單股深度診斷":
         st.session_state.pop('single_diagnosis', None)
         st.info("上一份診斷已到更新時間，請重新按開始診斷。")
 
-    fresh_run = st.button("開始診斷", type="primary")
+    start_col, refresh_col = st.columns(2)
+    with start_col:
+        normal_run = st.button("開始診斷", type="primary")
+    with refresh_col:
+        force_refresh = st.button("🔄 強制更新行情", help="清除 Streamlit 分析快取並重新下載行情、重新執行單股診斷")
+    fresh_run = normal_run or force_refresh
     if fresh_run:
+        if force_refresh:
+            cached_analysis.clear()
+            cached_ai_diagnosis.clear()
+            cached_fundamentals.clear()
+            st.info("已清除分析快取，正在重新下載行情並執行診斷；最新日期仍以 Yahoo Finance 實際回傳為準。")
         st.session_state.pop('single_diagnosis', None)
         user_input = user_input.strip()
         user_upper = user_input.upper()
