@@ -2,8 +2,8 @@ name: Stock Strategy Daily Scan
 
 on:
   schedule:
-    # 台灣時間 16:00 (UTC 08:00)，週一至週五；GitHub Actions 實際觸發可能延遲。
-    - cron: '0 8 * * 1-5'
+    # 台灣時間 15:00 (UTC 07:00)，週一至週五；GitHub Actions 實際觸發可能延遲。
+    - cron: '0 7 * * 1-5'
   workflow_dispatch: 
 
 concurrency:
@@ -44,7 +44,7 @@ jobs:
         LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
         LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
       run: |
-        echo "--- 正在啟動 19:00 自動掃描 ---"
+        echo "--- 正在啟動 15:00 排程的自動掃描 ---"
         # 使用 -u 確保輸出即時顯示在 GitHub Log
         echo 1 | python -u STOCK_GOD.py 
         echo "--- 掃描執行完畢 ---"
