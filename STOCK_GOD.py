@@ -15,7 +15,7 @@ from io import StringIO
 from sklearn.mixture import GaussianMixture
 from sklearn.ensemble import RandomForestClassifier
 from strategy_performance import backtest_signals, watchlist_risk
-from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_MODE
+from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_MODE, MIN_ENTRY_SUPPORT, MIN_ENTRY_TD_PCT
 from institutional_data import parse_institutional_flows
 from market_clock import daily_bar_closed, expected_tw_market_date
 from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
@@ -488,6 +488,13 @@ def resolve_td_rl_strategy(alert, is_held=False, holding=None):
             action, reason = 'WATCH', '規則達標但模型樣本不足，保留預警，尚未確認進場。'
         elif '籌碼資料狀態' in alert and alert['籌碼資料狀態'] not in ('available', 'not_applicable'):
             action, reason = 'WATCH', '模型偏買但法人資料缺失或不完整，等待資料確認再評估進場。'
+    if action == 'BUY' and not is_held and alert.get('RL可用'):
+        support = float(alert.get('RL空手樣本', 0) or 0)
+        td_pct = float(alert.get('TD期待值', 0) or 0)
+        if support < MIN_ENTRY_SUPPORT:
+            action, reason = 'WATCH', f'狀態樣本僅 {support:.0f} 筆（低於 {MIN_ENTRY_SUPPORT}），模型可靠度不足，列入關注，尚未確認進場。'
+        elif td_pct < MIN_ENTRY_TD_PCT:
+            action, reason = 'WATCH', f'TD期待 {td_pct:+.2f}% 低於 {MIN_ENTRY_TD_PCT:.1f}%，扣除交易成本後優勢不足，列入關注，尚未確認進場。'
     if action == 'BUY' and not is_held and alert.get('日線已收盤') is False:
         action, reason = 'WATCH', '日線尚未完成，保留轉強預警，等待收盤確認進場條件。'
     hard_reasons = alert.get('硬性風控原因', [])
