@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 from strategy_performance import backtest_signals, watchlist_risk
 from strategy_config import TRAINING_START_DATE, MODEL_VERSION, EXTENSION_EXIT_MODE
 from institutional_data import parse_institutional_flows
-from market_clock import daily_bar_closed
+from market_clock import daily_bar_closed, expected_tw_market_date
 from entry_notifications import load_entry_candidates, load_signal_state, save_signal_state, plan_entry_notices, deliver_entry_report
 from app_support import runtime_fingerprint, observed_holding
 from daily_signal_reports import (build_daily_report, latest_complete_market_date,
@@ -1315,6 +1315,12 @@ def run_full_scan_gui(scanner):
         data_errors=getattr(system, 'data_errors', {}))
     save_daily_report(daily_report)
     report_needs_delivery = daily_report['delivery']['status'] not in ('sent', 'backfill')
+    expected_date = expected_tw_market_date(scan_now)
+    if report_date < expected_date:
+        stale_note = (f"⚠️ 行情資料落後：最新完整日 {report_date}，預期 {expected_date}"
+                      "（若非休市，可能是 Yahoo 尚未更新）")
+        print(stale_note)
+        line_message_1.append(stale_note + "\n")
     if report_needs_delivery:
         line_message_1.append(format_daily_report(daily_report))
 
