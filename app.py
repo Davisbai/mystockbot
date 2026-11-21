@@ -884,8 +884,20 @@ elif menu == "6. 📋 每日訊號清單":
     st.caption("讀取盤後掃描存檔，不下載行情、不重跑模型、不發送推播。買入／賣出為系統訊號，並非券商成交。")
     dates = list_report_dates()
     if not dates:
-        st.info("尚無每日清單。每日盤後完整掃描會自動存檔；目前排程為週一至週五台北時間 19:00。")
+        st.info("尚無每日清單。每日盤後完整掃描會自動存檔；目前排程為週一至週五台北時間 15:00，另有 17:30 備援。")
     else:
+        try:
+            from market_clock import expected_tw_market_date
+            expected = expected_tw_market_date()
+            if max(dates) < expected:
+                st.warning(f"最新清單為 {max(dates)}，預期應有 {expected}（休市日可忽略）。可能是排程延遲或行情尚未更新。")
+            recent = [d for d in dates if d >= (datetime.date.fromisoformat(expected) - datetime.timedelta(days=10)).isoformat()]
+            gaps = [d.isoformat() for d in (datetime.date.fromisoformat(expected) - datetime.timedelta(days=i) for i in range(10, 0, -1))
+                    if d.weekday() < 5 and d.isoformat() not in recent]
+            if gaps:
+                st.caption("近 10 天無清單的平日（含休市日）：" + "、".join(gaps))
+        except Exception:
+            pass
         selected_date = st.selectbox("清單日期", dates)
         try:
             report = load_daily_report(selected_date)
