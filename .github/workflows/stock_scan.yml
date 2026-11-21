@@ -47,6 +47,7 @@ jobs:
         LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
       run: |
         if [ "${{ github.event_name }}" = "schedule" ]; then
+          git pull --ff-only -q || true
           set +e; python market_clock.py; code=$?; set -e
           if [ "$code" = "10" ]; then
             echo "今日報告已送出，備援排程略過。"; exit 0
