@@ -4,6 +4,8 @@ on:
   schedule:
     # 台灣時間 15:00 (UTC 07:00)，週一至週五；GitHub Actions 實際觸發可能延遲。
     - cron: '0 7 * * 1-5'
+    # 備援：台灣時間 17:30；若當日報告已送出會自動略過，避免重複推播。
+    - cron: '30 9 * * 1-5'
   workflow_dispatch: 
 
 concurrency:
@@ -44,7 +46,14 @@ jobs:
         LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
         LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
       run: |
-        echo "--- 正在啟動 15:00 排程的自動掃描 ---"
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          git pull --ff-only -q || true
+          set +e; python market_clock.py; code=$?; set -e
+          if [ "$code" = "10" ]; then
+            echo "今日報告已送出，備援排程略過。"; exit 0
+          fi
+        fi
+        echo "--- 正在啟動盤後自動掃描 ---"
         # 使用 -u 確保輸出即時顯示在 GitHub Log
         echo 1 | python -u STOCK_GOD.py 
         echo "--- 掃描執行完畢 ---"
