@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "report_date": "2026-11-23",
+  "generated_at": "2026-11-25T02:44:31+08:00",
+  "market_date": "2026-11-23",
+  "price_basis": "收盤參考價；非券商成交",
+  "watch": [],
+  "buy": [],
+  "hold": [
+    {
+      "ticker": "2468.TW",
+      "name": "華經",
+      "data_date": "2026-11-23",
+      "close": 64.9,
+      "action": "WATCH",
+      "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +6.51%。",
+      "raw_action": "HOLD",
+      "score": 15.0,
+      "td_expected_pct": 6.51,
+      "q_preference": 85.4,
+      "chip_status": "available",
+      "state_support": 12.0,
+      "support_kind": "exact",
+      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+      "training_start": "2023-01-01",
+      "entry_date": "2026-11-20",
+      "reference_cost": 69.1,
+      "reference_return_pct": -6.08,
+      "risk_reasons": [],
+      "bar_closed": true,
+      "status": "續抱"
+    },
+    {
+      "ticker": "7765.TW",
+      "name": "中華資安",
+      "data_date": "2026-11-23",
+      "close": 270.0,
+      "action": "WATCH",
+      "reason": "Q-Learning 原判 HOLD，仲裁續抱觀察；TD期待 +1.17%。",
+      "raw_action": "HOLD",
+      "score": 50.0,
+      "td_expected_pct": 1.17,
+      "q_preference": 77.3,
+      "chip_status": "available",
+      "state_support": 12.0,
+      "support_kind": "exact",
+      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+      "training_start": "2023-01-01",
+      "entry_date": "2026-11-20",
+      "reference_cost": 294.5,
+      "reference_return_pct": -8.32,
+      "risk_reasons": [],
+      "bar_closed": true,
+      "status": "續抱"
+    }
+  ],
+  "sell": [
+    {
+      "ticker": "6614.TW",
+      "name": "資拓宏宇",
+      "data_date": "2026-11-23",
+      "close": 44.75,
+      "action": "SELL",
+      "reason": "既有退出風控已觸發；TD期待 +4.13%。 觸發條件：五日乖離超標（維持原退出政策）。",
+      "raw_action": "HOLD",
+      "score": 95.0,
+      "td_expected_pct": 4.13,
+      "q_preference": 60.7,
+      "chip_status": "available",
+      "state_support": 1.0,
+      "support_kind": "exact",
+      "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
+      "training_start": "2023-01-01",
+      "entry_date": "2026-11-20",
+      "reference_cost": 40.7,
+      "reference_return_pct": 9.95,
+      "risk_reasons": [
+        "五日乖離超標（維持原退出政策）"
+      ],
+      "bar_closed": true,
+      "signal_recorded_at": "2026-11-25T02:44:31+08:00"
+    }
+  ],
+  "unavailable": [],
+  "content_hash": "72fec04f78a1e55b90a7cfad03d457fab3428d5146e2c5b03f2773e1c6360aa4",
+  "delivery": {
+    "status": "sent",
+    "attempted_at": "2026-11-25T02:45:20+08:00",
+    "sent_at": "2026-11-25T02:45:20+08:00"
+  }
+}
