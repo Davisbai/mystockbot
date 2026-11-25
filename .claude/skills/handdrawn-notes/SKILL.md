@@ -21,7 +21,7 @@ description: 把文章、逐字稿、影片重點或觀點整理成「日系手�
    ```
    預設依版型（cards 1:1、rich 3:2）、附參考圖、模型 `gemini-3-pro-image-preview`（失敗退回 `gemini-2.5-flash-image`）。金鑰：Claude Code 雲端環境由代理自動注入；其他環境請設 `GEMINI_API_KEY`。若執行環境連不到 generativelanguage.googleapis.com（例如 claude.ai 網頁版沙盒），改為：照版型寫好完整的生成提示詞（風格段＋content.md）交給使用者，貼到 Gemini 或 ChatGPT 生成，並附上參考圖。
 3. **用 Read 看圖驗字**：錯字、缺字、亂碼、多出無關日期/簽名就重生（最多 3 次），或把出錯那格字再縮短。
-4. 用 SendUserFile 交付；要存雲端硬碟就請使用者自行存（Drive 工具無法上傳大圖）。
+4. 用 SendUserFile 交付；要存 Google 雲端硬碟：用 create_file，base64Content 填 `sha256:<雜湊>:<絕對路徑>` 檔案參照，並設 disableConversionToGoogleType=true（否則會被轉成 Google 文件）。
 
 ## 卡片版槽位（cards，4–7 格即可，不必全用）
 
