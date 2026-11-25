@@ -2,7 +2,7 @@
 
 Usage: python3 -I make_note.py content.md out.png [--ratio 1:1] [--no-ref] [--model NAME]
 """
-import argparse, base64, json, pathlib, sys, urllib.request
+import argparse, base64, json, os, pathlib, sys, urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
 REF = HERE.parent / "assets" / "reference_parenting.jpg"
@@ -27,7 +27,7 @@ def call(model, parts, ratio):
             "generationConfig": {"responseModalities": ["IMAGE", "TEXT"],
                                  "imageConfig": {"aspectRatio": ratio}}}
     req = urllib.request.Request(API.format(model), json.dumps(body).encode(),
-                                 {"Content-Type": "application/json", "x-goog-api-key": "proxy-injected"})
+                                 {"Content-Type": "application/json", "x-goog-api-key": os.environ.get("GEMINI_API_KEY", "proxy-injected")})
     r = json.load(urllib.request.urlopen(req, timeout=300))
     for p in r["candidates"][0]["content"]["parts"]:
         if "inlineData" in p:
