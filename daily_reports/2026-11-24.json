@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "report_date": "2026-11-24",
-  "generated_at": "2026-11-26T01:52:36+08:00",
+  "generated_at": "2026-11-26T03:30:37+08:00",
   "market_date": "2026-11-24",
   "price_basis": "收盤參考價；非券商成交",
   "watch": [
@@ -186,7 +186,7 @@
       "td_expected_pct": -0.49,
       "q_preference": 59.3,
       "chip_status": "available",
-      "state_support": 176.0,
+      "state_support": 175.0,
       "support_kind": "exact",
       "model_version": "tdrl-20261020-support-expiry-v2-legacy_exit",
       "training_start": "2023-01-01",
@@ -276,10 +276,10 @@
   ],
   "sell": [],
   "unavailable": [],
-  "content_hash": "105aa076ebb9777460f08b82eb7e9470670b09a86af90448404c846a90b991f5",
+  "content_hash": "ff33e11f2f2409de7172d73de7e5cb6ee20b16508d91bfa52361b82729676562",
   "delivery": {
     "status": "sent",
-    "attempted_at": "2026-11-26T01:53:33+08:00",
-    "sent_at": "2026-11-26T01:53:33+08:00"
+    "attempted_at": "2026-11-26T03:31:38+08:00",
+    "sent_at": "2026-11-26T03:31:38+08:00"
   }
 }
